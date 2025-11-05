@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// ИМПОРТ ИЗМЕНЕН: Теперь мы ссылаемся на публичный файл фичи,
-// а не на ее внутреннюю структуру.
 import '../../../glider_profiles/glider_profiles.dart';
+// Удаляем импорт старой заглушки
+// import '../widgets/flight_programs_section.dart';
+// Импортируем новый виджет из его фичи
+import '../../../flight_programs/flight_programs.dart';
+
 import '../widgets/device_status_card.dart';
 import '../widgets/flight_history_section.dart';
-import '../widgets/flight_programs_section.dart';
+// import '../widgets/flight_programs_section.dart';
 
 /// Координирующий экран ("дэшборд") для управления конкретным планером.
 class ControlPanelPage extends ConsumerWidget {
-  /// ID профиля планера, которым мы управляем.
   final String gliderProfileId;
-
   const ControlPanelPage({super.key, required this.gliderProfileId});
 
   @override
@@ -35,15 +36,13 @@ class ControlPanelPage extends ConsumerWidget {
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
-        children: const [
-          // Блок 1: Статус устройства
-          DeviceStatusCard(),
-          SizedBox(height: 24),
-          // Блок 2: Полетные программы
-          FlightProgramsSection(),
-          SizedBox(height: 24),
-          // Блок 3: История полетов
-          FlightHistorySection(),
+        children: [
+          const DeviceStatusCard(),
+          const SizedBox(height: 24),
+          // Заменяем старую заглушку на новый виджет
+          FlightProgramsList(profileId: gliderProfileId),
+          const SizedBox(height: 24),
+          const FlightHistorySection(),
         ],
       ),
     );
