@@ -20,7 +20,7 @@ final flightProgramsProvider =
 });
 
 
-// --- ШАГ 2: NOTIFIER ДЛЯ ИЗМЕНЕНИЯ ДАННЫХ ---
+// --- ШАГ 2: КОНТРОЛЛЕР ДЛЯ ИЗМЕНЕНИЯ ДАННЫХ ---
 
 /// Это обычный класс, а не Riverpod Notifier. Он содержит бизнес-логику.
 class FlightProgramsController {
@@ -41,6 +41,14 @@ class FlightProgramsController {
   /// Удаляет программу
   Future<void> deleteProgram(String profileId, String programId) async {
     await _repository.deleteProgram(profileId, programId);
+    ref.invalidate(flightProgramsProvider(profileId));
+  }
+  
+  /// Сохраняет полную программу (с измененными шагами)
+  Future<void> updateProgram(String profileId, FlightProgram program) async {
+    await _repository.saveProgram(profileId, program);
+    // Инвалидируем провайдер списка, чтобы на предыдущем экране
+    // обновилось, например, количество шагов.
     ref.invalidate(flightProgramsProvider(profileId));
   }
 }

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/entities/flight_program.dart';
 import '../../domain/entities/flight_program_step.dart';
 import '../providers/flight_programs_providers.dart';
 import '../providers/program_id_provider.dart';
+import '../widgets/add_edit_step_dialog.dart';
 
-/// Экран для редактирования полетной программы.
-class FlightProgramEditorPage extends ConsumerWidget {
+class FlightProgramEditorPage extends ConsumerStatefulWidget {
   final String profileId;
   final String programId;
 
@@ -17,13 +18,62 @@ class FlightProgramEditorPage extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Используем новый провайдер для получения данных программы
-    final programIdObj = ProgramId(profileId: profileId, programId: programId);
-    final program = ref.watch(programByIdProvider(programIdObj));
+  ConsumerState<FlightProgramEditorPage> createState() => _FlightProgramEditorPageState();
+}
 
-    // Обрабатываем случай, когда программа не найдена
-    if (program == null) {
+class _FlightProgramEditorPageState extends ConsumerState<FlightProgramEditorPage> {
+  FlightProgram? _program;
+
+  @override
+  void initState() {
+    super.initState();
+    final programIdObj = ProgramId(profileId: widget.profileId, programId: widget.programId);
+    final initialProgram = ref.read(programByIdProvider(programIdObj));
+    if (initialProgram != null) {
+      _program = FlightProgram.fromMap(initialProgram.toMap());
+    }
+  }
+
+  Future<void> _addStep() async {
+    final newStep = await showAddEditStepDialog(context);
+    if (newStep != null && _program != null) {
+      setState(() {
+        _program!.steps.add(newStep);
+      });
+    }
+  }
+
+  Future<void> _editStep(FlightProgramStep stepToEdit, int index) async {
+    final updatedStep = await showAddEditStepDialog(context, existingStep: stepToEdit);
+    if (updatedStep != null && _program != null) {
+      setState(() {
+        _program!.steps[index] = updatedStep;
+      });
+    }
+  }
+
+  void _deleteStep(int index) {
+    if (_program == null) return;
+    setState(() {
+      _program!.steps.removeAt(index);
+    });
+  }
+
+  void _saveChanges() {
+    if (_program != null) {
+      ref
+          .read(flightProgramsControllerProvider)
+          .updateProgram(widget.profileId, _program!);
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Программа сохранена')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_program == null) {
       return Scaffold(
         appBar: AppBar(),
         body: const Center(child: Text('Программа не найдена')),
@@ -32,37 +82,27 @@ class FlightProgramEditorPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(program.name),
+        title: Text(_program!.name),
         actions: [
-          IconButton(
-            onPressed: () {
-              // TODO: Реализовать сохранение
-            },
-            icon: const Icon(Icons.save_outlined),
-            tooltip: 'Сохранить',
-          ),
+          IconButton(onPressed: _saveChanges, icon: const Icon(Icons.save_outlined)),
         ],
       ),
-      body: Column(
-        children: [
-          // TODO: Добавить поле для редактирования имени
-          Expanded(
-            child: program.steps.isEmpty
-                ? const _EmptySteps()
-                : ListView.builder(
-                    itemCount: program.steps.length,
-                    itemBuilder: (context, index) {
-                      final step = program.steps[index];
-                      return _StepCard(step: step);
-                    },
-                  ),
-          ),
-        ],
-      ),
+      body: _program!.steps.isEmpty
+          ? const _EmptySteps()
+          : ListView.builder(
+              itemCount: _program!.steps.length,
+              itemBuilder: (context, index) {
+                final step = _program!.steps[index];
+                return _StepCard(
+                  step: step,
+                  stepNumber: index + 1,
+                  onTap: () => _editStep(step, index),
+                  onDelete: () => _deleteStep(index),
+                );
+              },
+            ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Реализовать добавление нового шага
-        },
+        onPressed: _addStep,
         child: const Icon(Icons.add),
       ),
     );
@@ -71,23 +111,35 @@ class FlightProgramEditorPage extends ConsumerWidget {
 
 /// Карточка для отображения одного шага программы.
 class _StepCard extends StatelessWidget {
-  const _StepCard({required this.step});
+  const _StepCard({
+    required this.step,
+    required this.stepNumber,
+    required this.onTap,
+    required this.onDelete,
+  });
   final FlightProgramStep step;
+  final int stepNumber;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
-    final directionText = step.direction == 1 ? 'По часовой' : 'Против часовой';
-    final icon = step.direction == 1
-        ? Icons.rotate_right_rounded
-        : Icons.rotate_left_rounded;
+    final durationString = '${step.durationSec} с  ${step.durationMs} мс';
+    final icon = step.direction == 1 ? Icons.rotate_right_rounded : Icons.rotate_left_rounded;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: ListTile(
-        leading: Icon(icon),
-        title: Text('Время: ${step.time} c'),
-        subtitle: Text('Длительность: ${step.duration} мс'),
-        trailing: Text(directionText),
+        leading: CircleAvatar(
+          child: Text('$stepNumber'), // Отображаем номер шага
+        ),
+        title: Text(durationString, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(step.direction == 1 ? 'Направление: По часовой' : 'Направление: Против часовой'),
+        trailing: IconButton(
+          icon: Icon(Icons.delete_outline, color: Colors.grey.shade600),
+          onPressed: onDelete,
+        ),
+        onTap: onTap,
       ),
     );
   }
@@ -105,10 +157,7 @@ class _EmptySteps extends StatelessWidget {
         children: [
           Icon(Icons.playlist_add_outlined, size: 80, color: Colors.grey.shade700),
           const SizedBox(height: 16),
-          Text(
-            'Нет добавленных шагов',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('Нет добавленных шагов', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
           Text(
             'Нажмите "+", чтобы добавить первый шаг',

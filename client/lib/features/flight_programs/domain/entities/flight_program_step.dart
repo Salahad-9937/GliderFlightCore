@@ -1,35 +1,38 @@
 import 'dart:convert';
 
-/// Сущность, представляющая один шаг в полетной программе.
+/// Сущность, представляющая один последовательный шаг в полетной программе.
 class FlightProgramStep {
-  /// Время от старта в секундах, когда должен сработать этот шаг.
-  final int time;
-
   /// Направление вращения сервопривода (1: по часовой, -1: против часовой).
   final int direction;
 
-  /// Длительность вращения сервопривода в миллисекундах.
-  final int duration;
+  /// Секунды вращения сервопривода.
+  final int durationSec;
+
+  /// Миллисекунды вращения сервопривода.
+  final int durationMs;
 
   FlightProgramStep({
-    required this.time,
     required this.direction,
-    required this.duration,
+    this.durationSec = 0,
+    this.durationMs = 0,
   });
+
+  /// Возвращает общую длительность вращения в миллисекундах.
+  int get totalDurationMs => durationSec * 1000 + durationMs;
 
   Map<String, dynamic> toMap() {
     return {
-      'time': time,
       'direction': direction,
-      'duration': duration,
+      'durationSec': durationSec,
+      'durationMs': durationMs,
     };
   }
 
   factory FlightProgramStep.fromMap(Map<String, dynamic> map) {
     return FlightProgramStep(
-      time: map['time']?.toInt() ?? 0,
-      direction: map['direction']?.toInt() ?? 0,
-      duration: map['duration']?.toInt() ?? 0,
+      direction: map['direction']?.toInt() ?? 1,
+      durationSec: map['durationSec']?.toInt() ?? 0,
+      durationMs: map['durationMs']?.toInt() ?? 0,
     );
   }
 
