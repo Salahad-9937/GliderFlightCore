@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/flight_program.dart';
+import '../pages/flight_program_editor_page.dart';
 import '../providers/flight_programs_providers.dart';
 import 'add_program_dialog.dart';
 import 'delete_program_dialog.dart';
@@ -24,7 +25,6 @@ class FlightProgramsList extends ConsumerWidget {
             Text('Полетные программы', style: Theme.of(context).textTheme.titleLarge),
             IconButton(
               onPressed: () {
-                // Изменяем вызов: теперь открывается диалог
                 showAddProgramDialog(context, ref, profileId);
               },
               icon: const Icon(Icons.add_circle_outline),
@@ -78,17 +78,27 @@ class _FlightProgramCard extends ConsumerWidget {
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
         title: Text(program.name),
-        subtitle: Text('Шагов: ${program.steps.length}'), // Показываем кол-во шагов
+        subtitle: Text('Шагов: ${program.steps.length}'),
         onTap: () {
-          // TODO: Перейти на экран редактирования программы
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => FlightProgramEditorPage(
+              profileId: profileId,
+              programId: program.id,
+            ),
+          ));
         },
-        // Добавляем меню для опций "Редактировать" и "Удалить"
         trailing: PopupMenuButton<String>(
           onSelected: (value) {
-            if (value == 'delete') {
+            if (value == 'edit') {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => FlightProgramEditorPage(
+                  profileId: profileId,
+                  programId: program.id,
+                ),
+              ));
+            } else if (value == 'delete') {
               showDeleteProgramDialog(context, ref, profileId, program);
             }
-            // TODO: Добавить обработку для 'edit'
           },
           itemBuilder: (context) => [
             const PopupMenuItem(

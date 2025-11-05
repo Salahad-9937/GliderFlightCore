@@ -1,9 +1,11 @@
+import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../data/repositories/flight_program_repository_impl.dart';
 import '../../domain/entities/flight_program.dart';
 import '../../domain/repositories/flight_program_repository.dart';
+import 'program_id_provider.dart';
 
 // --- ШАГ 1: ПРОВАЙДЕР ДЛЯ ЧТЕНИЯ ДАННЫХ ---
 
@@ -49,4 +51,24 @@ class FlightProgramsController {
 /// Мы будем использовать его для вызова методов `addProgram`, `deleteProgram`.
 final flightProgramsControllerProvider = Provider<FlightProgramsController>((ref) {
   return FlightProgramsController(ref);
+});
+
+// --- ПРОВАЙДЕР ДЛЯ ПОЛУЧЕНИЯ ОДНОЙ ПРОГРАММЫ ---
+
+/// Провайдер для получения одной программы по ее ID.
+///
+/// Использует [ProgramId] для передачи двух параметров.
+/// Зависит от основного списка программ и находит в нем нужную.
+final programByIdProvider =
+    Provider.family<FlightProgram?, ProgramId>((ref, programId) {
+  // Следим за состоянием списка программ для нужного профиля
+  final programsAsync = ref.watch(flightProgramsProvider(programId.profileId));
+  // Используем .asData для безопасного извлечения данных
+  final data = programsAsync.asData;
+  // Если данные есть (не загрузка и не ошибка), ищем программу по ID
+  if (data != null) {
+    return data.value.firstWhereOrNull((p) => p.id == programId.programId);
+  }
+  // В противном случае (загрузка/ошибка) возвращаем null
+  return null;
 });
