@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:collection/collection.dart';
 import 'flight_program_step.dart';
 
 /// Сущность, представляющая полетную программу для конкретного планера.

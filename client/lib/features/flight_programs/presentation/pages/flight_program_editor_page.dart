@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../domain/entities/flight_program.dart';
 import '../../domain/entities/flight_program_step.dart';
 import '../providers/flight_programs_providers.dart';
 import '../providers/program_id_provider.dart';
