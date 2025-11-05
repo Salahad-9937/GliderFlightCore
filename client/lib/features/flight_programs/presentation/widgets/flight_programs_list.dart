@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/entities/flight_program.dart';
 import '../providers/flight_programs_providers.dart';
+import 'add_program_dialog.dart';
+import 'delete_program_dialog.dart';
 
 /// Виджет, отображающий список полетных программ для данного профиля.
 class FlightProgramsList extends ConsumerWidget {
@@ -10,7 +13,6 @@ class FlightProgramsList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 1. СЛУШАЕМ `FutureProvider` для отображения данных
     final programsAsync = ref.watch(flightProgramsProvider(profileId));
 
     return Column(
@@ -22,10 +24,8 @@ class FlightProgramsList extends ConsumerWidget {
             Text('Полетные программы', style: Theme.of(context).textTheme.titleLarge),
             IconButton(
               onPressed: () {
-                // 2. ИСПОЛЬЗУЕМ `flightProgramsControllerProvider` для вызова метода
-                ref
-                    .read(flightProgramsControllerProvider)
-                    .addProgram(profileId, 'Новая программа');
+                // Изменяем вызов: теперь открывается диалог
+                showAddProgramDialog(context, ref, profileId);
               },
               icon: const Icon(Icons.add_circle_outline),
               tooltip: 'Создать программу',
@@ -47,17 +47,7 @@ class FlightProgramsList extends ConsumerWidget {
             return Column(
               children: [
                 for (final program in programs)
-                  Card(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    child: ListTile(
-                      title: Text(program.name),
-                      // TODO: Добавить удаление через меню
-                      trailing: const Icon(Icons.edit_note_rounded),
-                      onTap: () {
-                        // TODO: Перейти на экран редактирования программы
-                      },
-                    ),
-                  ),
+                  _FlightProgramCard(profileId: profileId, program: program),
               ],
             );
           },
@@ -68,6 +58,56 @@ class FlightProgramsList extends ConsumerWidget {
           ),
         )
       ],
+    );
+  }
+}
+
+/// Виджет-карточка для отображения одной полетной программы.
+class _FlightProgramCard extends ConsumerWidget {
+  const _FlightProgramCard({
+    required this.profileId,
+    required this.program,
+  });
+
+  final String profileId;
+  final FlightProgram program;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: ListTile(
+        title: Text(program.name),
+        subtitle: Text('Шагов: ${program.steps.length}'), // Показываем кол-во шагов
+        onTap: () {
+          // TODO: Перейти на экран редактирования программы
+        },
+        // Добавляем меню для опций "Редактировать" и "Удалить"
+        trailing: PopupMenuButton<String>(
+          onSelected: (value) {
+            if (value == 'delete') {
+              showDeleteProgramDialog(context, ref, profileId, program);
+            }
+            // TODO: Добавить обработку для 'edit'
+          },
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'edit',
+              child: ListTile(
+                leading: Icon(Icons.edit_note_rounded),
+                title: Text('Редактировать'),
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'delete',
+              child: ListTile(
+                leading: Icon(Icons.delete_outline),
+                title: Text('Удалить'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
