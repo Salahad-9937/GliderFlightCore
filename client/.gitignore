@@ -1,6 +1,6 @@
 .vscode/
 .idea/
-
+test.dart
 
 # Miscellaneous
 *.class

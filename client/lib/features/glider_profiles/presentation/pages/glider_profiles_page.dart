@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+// Импортируем экран из другой фичи
+import '../../../control_panel/presentation/pages/control_panel_page.dart';
 import '../../domain/entities/glider_profile.dart';
 import '../providers/glider_profiles_providers.dart';
 import '../widgets/add_profile_dialog.dart';
-// Импортируем новый виджет диалога
 import '../widgets/delete_profile_dialog.dart';
 
 /// Главный экран приложения, отображающий список профилей планеров.
@@ -51,7 +52,6 @@ class _GliderProfileCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Убрали Dismissible, оставили только Card
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
       child: ListTile(
@@ -63,7 +63,11 @@ class _GliderProfileCard extends ConsumerWidget {
         title: Text(profile.name, style: Theme.of(context).textTheme.titleLarge),
         // При нажатии на ListTile происходит переход на следующий экран
         onTap: () {
-          // TODO: Переход на "Панель управления планером"
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => ControlPanelPage(gliderProfileId: profile.id),
+            ),
+          );
         },
         // Добавляем меню с опциями для карточки
         trailing: PopupMenuButton<String>(
