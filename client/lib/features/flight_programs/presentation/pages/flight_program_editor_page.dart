@@ -125,7 +125,6 @@ class _StepCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final durationString = '${step.durationSec} с  ${step.durationMs} мс';
-    final icon = step.direction == 1 ? Icons.rotate_right_rounded : Icons.rotate_left_rounded;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
