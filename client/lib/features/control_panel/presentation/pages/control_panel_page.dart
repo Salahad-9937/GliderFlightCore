@@ -6,8 +6,10 @@ import '../../../glider_profiles/glider_profiles.dart';
 // import '../widgets/flight_programs_section.dart';
 // Импортируем новый виджет из его фичи
 import '../../../flight_programs/flight_programs.dart';
-
-import '../widgets/device_status_card.dart';
+// Удаляем старый импорт заглушки
+// import '../widgets/device_status_card.dart';
+// Импортируем новый виджет из его фичи
+import '../../../device_communication/device_communication.dart';
 import '../widgets/flight_history_section.dart';
 // import '../widgets/flight_programs_section.dart';
 
