@@ -2,18 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../glider_profiles/glider_profiles.dart';
-// Удаляем импорт старой заглушки
-// import '../widgets/flight_programs_section.dart';
-// Импортируем новый виджет из его фичи
 import '../../../flight_programs/flight_programs.dart';
-// Удаляем старый импорт заглушки
-// import '../widgets/device_status_card.dart';
-// Импортируем новый виджет из его фичи
-import '../../../device_communication/device_communication.dart';
+import '../../../device_communication/device_communication.dart'; 
 import '../widgets/flight_history_section.dart';
-// import '../widgets/flight_programs_section.dart';
 
-/// Координирующий экран ("дэшборд") для управления конкретным планером.
 class ControlPanelPage extends ConsumerWidget {
   final String gliderProfileId;
   const ControlPanelPage({super.key, required this.gliderProfileId});
@@ -39,9 +31,9 @@ class ControlPanelPage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          const DeviceStatusCard(),
+          // ИСПРАВЛЕНИЕ: Добавляем обязательный параметр profileId
+          DeviceStatusCard(profileId: gliderProfileId),
           const SizedBox(height: 24),
-          // Заменяем старую заглушку на новый виджет
           FlightProgramsList(profileId: gliderProfileId),
           const SizedBox(height: 24),
           const FlightHistorySection(),

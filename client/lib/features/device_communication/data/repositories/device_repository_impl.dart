@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../../features/flight_programs/domain/entities/flight_program.dart';
 import '../../domain/entities/device.dart';
 import '../../domain/entities/device_status.dart';
 import '../../domain/repositories/device_repository.dart';
@@ -38,6 +39,22 @@ class DeviceRepositoryImpl implements DeviceRepository {
         status: DeviceStatus.error,
         errorMessage: 'Устройство не найдено по адресу $_apIpAddress. Убедитесь, что вы подключены к его Wi-Fi сети.',
       );
+    }
+  }
+
+  @override
+  Future<bool> uploadProgram(String ipAddress, FlightProgram program) async {
+    try {
+      final url = Uri.http(ipAddress, '/program');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: program.toJson(), // Сериализуем программу в JSON
+      ).timeout(const Duration(seconds: 5));
+
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
     }
   }
 }

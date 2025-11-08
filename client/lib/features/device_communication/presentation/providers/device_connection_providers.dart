@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../features/flight_programs/domain/entities/flight_program.dart';
 import '../../data/repositories/device_repository_impl.dart';
 import '../../domain/entities/device.dart';
 import '../../domain/entities/device_status.dart';
@@ -20,6 +21,15 @@ class DeviceConnectionNotifier extends Notifier<Device> {
     state = state.copyWith(status: DeviceStatus.connecting);
     // Вызываем метод репозитория и обновляем состояние результатом.
     state = await _repository.connectToDeviceAP();
+  }
+
+  /// Загружает полетную программу на устройство.
+  Future<bool> uploadProgram(FlightProgram program) async {
+    // Проверяем, что есть подключение и IP-адрес
+    if (state.status != DeviceStatus.connected || state.ipAddress == null) {
+      return false;
+    }
+    return _repository.uploadProgram(state.ipAddress!, program);
   }
 
   /// Сбрасывает состояние подключения.

@@ -1,19 +1,20 @@
-import 'package:client/features/device_communication/domain/entities/device.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/entities/device.dart';
 import '../../domain/entities/device_status.dart';
+import '../pages/connection_page.dart';
 import '../providers/device_connection_providers.dart';
 
 /// Карточка, отображающая актуальный статус подключения к устройству.
 class DeviceStatusCard extends ConsumerWidget {
-  const DeviceStatusCard({super.key});
+  final String profileId;
+  const DeviceStatusCard({super.key, required this.profileId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Подписываемся на состояние подключения
+    // Просто следим за состоянием
     final deviceState = ref.watch(deviceConnectionNotifierProvider);
-    final notifier = ref.read(deviceConnectionNotifierProvider.notifier);
 
     return Card(
       child: Padding(
@@ -30,18 +31,17 @@ class DeviceStatusCard extends ConsumerWidget {
                 Expanded(
                   child: _buildStatusText(context, deviceState),
                 ),
-                if (deviceState.status != DeviceStatus.connected)
-                  ElevatedButton(
-                    onPressed: deviceState.status == DeviceStatus.connecting
-                        ? null // Блокируем кнопку во время подключения
-                        : () => notifier.connect(),
-                    child: const Text('Подключить'),
-                  )
-                else
-                  OutlinedButton(
-                    onPressed: () => notifier.disconnect(),
-                    child: const Text('Отключить'),
-                  ),
+                // Одна кнопка, которая всегда ведет на экран настроек
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ConnectionPage(profileId: profileId),
+                      ),
+                    );
+                  },
+                  child: const Text('Настроить'),
+                ),
               ],
             ),
             if (deviceState.status == DeviceStatus.error)
@@ -62,12 +62,8 @@ class DeviceStatusCard extends ConsumerWidget {
     switch (status) {
       case DeviceStatus.connected:
         return const Icon(Icons.wifi_channel_rounded, color: Colors.green);
+      // Убираем connecting, так как он будет на другом экране
       case DeviceStatus.connecting:
-        return const SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(strokeWidth: 2.5),
-        );
       case DeviceStatus.disconnected:
         return const Icon(Icons.wifi_off_rounded, color: Colors.grey);
       case DeviceStatus.error:
