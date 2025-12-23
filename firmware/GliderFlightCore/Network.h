@@ -12,20 +12,19 @@ ESP8266WebServer server(80);
 
 namespace Network {
     /**
-     * Отправляет текущее состояние системы и данные телеметрии в формате JSON.
+     * Возвращает полный статус устройства, включая состояние сенсоров и телеметрию
      */
     void handleStatus() {
-        Serial.println("[HTTP] Received request for /status");
+        Serial.println("[HTTP] Запрос статуса /status");
         
-        StaticJsonDocument<256> doc;
+        StaticJsonDocument<512> doc;
         doc["status"] = "ok";
-        doc["version"] = VERSION;
-        doc["device"] = "GliderFlightCore_ESP8266";
+        doc["hw_ok"] = Sensors::isHardwareOK;
+        doc["calibrating"] = Sensors::isCalibrating;
         doc["calibrated"] = Sensors::isCalibrated;
-        doc["logging"] = Sensors::isLogging;
+        doc["monitoring"] = Sensors::isMonitoring;
         
-        // Добавление данных барометра при наличии калибровки
-        if (Sensors::isCalibrated) {
+        if (Sensors::isCalibrated && Sensors::isMonitoring) {
             doc["alt"] = Sensors::currentAltitude;
             doc["temp"] = Sensors::currentTemp;
             doc["stable"] = Sensors::isStable;
@@ -34,136 +33,132 @@ namespace Network {
         String output;
         serializeJson(doc, output);
         server.send(200, "application/json", output);
-        
-        Serial.print("[HTTP] Sent 200 OK: ");
+        Serial.print("[HTTP] Ответ отправлен: ");
         Serial.println(output);
     }
 
     /**
-     * Запускает полную процедуру калибровки барометра (термостабилизация + замеры).
+     * Запуск процесса калибровки барометра
      */
     void handleCalibrate() {
-        Serial.println("[HTTP] Received request for /calibrate");
+        Serial.println("[HTTP] Команда на калибровку /calibrate");
+        if (!Sensors::isHardwareOK) {
+            server.send(503, "text/plain", "Hardware Error: Sensor not found");
+            Serial.println("[HTTP] Ошибка: датчик не найден");
+            return;
+        }
+        
+        // Ответ 202 сообщает приложению, что запрос принят и выполняется
+        server.send(202, "text/plain", "Calibration process started");
         Sensors::calibrate();
-        server.send(200, "text/plain", "Full Calibration Complete");
-        Serial.println("[HTTP] Sent 200 OK");
+        Serial.println("[HTTP] Калибровка по HTTP завершена");
     }
 
     /**
-     * Выполняет быстрое обнуление высоты (установка текущего давления как базового).
+     * Быстрое обнуление высоты
      */
     void handleZero() {
-        Serial.println("[HTTP] Received request for /zero");
+        Serial.println("[HTTP] Команда на обнуление /zero");
+        if (!Sensors::isHardwareOK) {
+            server.send(503, "text/plain", "Hardware Error");
+            return;
+        }
         Sensors::zero();
-        server.send(200, "text/plain", "Zero Calibration Complete");
-        Serial.println("[HTTP] Sent 200 OK");
+        server.send(200, "text/plain", "Zero set");
     }
 
     /**
-     * Активирует вывод отладочной телеметрии барометра в Serial терминал.
+     * Включение/выключение мониторинга барометра
+     * Использование: /baro?enable=1 или /baro?enable=0
      */
-    void handleLogStart() {
-        Serial.println("[HTTP] Received request for /log/start");
-        Sensors::startLogging();
-        server.send(200, "text/plain", "Logging started");
-        Serial.println("[HTTP] Sent 200 OK");
+    void handleBaroControl() {
+        if (server.hasArg("enable")) {
+            bool enable = (server.arg("enable") == "1");
+            Sensors::isMonitoring = enable;
+            Serial.print("[HTTP] Мониторинг барометра: ");
+            Serial.println(enable ? "ВКЛ" : "ВЫКЛ");
+            server.send(200, "text/plain", enable ? "Monitoring Enabled" : "Monitoring Disabled");
+        } else {
+            server.send(400, "text/plain", "Bad Request: missing 'enable' arg");
+        }
     }
 
     /**
-     * Деактивирует вывод отладочной телеметрии барометра в Serial терминал.
+     * Управление выводом логов в Serial терминал
+     * Использование: /log?enable=1 или /log?enable=0
      */
-    void handleLogStop() {
-        Serial.println("[HTTP] Received request for /log/stop");
-        Sensors::stopLogging();
-        server.send(200, "text/plain", "Logging stopped");
-        Serial.println("[HTTP] Sent 200 OK");
+    void handleLogControl() {
+        if (server.hasArg("enable")) {
+            bool enable = (server.arg("enable") == "1");
+            Sensors::isLogging = enable;
+            if (enable) Sensors::logStartTime = millis();
+            Serial.print("[HTTP] Логирование в Serial: ");
+            Serial.println(enable ? "ВКЛ" : "ВЫКЛ");
+            server.send(200, "text/plain", "OK");
+        } else {
+            server.send(400, "text/plain", "Missing 'enable' arg");
+        }
     }
 
     /**
-     * Обрабатывает загрузку полетной программы: валидирует JSON и сохраняет в LittleFS.
+     * Загрузка полетной программы
      */
     void handleProgramUpload() {
-        Serial.println("[HTTP] Received POST request for /program");
+        Serial.println("[HTTP] Загрузка программы /program");
         
-        // Проверка наличия тела запроса
         if (!server.hasArg("plain")) {
             server.send(400, "text/plain", "Bad Request: No body");
-            Serial.println("[HTTP] Sent 400: No body");
             return;
         }
 
         String body = server.arg("plain");
-        Serial.println("[Program] Received JSON string:");
-        Serial.println(body);
-
-        // Десериализация для проверки корректности структуры JSON
         StaticJsonDocument<1024> tempDoc;
         DeserializationError error = deserializeJson(tempDoc, body);
         
         if (error) {
-            Serial.print("[Program] JSON Deserialization failed: ");
-            Serial.println(error.c_str());
             server.send(400, "text/plain", "Invalid JSON");
+            Serial.print("[HTTP] Ошибка парсинга программы: ");
+            Serial.println(error.c_str());
             return;
         }
 
-        // Сохранение проверенных данных в файл
         if (Storage::saveProgram(body)) {
             server.send(200, "text/plain", "OK");
-            Serial.println("[HTTP] Sent 200 OK");
+            Serial.println("[HTTP] Программа сохранена успешно");
         } else {
-            server.send(500, "text/plain", "Internal Storage Error");
-            Serial.println("[HTTP] Sent 500: FS Error");
+            server.send(500, "text/plain", "FS Error");
         }
     }
 
-    /**
-     * Обработчик для всех некорректных URL.
-     */
     void handleNotFound() {
-        Serial.print("[HTTP] Unknown URL requested: ");
-        Serial.println(server.uri());
         server.send(404, "text/plain", "Not found");
-        Serial.println("[HTTP] Sent 404 Not Found");
     }
 
     /**
-     * Настройка Wi-Fi SoftAP и регистрация всех эндпоинтов REST API.
+     * Настройка Wi-Fi и маршрутов сервера
      */
     void setup() {
-        Serial.println("[WiFi] Starting Access Point...");
+        Serial.println("[WiFi] Запуск точки доступа...");
         if (WiFi.softAP(AP_SSID, AP_PASS)) {
-            Serial.println("[WiFi] Access Point started successfully!");
-            Serial.print("[INFO] SSID: ");
-            Serial.println(AP_SSID);
-            Serial.print("[INFO] IP Address: ");
+            Serial.print("[WiFi] IP-адрес: ");
             Serial.println(WiFi.softAPIP());
-        } else {
-            Serial.println("[WiFi] FAILED to start Access Point. Halting.");
-            while(1) delay(100);
         }
 
-        Serial.println("[WebServer] Configuring routes...");
-        
-        // Регистрация обработчиков
+        Serial.println("[WebServer] Регистрация эндпоинтов...");
         server.on("/status", HTTP_GET, handleStatus);
         server.on("/calibrate", HTTP_GET, handleCalibrate);
         server.on("/zero", HTTP_GET, handleZero);
-        server.on("/log/start", HTTP_GET, handleLogStart);
-        server.on("/log/stop", HTTP_GET, handleLogStop);
+        server.on("/baro", HTTP_GET, handleBaroControl);
+        server.on("/log", HTTP_GET, handleLogControl);
         server.on("/program", HTTP_POST, handleProgramUpload);
         server.onNotFound(handleNotFound);
         
         server.begin();
-        Serial.println("[WebServer] HTTP server started.");
+        Serial.println("[WebServer] Сервер запущен.");
     }
 
-    /**
-     * Поддержание работы веб-сервера.
-     */
     void loop() {
         server.handleClient();
     }
 }
-
 #endif

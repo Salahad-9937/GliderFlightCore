@@ -9,13 +9,13 @@ namespace Sensors {
     Adafruit_BMP085 bmp;
 
     /**
-     * Фильтр Калмана (Оригинальные параметры)
+     * Состояние фильтра Калмана
      */
     struct KalmanState {
         float q, r, x, p, k;
     } kAlt = {0.05, 0.3, 0, 1, 0};
 
-    // Переменные из оригинального кода
+    // Переменные оригинального алгоритма
     double basePressure = 0;
     double pressureAccumulator = 0;
     uint32_t sampleCount = 0;
@@ -23,17 +23,21 @@ namespace Sensors {
     float lastRawAltitude = 0;
     int stableReadings = 0;
 
-    // Состояние и телеметрия
+    // Глобальные флаги состояния
     float currentAltitude = 0;
     float currentTemp = 0;
     bool isStable = false;
     bool isCalibrated = false;
-    bool isLogging = false;
+    bool isCalibrating = false;
+    bool isHardwareOK = false;
+    bool isMonitoring = false; // Управление опросом датчика
+    bool isLogging = false;     // Управление выводом в Serial
+
     unsigned long logStartTime = 0;
     unsigned long last_log_time = 0;
 
     /**
-     * Математика фильтра Калмана
+     * Обновление фильтра Калмана
      */
     float kalmanUpdate(KalmanState* state, float measurement) {
         state->p = state->p + state->q;
@@ -44,11 +48,16 @@ namespace Sensors {
     }
 
     /**
-     * Оригинальная процедура калибровки (1:1)
+     * Полная процедура калибровки (оригинальный алгоритм)
      */
     void calibrate() {
-        Serial.println("\n=== CALIBRATION STARTED ===");
-        Serial.println("Thermal stabilization (10s)...");
+        if (!isHardwareOK) return;
+        
+        isCalibrating = true;
+        isCalibrated = false;
+        
+        Serial.println("\n[Sensors] === КОРРЕКТИРОВКА БАЗОВОГО ДАВЛЕНИЯ ===");
+        Serial.println("[Sensors] Термостабилизация (10 сек)...");
         
         for (int i = 0; i < 200; i++) {
             bmp.readPressure();
@@ -57,7 +66,7 @@ namespace Sensors {
             delay(50);
         }
 
-        Serial.println("\nCollecting 2000 samples...");
+        Serial.println("\n[Sensors] Сбор 2000 образцов...");
         double sum = 0;
         for (int i = 0; i < 2000; i++) {
             sum += bmp.readPressure();
@@ -68,18 +77,21 @@ namespace Sensors {
         basePressure = sum / 2000.0;
         adaptiveBaseline = basePressure;
         kAlt.x = 0;
+        
+        isCalibrating = false;
         isCalibrated = true;
         
-        Serial.print("\nBaseline: ");
+        Serial.print("\n[Sensors] Калибровка завершена. База: ");
         Serial.print(basePressure, 2);
         Serial.println(" Pa\n");
     }
 
     /**
-     * Быстрое обнуление (команда 'Z' из оригинала)
+     * Быстрая установка нуля
      */
     void zero() {
-        Serial.println("\n>>> ZERO CALIBRATION <<<");
+        if (!isHardwareOK) return;
+        Serial.println("[Sensors] Быстрое обнуление высоты...");
         double sum = 0;
         for (int i = 0; i < 500; i++) {
             sum += bmp.readPressure();
@@ -88,39 +100,31 @@ namespace Sensors {
         adaptiveBaseline = sum / 500.0;
         kAlt.x = 0;
         stableReadings = 0;
-        Serial.print("New baseline: ");
-        Serial.print(adaptiveBaseline, 2);
-        Serial.println(" Pa\n");
-    }
-
-    void begin() {
-        if (!bmp.begin(BMP085_ULTRAHIGHRES)) {
-            Serial.println("Error: BMP180 not found");
-            return;
-        }
-        Serial.println("[Sensors] BMP180 initialized and waiting for calibration.");
-    }
-
-    void startLogging() {
-        if (!isCalibrated) {
-            Serial.println("Error: Device not calibrated yet.");
-            return;
-        }
-        isLogging = true;
-        logStartTime = millis();
-        Serial.println("Serial Logging: ON");
-    }
-
-    void stopLogging() {
-        isLogging = false;
-        Serial.println("Serial Logging: OFF");
+        isCalibrated = true;
+        Serial.print("[Sensors] Новый ноль установлен: ");
+        Serial.println(adaptiveBaseline, 2);
     }
 
     /**
-     * Основной цикл вычислений (Логика loop из оригинала)
+     * Инициализация шины и проверка наличия датчика
+     */
+    void begin() {
+        Wire.begin(); 
+        if (!bmp.begin(BMP085_ULTRAHIGHRES)) {
+            isHardwareOK = false;
+            Serial.println("[Sensors] ОШИБКА: Датчик BMP180 не найден на шине I2C!");
+        } else {
+            isHardwareOK = true;
+            Serial.println("[Sensors] Датчик BMP180 успешно инициализирован.");
+        }
+    }
+
+    /**
+     * Основной цикл вычислений
      */
     void update() {
-        if (!isCalibrated) return;
+        // Вычисления идут только если датчик исправен, откалиброван и мониторинг включен
+        if (!isHardwareOK || !isCalibrated || !isMonitoring) return;
 
         unsigned long now = millis();
         pressureAccumulator += bmp.readPressure();
@@ -131,10 +135,10 @@ namespace Sensors {
 
             double avgPressure = pressureAccumulator / (double)sampleCount;
             
-            // Расчет высоты относительно адаптивной базы
+            // Расчет высоты (стандартная формула)
             float rawAltitude = 44330.0 * (1.0 - pow(avgPressure / adaptiveBaseline, 0.190295));
             
-            // === АДАПТИВНАЯ КОМПЕНСАЦИЯ ДРЕЙФА ===
+            // Адаптивная компенсация дрейфа
             float altChange = abs(rawAltitude - lastRawAltitude);
             
             if (altChange < 0.25) {
@@ -143,13 +147,7 @@ namespace Sensors {
                 stableReadings = 0;
             }
             
-            float baselineAlpha;
-            if (stableReadings > STABLE_THRESHOLD) {
-                baselineAlpha = 0.05; // Быстрая компенсация
-            } else {
-                baselineAlpha = 0.001; // Медленная компенсация
-            }
-            
+            float baselineAlpha = (stableReadings > STABLE_THRESHOLD) ? 0.05 : 0.001;
             adaptiveBaseline = adaptiveBaseline * (1.0 - baselineAlpha) + avgPressure * baselineAlpha;
             lastRawAltitude = rawAltitude;
             
@@ -164,18 +162,13 @@ namespace Sensors {
             currentTemp = bmp.readTemperature();
             isStable = (stableReadings > STABLE_THRESHOLD);
 
-            // Вывод лога в терминал
+            // Отладочный лог в Serial
             if (isLogging) {
-                float relativeTime = (now - logStartTime) / 1000.0;
-                Serial.print("["); Serial.print(relativeTime, 1); Serial.print("s] ");
+                float relTime = (now - logStartTime) / 1000.0;
+                Serial.print("["); Serial.print(relTime, 1); Serial.print("s] ");
                 Serial.print("Alt: "); Serial.print(currentAltitude, 2); Serial.print("m | ");
-                Serial.print("Raw: "); Serial.print(rawAltitude, 2); Serial.print("m | ");
-                Serial.print("T: "); Serial.print(currentTemp, 1); Serial.print("°C | ");
-                if (isStable) {
-                    Serial.print("STABLE("); Serial.print(stableReadings); Serial.println(")");
-                } else {
-                    Serial.println("MOVING");
-                }
+                Serial.print("T: "); Serial.print(currentTemp, 1); Serial.print("C | ");
+                Serial.println(isStable ? "STABLE" : "MOVING");
             }
 
             pressureAccumulator = 0;
