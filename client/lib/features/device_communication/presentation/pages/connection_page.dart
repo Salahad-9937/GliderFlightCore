@@ -7,7 +7,7 @@ import '../../domain/entities/device.dart';
 import '../../domain/entities/device_status.dart';
 import '../providers/device_connection_providers.dart';
 
-/// Экран для управления подключением к устройству и его настройки.
+/// Экран для управления подключением к устройству.
 class ConnectionPage extends ConsumerWidget {
   final String profileId;
   const ConnectionPage({super.key, required this.profileId});
@@ -29,16 +29,15 @@ class ConnectionPage extends ConsumerWidget {
               child: Padding(
                 padding: EdgeInsets.all(16.0),
                 child: Text(
-              '1. Включите планер.\n'
-              '2. В настройках Wi-Fi на телефоне подключитесь к сети "Glider-Timer".\n'
+                  '1. Включите планер.\n'
+                  '2. В настройках Wi-Fi на телефоне подключитесь к сети "Glider-Timer".\n'
                   '3. Вернитесь в приложение и нажмите кнопку ниже.',
-              textAlign: TextAlign.center,
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
             const SizedBox(height: 24),
             
-            // Кнопка для проверки подключения
             ElevatedButton.icon(
               onPressed: deviceState.status == DeviceStatus.connecting ? null : notifier.connect,
               icon: deviceState.status == DeviceStatus.connecting
@@ -49,31 +48,35 @@ class ConnectionPage extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
 
-            // Отображение статуса
             _buildConnectionStatus(context, deviceState),
-            const Spacer(), // Занимает все оставшееся место
+            const Spacer(),
 
-            // Кнопка загрузки программы, активна только при подключении
+            // SafeArea предотвращает наложение кнопки на системную панель навигации
             if (deviceState.status == DeviceStatus.connected)
-              FilledButton.icon(
-                onPressed: () async {
-                  final programToUpload = await _showProgramSelectionDialog(
-                    context,
-                    programsAsync.value ?? [],
-                  );
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      final programToUpload = await _showProgramSelectionDialog(
+                        context,
+                        programsAsync.value ?? [],
+                      );
 
-                  if (programToUpload != null && context.mounted) {
-                    final success = await notifier.uploadProgram(programToUpload);
-                    if(context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(success ? 'Программа успешно загружена' : 'Ошибка загрузки')),
-                    );
-                    }
-                  }
-                },
-                icon: const Icon(Icons.upload_file_rounded),
-                label: const Text('Загрузить программу на планер'),
-                style: FilledButton.styleFrom(minimumSize: const Size(0, 50)),
+                      if (programToUpload != null && context.mounted) {
+                        final success = await notifier.uploadProgram(programToUpload);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(success ? 'Программа успешно загружена' : 'Ошибка загрузки')),
+                          );
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.upload_file_rounded),
+                    label: const Text('Загрузить программу на планер'),
+                    style: FilledButton.styleFrom(minimumSize: const Size(0, 50)),
+                  ),
+                ),
               ),
           ],
         ),
@@ -83,7 +86,7 @@ class ConnectionPage extends ConsumerWidget {
 
   Widget _buildConnectionStatus(BuildContext context, Device deviceState) {
     if (deviceState.status == DeviceStatus.disconnected) {
-      return const SizedBox.shrink(); // Ничего не показываем, если еще не подключались
+      return const SizedBox.shrink();
     }
     return Center(
       child: Text(

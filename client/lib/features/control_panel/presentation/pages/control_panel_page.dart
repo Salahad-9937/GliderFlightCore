@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../glider_profiles/glider_profiles.dart';
+import '../../../glider_profiles/presentation/widgets/edit_profile_dialog.dart';
 import '../../../flight_programs/flight_programs.dart';
 import '../../../device_communication/device_communication.dart'; 
 import '../widgets/flight_history_section.dart';
@@ -25,13 +26,15 @@ class ControlPanelPage extends ConsumerWidget {
       appBar: AppBar(
         title: Text(profile.name),
         actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.edit_outlined))
+          IconButton(
+            onPressed: () => showEditProfileDialog(context, ref, gliderProfileId, profile.name),
+            icon: const Icon(Icons.edit_outlined),
+          )
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          // ИСПРАВЛЕНИЕ: Добавляем обязательный параметр profileId
           DeviceStatusCard(profileId: gliderProfileId),
           const SizedBox(height: 24),
           FlightProgramsList(profileId: gliderProfileId),

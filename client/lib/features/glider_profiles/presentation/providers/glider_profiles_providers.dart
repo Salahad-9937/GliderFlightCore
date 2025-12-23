@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
-// collection используется для безопасного поиска в списке
 import 'package:collection/collection.dart';
 
 import '../../data/repositories/glider_profile_repository_impl.dart';
@@ -8,8 +7,6 @@ import '../../domain/entities/glider_profile.dart';
 import '../../domain/repositories/glider_profile_repository.dart';
 
 /// Notifier для управления списком профилей планеров.
-///
-/// Обрабатывает загрузку, добавление и удаление профилей.
 class GliderProfilesNotifier extends AsyncNotifier<List<GliderProfile>> {
   GliderProfileRepository get _repository => ref.read(gliderProfileRepositoryProvider);
 
@@ -36,28 +33,29 @@ class GliderProfilesNotifier extends AsyncNotifier<List<GliderProfile>> {
       return _repository.getGliderProfiles();
     });
   }
+
+  /// Обновляет имя существующего профиля.
+  Future<void> updateProfileName(String id, String newName) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await _repository.updateProfileName(id, newName);
+      return _repository.getGliderProfiles();
+    });
+  }
 }
 
-/// Провайдер для Notifier-а, управляющего профилями планеров.
+/// Провайдер для Notifier-а списка профилей.
 final gliderProfilesNotifierProvider =
     AsyncNotifierProvider<GliderProfilesNotifier, List<GliderProfile>>(
   GliderProfilesNotifier.new,
 );
 
-
 /// Провайдер для получения одного профиля по его ID.
-///
-/// Использует `.family` для передачи параметра (ID).
-/// Зависит от основного списка профилей и находит в нем нужный.
 final profileByIdProvider = Provider.family<GliderProfile?, String>((ref, id) {
-  // Следим за состоянием основного списка
   final profilesAsyncValue = ref.watch(gliderProfilesNotifierProvider);
-  // Используем .asData для безопасного извлечения данных
   final data = profilesAsyncValue.asData;
-  // Если данные есть (не загрузка и не ошибка), ищем в них профиль по ID
   if (data != null) {
     return data.value.firstWhereOrNull((p) => p.id == id);
   }
-  // В противном случае (загрузка/ошибка) возвращаем null
   return null;
 });

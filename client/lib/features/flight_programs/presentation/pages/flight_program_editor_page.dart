@@ -7,6 +7,7 @@ import '../providers/flight_programs_providers.dart';
 import '../providers/program_id_provider.dart';
 import '../widgets/add_edit_step_dialog.dart';
 
+/// Страница редактирования шагов полетной программы.
 class FlightProgramEditorPage extends ConsumerStatefulWidget {
   final String profileId;
   final String programId;
@@ -23,6 +24,7 @@ class FlightProgramEditorPage extends ConsumerStatefulWidget {
 
 class _FlightProgramEditorPageState extends ConsumerState<FlightProgramEditorPage> {
   FlightProgram? _program;
+  bool _hasChanges = false; // Отслеживание изменений для предупреждения при выходе
 
   @override
   void initState() {
@@ -30,6 +32,7 @@ class _FlightProgramEditorPageState extends ConsumerState<FlightProgramEditorPag
     final programIdObj = ProgramId(profileId: widget.profileId, programId: widget.programId);
     final initialProgram = ref.read(programByIdProvider(programIdObj));
     if (initialProgram != null) {
+      // Создаем копию программы для редактирования
       _program = FlightProgram.fromMap(initialProgram.toMap());
     }
   }
@@ -39,6 +42,7 @@ class _FlightProgramEditorPageState extends ConsumerState<FlightProgramEditorPag
     if (newStep != null && _program != null) {
       setState(() {
         _program!.steps.add(newStep);
+        _hasChanges = true;
       });
     }
   }
@@ -48,6 +52,7 @@ class _FlightProgramEditorPageState extends ConsumerState<FlightProgramEditorPag
     if (updatedStep != null && _program != null) {
       setState(() {
         _program!.steps[index] = updatedStep;
+        _hasChanges = true;
       });
     }
   }
@@ -56,6 +61,7 @@ class _FlightProgramEditorPageState extends ConsumerState<FlightProgramEditorPag
     if (_program == null) return;
     setState(() {
       _program!.steps.removeAt(index);
+      _hasChanges = true;
     });
   }
 
@@ -64,11 +70,35 @@ class _FlightProgramEditorPageState extends ConsumerState<FlightProgramEditorPag
       ref
           .read(flightProgramsControllerProvider)
           .updateProgram(widget.profileId, _program!);
+      setState(() => _hasChanges = false);
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Программа сохранена')),
       );
     }
+  }
+
+  /// Показывает диалог подтверждения выхода при наличии изменений.
+  Future<bool> _onWillPop() async {
+    if (!_hasChanges) return true;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Несохраненные изменения'),
+        content: const Text('Вы уверены, что хотите выйти? Изменения будут потеряны.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Выйти'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   @override
@@ -80,36 +110,45 @@ class _FlightProgramEditorPageState extends ConsumerState<FlightProgramEditorPag
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_program!.name),
-        actions: [
-          IconButton(onPressed: _saveChanges, icon: const Icon(Icons.save_outlined)),
-        ],
-      ),
-      body: _program!.steps.isEmpty
-          ? const _EmptySteps()
-          : ListView.builder(
-              itemCount: _program!.steps.length,
-              itemBuilder: (context, index) {
-                final step = _program!.steps[index];
-                return _StepCard(
-                  step: step,
-                  stepNumber: index + 1,
-                  onTap: () => _editStep(step, index),
-                  onDelete: () => _deleteStep(index),
-                );
-              },
-            ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addStep,
-        child: const Icon(Icons.add),
+    return PopScope(
+      canPop: !_hasChanges,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(_program!.name),
+          actions: [
+            IconButton(onPressed: _saveChanges, icon: const Icon(Icons.save_outlined)),
+          ],
+        ),
+        body: _program!.steps.isEmpty
+            ? const _EmptySteps()
+            : ListView.builder(
+                itemCount: _program!.steps.length,
+                itemBuilder: (context, index) {
+                  final step = _program!.steps[index];
+                  return _StepCard(
+                    step: step,
+                    stepNumber: index + 1,
+                    onTap: () => _editStep(step, index),
+                    onDelete: () => _deleteStep(index),
+                  );
+                },
+              ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _addStep,
+          child: const Icon(Icons.add),
+        ),
       ),
     );
   }
 }
 
-/// Карточка для отображения одного шага программы.
 class _StepCard extends StatelessWidget {
   const _StepCard({
     required this.step,
@@ -130,7 +169,7 @@ class _StepCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: ListTile(
         leading: CircleAvatar(
-          child: Text('$stepNumber'), // Отображаем номер шага
+          child: Text('$stepNumber'),
         ),
         title: Text(durationString, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(step.direction == 1 ? 'Направление: По часовой' : 'Направление: Против часовой'),
@@ -144,7 +183,6 @@ class _StepCard extends StatelessWidget {
   }
 }
 
-/// Виджет для отображения пустого состояния, когда нет шагов.
 class _EmptySteps extends StatelessWidget {
   const _EmptySteps();
 

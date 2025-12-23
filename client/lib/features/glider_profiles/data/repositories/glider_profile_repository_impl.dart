@@ -9,7 +9,6 @@ import '../../domain/repositories/glider_profile_repository.dart';
 
 /// Провайдер для репозитория профилей планеров.
 final gliderProfileRepositoryProvider = Provider<GliderProfileRepository>((ref) {
-  // Теперь мы используем реализацию с файловым хранилищем
   return LocalFileGliderProfileRepository();
 });
 
@@ -28,18 +27,17 @@ class LocalFileGliderProfileRepository implements GliderProfileRepository {
     try {
       final file = await _getLocalFile();
       if (!await file.exists()) {
-        return []; // Если файла нет, возвращаем пустой список
+        return [];
       }
       final contents = await file.readAsString();
       final List<dynamic> jsonData = json.decode(contents);
       return jsonData.map((item) => GliderProfile.fromMap(item)).toList();
     } catch (e) {
-      // В случае ошибки чтения/парсинга возвращаем пустой список
       return [];
     }
   }
   
-  /// Приватный метод для записи списка профилей в файл.
+  /// Записывает актуальный список профилей в файл.
   Future<void> _writeProfiles(List<GliderProfile> profiles) async {
     final file = await _getLocalFile();
     final List<Map<String, dynamic>> jsonData =
@@ -52,10 +50,8 @@ class LocalFileGliderProfileRepository implements GliderProfileRepository {
     final profiles = await getGliderProfiles();
     final index = profiles.indexWhere((p) => p.id == profile.id);
     if (index != -1) {
-      // Обновляем существующий
       profiles[index] = profile;
     } else {
-      // Добавляем новый
       profiles.add(profile);
     }
     await _writeProfiles(profiles);
@@ -66,5 +62,20 @@ class LocalFileGliderProfileRepository implements GliderProfileRepository {
     final profiles = await getGliderProfiles();
     profiles.removeWhere((p) => p.id == id);
     await _writeProfiles(profiles);
+  }
+
+  @override
+  Future<void> updateProfileName(String id, String newName) async {
+    final profiles = await getGliderProfiles();
+    final index = profiles.indexWhere((p) => p.id == id);
+    if (index != -1) {
+      // Создаем новый объект профиля с измененным именем
+      profiles[index] = GliderProfile(
+        id: profiles[index].id,
+        name: newName,
+        photoPath: profiles[index].photoPath,
+      );
+      await _writeProfiles(profiles);
+    }
   }
 }

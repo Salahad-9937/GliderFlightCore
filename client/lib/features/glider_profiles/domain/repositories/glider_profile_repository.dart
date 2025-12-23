@@ -10,4 +10,7 @@ abstract class GliderProfileRepository {
 
   /// Удаляет профиль по его ID.
   Future<void> deleteGliderProfile(String id);
+  
+  /// Обновляет имя профиля.
+  Future<void> updateProfileName(String id, String newName);
 }
