@@ -14,4 +14,7 @@ const int PIN_LED    = 2;
 const unsigned long BARO_INTERVAL = 2000; 
 const int STABLE_THRESHOLD = 5;
 
+// Файлы системы
+#define CALIB_FILE "/calib.json"
+
 #endif

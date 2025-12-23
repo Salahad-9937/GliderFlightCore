@@ -23,11 +23,21 @@ namespace Network {
         doc["calibrating"] = Sensors::isCalibrating;
         doc["calibrated"] = Sensors::isCalibrated;
         doc["monitoring"] = Sensors::isMonitoring;
+        doc["logging"] = Sensors::isLogging;
+        
+        // Индикация наличия сохраненной калибровки в файле
+        doc["stored_base"] = Sensors::storedBasePressure;
+        
+        // Текущее атмосферное давление в реальном времени (если мониторинг ВКЛ)
+        if (Sensors::isMonitoring) {
+            doc["current_p"] = Sensors::livePressure;
+        }
         
         if (Sensors::isCalibrated && Sensors::isMonitoring) {
             doc["alt"] = Sensors::currentAltitude;
             doc["temp"] = Sensors::currentTemp;
             doc["stable"] = Sensors::isStable;
+            doc["base"] = Sensors::basePressure; // Текущее активное базовое давление
         }
         
         String output;
@@ -52,6 +62,18 @@ namespace Network {
         server.send(202, "text/plain", "Calibration process started");
         Sensors::calibrate();
         Serial.println("[HTTP] Калибровка по HTTP завершена");
+    }
+
+    /**
+     * Сохранение текущей калибровки в постоянную память
+     */
+    void handleSaveCalib() {
+        Serial.println("[HTTP] Запрос сохранения калибровки /calibrate/save");
+        if (Sensors::saveToFS()) {
+            server.send(200, "text/plain", "Calibration stored in FS");
+        } else {
+            server.send(500, "text/plain", "Failed to save calibration");
+        }
     }
 
     /**
@@ -147,6 +169,7 @@ namespace Network {
         Serial.println("[WebServer] Регистрация эндпоинтов...");
         server.on("/status", HTTP_GET, handleStatus);
         server.on("/calibrate", HTTP_GET, handleCalibrate);
+        server.on("/calibrate/save", HTTP_GET, handleSaveCalib);
         server.on("/zero", HTTP_GET, handleZero);
         server.on("/baro", HTTP_GET, handleBaroControl);
         server.on("/log", HTTP_GET, handleLogControl);

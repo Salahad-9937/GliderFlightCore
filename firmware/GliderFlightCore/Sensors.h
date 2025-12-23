@@ -3,7 +3,9 @@
 
 #include <Wire.h>
 #include <Adafruit_BMP085.h>
+#include <ArduinoJson.h>
 #include "Config.h"
+#include "Storage.h"
 
 namespace Sensors {
     Adafruit_BMP085 bmp;
@@ -33,6 +35,10 @@ namespace Sensors {
     bool isMonitoring = false; // Управление опросом датчика
     bool isLogging = false;     // Управление выводом в Serial
 
+    // Значение текущего давления и сохраненной калибровки
+    double livePressure = 0;        // Последнее среднее давление из датчика
+    double storedBasePressure = 0;  // То, что реально лежит в файле
+
     unsigned long logStartTime = 0;
     unsigned long last_log_time = 0;
 
@@ -45,6 +51,62 @@ namespace Sensors {
         state->x = state->x + state->k * (measurement - state->x);
         state->p = (1 - state->k) * state->p;
         return state->x;
+    }
+
+    /**
+     * Сохранение текущей калибровки в файл JSON
+     */
+    bool saveToFS() {
+        if (!isCalibrated) {
+            Serial.println("[Sensors] Ошибка: попытка сохранить некалиброванное значение");
+            return false;
+        }
+        
+        StaticJsonDocument<128> doc;
+        doc["basePressure"] = basePressure;
+        
+        String output;
+        serializeJson(doc, output);
+        
+        if (Storage::saveCalibration(output)) {
+            storedBasePressure = basePressure; // Синхронизируем переменную
+            Serial.print("[Sensors] Калибровка сохранена в ФС: ");
+            Serial.println(storedBasePressure, 2);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Загрузка калибровки из файла
+     */
+    void loadFromFS() {
+        String data = Storage::loadCalibration();
+        if (data == "") {
+            Serial.println("[Sensors] Файл калибровки не найден в памяти.");
+            storedBasePressure = 0;
+            return;
+        }
+
+        StaticJsonDocument<128> doc;
+        DeserializationError error = deserializeJson(doc, data);
+        
+        if (!error) {
+            double val = doc["basePressure"];
+            if (val > 0) {
+                storedBasePressure = val;
+                basePressure = val;
+                adaptiveBaseline = val;
+                kAlt.x = 0;
+                isCalibrated = true;
+                Serial.print("[Sensors] Данные успешно загружены из ФС: ");
+                Serial.println(storedBasePressure, 2);
+            }
+        } else {
+            Serial.print("[Sensors] Ошибка парсинга файла калибровки: ");
+            Serial.println(error.c_str());
+            storedBasePressure = 0;
+        }
     }
 
     /**
@@ -116,6 +178,7 @@ namespace Sensors {
         } else {
             isHardwareOK = true;
             Serial.println("[Sensors] Датчик BMP180 успешно инициализирован.");
+            loadFromFS(); // Попытка загрузки сохраненных данных
         }
     }
 
@@ -123,8 +186,9 @@ namespace Sensors {
      * Основной цикл вычислений
      */
     void update() {
-        // Вычисления идут только если датчик исправен, откалиброван и мониторинг включен
-        if (!isHardwareOK || !isCalibrated || !isMonitoring) return;
+        // Опрос идет если датчик ОК. 
+        // Мы считаем livePressure всегда, если включен мониторинг, даже если нет калибровки.
+        if (!isHardwareOK || !isMonitoring) return;
 
         unsigned long now = millis();
         pressureAccumulator += bmp.readPressure();
@@ -133,10 +197,17 @@ namespace Sensors {
         if (now - last_log_time >= BARO_INTERVAL) {
             last_log_time = now;
 
-            double avgPressure = pressureAccumulator / (double)sampleCount;
+            livePressure = pressureAccumulator / (double)sampleCount;
+            
+            // Если еще не откалиброваны, просто сбрасываем счетчики и выходим
+            if (!isCalibrated) {
+                pressureAccumulator = 0;
+                sampleCount = 0;
+                return;
+            }
             
             // Расчет высоты (стандартная формула)
-            float rawAltitude = 44330.0 * (1.0 - pow(avgPressure / adaptiveBaseline, 0.190295));
+            float rawAltitude = 44330.0 * (1.0 - pow(livePressure / adaptiveBaseline, 0.190295));
             
             // Адаптивная компенсация дрейфа
             float altChange = abs(rawAltitude - lastRawAltitude);
@@ -148,7 +219,7 @@ namespace Sensors {
             }
             
             float baselineAlpha = (stableReadings > STABLE_THRESHOLD) ? 0.05 : 0.001;
-            adaptiveBaseline = adaptiveBaseline * (1.0 - baselineAlpha) + avgPressure * baselineAlpha;
+            adaptiveBaseline = adaptiveBaseline * (1.0 - baselineAlpha) + livePressure * baselineAlpha;
             lastRawAltitude = rawAltitude;
             
             // Фильтрация Калманом
@@ -167,7 +238,7 @@ namespace Sensors {
                 float relTime = (now - logStartTime) / 1000.0;
                 Serial.print("["); Serial.print(relTime, 1); Serial.print("s] ");
                 Serial.print("Alt: "); Serial.print(currentAltitude, 2); Serial.print("m | ");
-                Serial.print("T: "); Serial.print(currentTemp, 1); Serial.print("C | ");
+                Serial.print("P: "); Serial.print(livePressure, 1); Serial.print("Pa | ");
                 Serial.println(isStable ? "STABLE" : "MOVING");
             }
 
