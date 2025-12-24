@@ -1,7 +1,7 @@
-#include "Config.h"
-#include "Storage.h"
-#include "Sensors.h"
-#include "Network.h"
+#include "src/config/Config.h"
+#include "src/core/Storage.h"
+#include "src/core/Sensors.h"
+#include "src/core/Network.h"
 
 void setup() {
     delay(500);
@@ -9,7 +9,7 @@ void setup() {
     Serial.println("\n--- GliderFlightCore " VERSION " ---");
 
     Storage::begin();
-    Sensors::begin(); // Теперь мгновенный запуск
+    Sensors::begin();
     Network::setup();
 
     pinMode(PIN_LED, OUTPUT);
