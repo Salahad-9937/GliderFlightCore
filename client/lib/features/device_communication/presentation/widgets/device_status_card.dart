@@ -39,7 +39,7 @@ class DeviceStatusCard extends ConsumerWidget {
       return Column(
         key: const ValueKey('error_state'),
         children: [
-          _buildHeader(context, device),
+          _buildHeader(context, ref, device),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(12),
@@ -70,7 +70,7 @@ class DeviceStatusCard extends ConsumerWidget {
       key: const ValueKey('telemetry_state'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeader(context, device),
+        _buildHeader(context, ref, device),
         const SizedBox(height: 8),
         
         // Крупная высота
@@ -188,7 +188,7 @@ class DeviceStatusCard extends ConsumerWidget {
 
   // --- ОБЩИЕ ВИДЖЕТЫ ---
 
-  Widget _buildHeader(BuildContext context, Device device) {
+  Widget _buildHeader(BuildContext context, WidgetRef ref, Device device) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -196,15 +196,29 @@ class DeviceStatusCard extends ConsumerWidget {
           children: [
             const Icon(Icons.wifi, color: Colors.green, size: 20),
             const SizedBox(width: 8),
-            Text(
+            const Text(
               'Подключено',
               style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
             ),
           ],
         ),
-        Text(
-          device.ipAddress ?? '',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
+        Row(
+          children: [
+            Text(
+              device.ipAddress ?? '',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
+            ),
+            const SizedBox(width: 8),
+            // Кнопка отключения
+            IconButton(
+              onPressed: () {
+                ref.read(deviceConnectionNotifierProvider.notifier).disconnect();
+              },
+              icon: const Icon(Icons.link_off_rounded),
+              tooltip: 'Отключиться',
+              visualDensity: VisualDensity.compact,
+            ),
+          ],
         ),
       ],
     );
