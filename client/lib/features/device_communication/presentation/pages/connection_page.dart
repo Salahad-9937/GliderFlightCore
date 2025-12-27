@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../features/flight_programs/domain/entities/flight_program.dart';
-import '../../../../features/flight_programs/presentation/providers/flight_programs_providers.dart';
 import '../../domain/entities/device.dart';
 import '../../domain/entities/device_status.dart';
 import '../providers/device_connection_providers.dart';
@@ -14,7 +12,6 @@ class ConnectionPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final programsAsync = ref.watch(flightProgramsProvider(profileId));
     final deviceState = ref.watch(deviceConnectionNotifierProvider);
     final notifier = ref.read(deviceConnectionNotifierProvider.notifier);
 
@@ -49,35 +46,8 @@ class ConnectionPage extends ConsumerWidget {
             const SizedBox(height: 16),
 
             _buildConnectionStatus(context, deviceState),
-            const Spacer(),
-
-            // SafeArea предотвращает наложение кнопки на системную панель навигации
-            if (deviceState.status == DeviceStatus.connected)
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: FilledButton.icon(
-                    onPressed: () async {
-                      final programToUpload = await _showProgramSelectionDialog(
-                        context,
-                        programsAsync.value ?? [],
-                      );
-
-                      if (programToUpload != null && context.mounted) {
-                        final success = await notifier.uploadProgram(programToUpload);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(success ? 'Программа успешно загружена' : 'Ошибка загрузки')),
-                          );
-                        }
-                      }
-                    },
-                    icon: const Icon(Icons.upload_file_rounded),
-                    label: const Text('Загрузить программу на планер'),
-                    style: FilledButton.styleFrom(minimumSize: const Size(0, 50)),
-                  ),
-                ),
-              ),
+            
+            // Кнопка загрузки удалена отсюда и перенесена в список программ
           ],
         ),
       ),
@@ -94,6 +64,7 @@ class ConnectionPage extends ConsumerWidget {
         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: _getStatusColor(context, deviceState.status),
             ),
+        textAlign: TextAlign.center,
       ),
     );
   }
@@ -113,30 +84,5 @@ class ConnectionPage extends ConsumerWidget {
       case DeviceStatus.error: return Theme.of(context).colorScheme.error;
       default: return Colors.grey;
     }
-  }
-
-  Future<FlightProgram?> _showProgramSelectionDialog(
-      BuildContext context, List<FlightProgram> programs) {
-    return showDialog<FlightProgram>(
-      context: context,
-      builder: (context) {
-        if (programs.isEmpty) {
-          return const AlertDialog(
-            title: Text('Нет программ'),
-            content: Text('Сначала создайте хотя бы одну полетную программу.'),
-          );
-        }
-        return SimpleDialog(
-          title: const Text('Выберите программу для загрузки'),
-          children: [
-            for (final program in programs)
-              SimpleDialogOption(
-                onPressed: () => Navigator.of(context).pop(program),
-                child: Text(program.name),
-              ),
-          ],
-        );
-      },
-    );
   }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../device_communication/domain/entities/device_status.dart';
+import '../../../device_communication/presentation/providers/device_connection_providers.dart';
 import '../../domain/entities/flight_program.dart';
 import '../pages/flight_program_editor_page.dart';
 import '../providers/flight_programs_providers.dart';
@@ -88,8 +90,10 @@ class _FlightProgramCard extends ConsumerWidget {
           ));
         },
         trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            if (value == 'edit') {
+          onSelected: (value) async {
+            if (value == 'upload') {
+              await _handleUpload(context, ref);
+            } else if (value == 'edit') {
               Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => FlightProgramEditorPage(
                   profileId: profileId,
@@ -102,10 +106,19 @@ class _FlightProgramCard extends ConsumerWidget {
           },
           itemBuilder: (context) => [
             const PopupMenuItem(
+              value: 'upload',
+              child: ListTile(
+                leading: Icon(Icons.upload_file_rounded),
+                title: Text('Загрузить на планер'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem(
               value: 'edit',
               child: ListTile(
                 leading: Icon(Icons.edit_note_rounded),
                 title: Text('Редактировать'),
+                contentPadding: EdgeInsets.zero,
               ),
             ),
             const PopupMenuItem(
@@ -113,11 +126,57 @@ class _FlightProgramCard extends ConsumerWidget {
               child: ListTile(
                 leading: Icon(Icons.delete_outline),
                 title: Text('Удалить'),
+                contentPadding: EdgeInsets.zero,
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _handleUpload(BuildContext context, WidgetRef ref) async {
+    // Проверяем статус подключения
+    final deviceState = ref.read(deviceConnectionNotifierProvider);
+    
+    if (deviceState.status != DeviceStatus.connected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Сначала подключитесь к планеру'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          action: SnackBarAction(
+            label: 'Подключить',
+            textColor: Colors.white,
+            onPressed: () {
+              // Можно добавить навигацию, но пользователь и так на экране управления
+            },
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Выполняем загрузку
+    final success = await ref
+        .read(deviceConnectionNotifierProvider.notifier)
+        .uploadProgram(program);
+
+    if (context.mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Программа успешно загружена'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Ошибка загрузки программы'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
   }
 }
