@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../device_communication/domain/entities/device_status.dart';
 import '../../../device_communication/presentation/providers/device_connection_providers.dart';
+import '../../../device_communication/presentation/providers/program_upload_controller.dart';
 import '../../domain/entities/flight_program.dart';
 import '../pages/flight_program_editor_page.dart';
 import '../providers/flight_programs_providers.dart';
@@ -148,7 +149,7 @@ class _FlightProgramCard extends ConsumerWidget {
             label: 'Подключить',
             textColor: Colors.white,
             onPressed: () {
-              // Можно добавить навигацию, но пользователь и так на экране управления
+              // Пользователь уже на экране управления
             },
           ),
         ),
@@ -156,9 +157,9 @@ class _FlightProgramCard extends ConsumerWidget {
       return;
     }
 
-    // Выполняем загрузку
+    // Используем новый контроллер для загрузки
     final success = await ref
-        .read(deviceConnectionNotifierProvider.notifier)
+        .read(programUploadControllerProvider)
         .uploadProgram(program);
 
     if (context.mounted) {
