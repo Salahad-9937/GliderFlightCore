@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../device_communication/domain/entities/device_status.dart';
-import '../../../device_communication/presentation/providers/device_connection_providers.dart';
 import '../../../device_communication/presentation/providers/program_upload_controller.dart';
 import '../../domain/entities/flight_program.dart';
 import '../pages/flight_program_editor_page.dart';
@@ -137,47 +135,44 @@ class _FlightProgramCard extends ConsumerWidget {
   }
 
   Future<void> _handleUpload(BuildContext context, WidgetRef ref) async {
-    // Проверяем статус подключения
-    final deviceState = ref.read(deviceConnectionNotifierProvider);
-    
-    if (deviceState.status != DeviceStatus.connected) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Сначала подключитесь к планеру'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-          action: SnackBarAction(
-            label: 'Подключить',
-            textColor: Colors.white,
-            onPressed: () {
-              // Пользователь уже на экране управления
-            },
-          ),
-        ),
-      );
-      return;
-    }
-
-    // Используем новый контроллер для загрузки
-    final success = await ref
+    // UI просто вызывает метод контроллера, не зная о деталях реализации
+    final result = await ref
         .read(programUploadControllerProvider)
         .uploadProgram(program);
 
-    if (context.mounted) {
-      if (success) {
+    if (!context.mounted) return;
+
+    // UI отвечает только за отображение результата
+    switch (result) {
+      case UploadResult.success:
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Программа успешно загружена'),
             backgroundColor: Colors.green,
           ),
         );
-      } else {
+        break;
+      case UploadResult.failure:
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Ошибка загрузки программы'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
-      }
+        break;
+      case UploadResult.notConnected:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Сначала подключитесь к планеру'),
+            backgroundColor: Colors.orange,
+            action: SnackBarAction(
+              label: 'ОК',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+        break;
     }
   }
 }

@@ -6,11 +6,14 @@ import '../../domain/entities/device_status.dart';
 import '../../domain/repositories/device_repository.dart';
 import 'device_connection_providers.dart';
 
+/// Результат попытки загрузки программы.
+enum UploadResult {
+  success,
+  failure,
+  notConnected,
+}
+
 /// Контроллер, отвечающий за процесс загрузки программы на устройство.
-///
-/// Ответственность:
-/// - Оркестрация процесса загрузки.
-/// - Взаимодействие с DeviceConnectionNotifier для управления поллингом.
 class ProgramUploadController {
   final Ref ref;
 
@@ -19,25 +22,27 @@ class ProgramUploadController {
   DeviceRepository get _repository => ref.read(deviceRepositoryProvider);
 
   /// Загружает полетную программу на устройство.
-  /// Возвращает true, если успешно.
-  Future<bool> uploadProgram(FlightProgram program) async {
+  /// Возвращает детализированный результат операции.
+  Future<UploadResult> uploadProgram(FlightProgram program) async {
     final deviceState = ref.read(deviceConnectionNotifierProvider);
     final connectionNotifier = ref.read(deviceConnectionNotifierProvider.notifier);
 
-    // 1. Проверка предварительных условий
+    // 1. Проверка подключения (Бизнес-правило: нельзя грузить без связи)
     if (deviceState.status != DeviceStatus.connected || deviceState.ipAddress == null) {
-      return false;
+      return UploadResult.notConnected;
     }
 
-    // 2. Приостановка опроса статуса, чтобы не забивать канал
+    // 2. Приостановка опроса
     connectionNotifier.pausePolling();
 
     try {
       // 3. Выполнение загрузки
       final success = await _repository.uploadProgram(deviceState.ipAddress!, program);
-      return success;
+      return success ? UploadResult.success : UploadResult.failure;
+    } catch (e) {
+      return UploadResult.failure;
     } finally {
-      // 4. Возобновление опроса в любом случае (успех или ошибка)
+      // 4. Возобновление опроса
       connectionNotifier.resumePolling();
     }
   }
