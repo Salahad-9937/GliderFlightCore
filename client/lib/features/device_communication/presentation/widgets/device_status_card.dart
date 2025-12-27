@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/device.dart';
 import '../../domain/entities/device_status.dart';
-import '../pages/connection_page.dart';
 import '../providers/device_connection_providers.dart';
 
-/// Карточка телеметрии и статуса устройства.
+/// Умная карточка устройства.
+///
+/// Если нет подключения: показывает инструкцию и кнопку "Подключить".
+/// Если есть подключение: показывает телеметрию (высота, температура и т.д.).
 class DeviceStatusCard extends ConsumerWidget {
   final String profileId;
   const DeviceStatusCard({super.key, required this.profileId});
@@ -17,100 +19,43 @@ class DeviceStatusCard extends ConsumerWidget {
 
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () {
-          // Переход к настройкам подключения при клике на карточку
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => ConnectionPage(profileId: profileId),
-            ),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(context, device),
-              const SizedBox(height: 16),
-              if (device.status == DeviceStatus.connected)
-                _buildTelemetry(context, device)
-              else
-                _buildDisconnectedState(context, device),
-            ],
-          ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: device.status == DeviceStatus.connected
+              ? _buildTelemetryState(context, ref, device)
+              : _buildDisconnectedState(context, ref, device),
         ),
       ),
     );
   }
 
-  /// Заголовок с иконкой статуса и IP
-  Widget _buildHeader(BuildContext context, Device device) {
-    Color statusColor;
-    String statusText;
-    IconData statusIcon;
+  // --- СОСТОЯНИЕ: ПОДКЛЮЧЕНО (ТЕЛЕМЕТРИЯ) ---
 
-    switch (device.status) {
-      case DeviceStatus.connected:
-        statusColor = Colors.green;
-        statusText = 'Подключено';
-        statusIcon = Icons.wifi;
-        break;
-      case DeviceStatus.connecting:
-        statusColor = Colors.orange;
-        statusText = 'Подключение...';
-        statusIcon = Icons.wifi_protected_setup;
-        break;
-      case DeviceStatus.error:
-        statusColor = Colors.red;
-        statusText = 'Ошибка связи';
-        statusIcon = Icons.wifi_off;
-        break;
-      case DeviceStatus.disconnected:
-      statusColor = Colors.grey;
-        statusText = 'Нет подключения';
-        statusIcon = Icons.wifi_off;
-    }
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Icon(statusIcon, color: statusColor, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              statusText,
-              style: TextStyle(color: statusColor, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        if (device.status == DeviceStatus.connected)
-          Text(
-            device.ipAddress ?? '',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
-          ),
-      ],
-    );
-  }
-
-  /// Основной блок телеметрии (Высота, Температура)
-  Widget _buildTelemetry(BuildContext context, Device device) {
-    // Если Hardware Error
+  Widget _buildTelemetryState(BuildContext context, WidgetRef ref, Device device) {
+    // Если Hardware Error (датчик отвалился)
     if (!device.isHardwareOk) {
-      return Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.errorContainer,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error),
-            const SizedBox(width: 12),
-            const Expanded(child: Text('Ошибка датчика BMP180! Проверьте подключение.')),
-          ],
-        ),
+      return Column(
+        key: const ValueKey('error_state'),
+        children: [
+          _buildHeader(context, device),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.errorContainer,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error),
+                const SizedBox(width: 12),
+                const Expanded(child: Text('Ошибка датчика BMP180! Проверьте подключение.')),
+              ],
+            ),
+          ),
+        ],
       );
     }
 
@@ -122,51 +67,144 @@ class DeviceStatusCard extends ConsumerWidget {
     final altColor = device.isStable ? Colors.white : Colors.amberAccent;
 
     return Column(
+      key: const ValueKey('telemetry_state'),
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildHeader(context, device),
+        const SizedBox(height: 8),
+        
         // Крупная высота
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text(
-              altitude,
-              style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: altColor,
+        Center(
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    altitude,
+                    style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: altColor,
+                      fontSize: 64, // Очень крупно
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'м',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'м',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                color: Colors.grey,
-              ),
-            ),
-          ],
+              if (device.isCalibrating)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
+                      const SizedBox(width: 8),
+                      const Text('Калибровка...', style: TextStyle(color: Colors.orangeAccent)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
-        if (device.isCalibrating)
-           Padding(
-             padding: const EdgeInsets.only(top: 8.0),
-             child: Row(
-               mainAxisAlignment: MainAxisAlignment.center,
-               children: [
-                 const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
-                 const SizedBox(width: 8),
-                 Text('Калибровка...', style: TextStyle(color: Colors.orangeAccent)),
-               ],
-             ),
-           ),
            
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         
         // Второстепенные данные
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _buildInfoItem(context, Icons.thermostat, '$temp°C', 'Темп.'),
+            _buildInfoItem(context, Icons.thermostat, '$temp°C', 'Температура'),
             _buildInfoItem(context, Icons.speed, '$pressure Pa', 'Давление'),
           ],
+        ),
+      ],
+    );
+  }
+
+  // --- СОСТОЯНИЕ: ОТКЛЮЧЕНО (ИНСТРУКЦИЯ) ---
+
+  Widget _buildDisconnectedState(BuildContext context, WidgetRef ref, Device device) {
+    final notifier = ref.read(deviceConnectionNotifierProvider.notifier);
+    final isConnecting = device.status == DeviceStatus.connecting;
+
+    return Column(
+      key: const ValueKey('disconnected_state'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Подключение', style: Theme.of(context).textTheme.titleLarge),
+            if (device.status == DeviceStatus.error)
+               Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error),
+          ],
+        ),
+        const SizedBox(height: 16),
+        
+        // Инструкция
+        const Text(
+          '1. Включите питание планера.\n'
+          '2. Подключите телефон к Wi-Fi сети "Glider-Timer".',
+          style: TextStyle(height: 1.5, color: Colors.grey),
+        ),
+        const SizedBox(height: 24),
+
+        // Кнопка подключения
+        FilledButton.icon(
+          onPressed: isConnecting ? null : notifier.connect,
+          icon: isConnecting
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70))
+              : const Icon(Icons.wifi_find_rounded),
+          label: Text(isConnecting ? 'Поиск устройства...' : 'Проверить подключение'),
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+        ),
+
+        // Текст ошибки, если есть
+        if (device.status == DeviceStatus.error)
+          Padding(
+            padding: const EdgeInsets.only(top: 12.0),
+            child: Text(
+              device.errorMessage ?? 'Не удалось подключиться',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+      ],
+    );
+  }
+
+  // --- ОБЩИЕ ВИДЖЕТЫ ---
+
+  Widget _buildHeader(BuildContext context, Device device) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.wifi, color: Colors.green, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'Подключено',
+              style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        Text(
+          device.ipAddress ?? '',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
         ),
       ],
     );
@@ -177,26 +215,14 @@ class DeviceStatusCard extends ConsumerWidget {
       children: [
         Row(
           children: [
-            Icon(icon, size: 16, color: Colors.grey),
-            const SizedBox(width: 4),
+            Icon(icon, size: 18, color: Colors.grey),
+            const SizedBox(width: 6),
             Text(value, style: Theme.of(context).textTheme.titleMedium),
           ],
         ),
+        const SizedBox(height: 2),
         Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey)),
       ],
-    );
-  }
-
-  Widget _buildDisconnectedState(BuildContext context, Device device) {
-    if (device.status == DeviceStatus.error) {
-       return Text(
-        device.errorMessage ?? 'Неизвестная ошибка',
-        style: TextStyle(color: Theme.of(context).colorScheme.error),
-      );
-    }
-    return const Text(
-      'Подключитесь к Wi-Fi планера и нажмите "Настроить", чтобы увидеть телеметрию.',
-      style: TextStyle(color: Colors.grey),
     );
   }
 }
