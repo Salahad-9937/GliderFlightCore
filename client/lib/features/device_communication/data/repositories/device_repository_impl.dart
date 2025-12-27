@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
@@ -20,24 +21,39 @@ class DeviceRepositoryImpl implements DeviceRepository {
   Future<Device> connectToDeviceAP() async {
     try {
       final url = Uri.http(_apIpAddress, '/status');
-      // Отправляем запрос с коротким таймаутом.
-      final response = await http.get(url).timeout(const Duration(seconds: 3));
+      // Таймаут короткий, чтобы интерфейс не зависал при опросе
+      final response = await http.get(url).timeout(const Duration(milliseconds: 1500));
 
       if (response.statusCode == 200) {
-        // Успешный пинг, устройство подключено.
-        return const Device(status: DeviceStatus.connected, ipAddress: _apIpAddress);
+        // Парсим JSON ответ от платы
+        final Map<String, dynamic> json = jsonDecode(response.body);
+        
+        return Device(
+          status: DeviceStatus.connected,
+          ipAddress: _apIpAddress,
+          // Маппинг полей из JSON (см. StatusHandler.h)
+          isHardwareOk: json['hw_ok'] ?? false,
+          isCalibrating: json['calibrating'] ?? false,
+          isCalibrated: json['calibrated'] ?? false,
+          isMonitoring: json['monitoring'] ?? false,
+          isLogging: json['logging'] ?? false,
+          storedBasePressure: (json['stored_base'] as num?)?.toDouble(),
+          currentPressure: (json['current_p'] as num?)?.toDouble(),
+          altitude: (json['alt'] as num?)?.toDouble(),
+          temperature: (json['temp'] as num?)?.toDouble(),
+          isStable: json['stable'] ?? false,
+          basePressure: (json['base'] as num?)?.toDouble(),
+        );
       } else {
-        // Устройство ответило, но не так, как ожидалось.
         return Device(
           status: DeviceStatus.error,
-          errorMessage: 'Неверный ответ от устройства (код: ${response.statusCode})',
+          errorMessage: 'Ошибка устройства: ${response.statusCode}',
         );
       }
     } catch (e) {
-      // Таймаут или другая сетевая ошибка.
       return Device(
         status: DeviceStatus.error,
-        errorMessage: 'Устройство не найдено по адресу $_apIpAddress. Убедитесь, что вы подключены к его Wi-Fi сети.',
+        errorMessage: 'Нет связи с $_apIpAddress',
       );
     }
   }
@@ -49,7 +65,7 @@ class DeviceRepositoryImpl implements DeviceRepository {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: program.toJson(), // Сериализуем программу в JSON
+        body: program.toJson(),
       ).timeout(const Duration(seconds: 5));
 
       return response.statusCode == 200;
