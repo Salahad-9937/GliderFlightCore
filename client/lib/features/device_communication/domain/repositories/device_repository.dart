@@ -20,4 +20,7 @@ abstract class DeviceRepository {
 
   /// Сохраняет калибровку в энергонезависимую память (Save).
   Future<bool> saveCalibration(String ipAddress);
+
+  /// Включает или выключает мониторинг датчиков (Baro).
+  Future<bool> setSensorMonitoring(String ipAddress, bool enable);
 }

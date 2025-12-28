@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/device.dart';
 import '../providers/device_connection_providers.dart';
+import '../providers/sensor_settings_controller.dart';
 import 'calibration_bottom_sheet.dart';
 
 /// Виджет отображения телеметрии (высота, температура, давление).
@@ -46,7 +47,7 @@ class TelemetryDashboard extends ConsumerWidget {
 
     return Column(
       key: const ValueKey('telemetry_state'),
-      crossAxisAlignment: CrossAxisAlignment.stretch, // Растягиваем по ширине
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildHeader(context, ref, device),
         const SizedBox(height: 8),
@@ -105,6 +106,23 @@ class TelemetryDashboard extends ConsumerWidget {
         ),
 
         const SizedBox(height: 24),
+
+        // Переключатель мониторинга
+        SwitchListTile(
+          title: const Text('Мониторинг датчиков'),
+          subtitle: const Text('Опрос барометра и расчет высоты'),
+          value: device.isMonitoring,
+          onChanged: (bool value) {
+            ref.read(sensorSettingsControllerProvider).toggleMonitoring(value);
+          },
+          secondary: Icon(
+            device.isMonitoring ? Icons.sensors : Icons.sensors_off,
+            color: device.isMonitoring ? Colors.green : Colors.grey,
+          ),
+          contentPadding: EdgeInsets.zero,
+        ),
+
+        const Divider(),
 
         // Кнопка калибровки
         OutlinedButton.icon(

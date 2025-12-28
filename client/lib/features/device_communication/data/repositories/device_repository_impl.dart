@@ -40,7 +40,6 @@ class DeviceRepositoryImpl implements DeviceRepository {
           isStable: json['stable'] ?? false,
           basePressure: (json['base'] as num?)?.toDouble(),
           calibrationPhase: json['calib_phase'],
-          // Безопасное приведение к int через num
           calibrationProgress: (json['calib_progress'] as num?)?.toInt(),
         );
       } else {
@@ -110,6 +109,17 @@ class DeviceRepositoryImpl implements DeviceRepository {
   Future<bool> saveCalibration(String ipAddress) async {
     try {
       final url = Uri.http(ipAddress, '/calibrate/save');
+      final response = await http.get(url).timeout(const Duration(seconds: 3));
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> setSensorMonitoring(String ipAddress, bool enable) async {
+    try {
+      final url = Uri.http(ipAddress, '/baro', {'enable': enable ? '1' : '0'});
       final response = await http.get(url).timeout(const Duration(seconds: 3));
       return response.statusCode == 200;
     } catch (e) {
