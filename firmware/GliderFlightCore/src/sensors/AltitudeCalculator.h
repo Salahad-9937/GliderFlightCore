@@ -31,9 +31,10 @@ namespace Sensors {
     unsigned long last_log_time = 0;
 
     /**
-     * Основной цикл вычислений
+     * Основной цикл вычислений высоты
+     * ПЕРЕИМЕНОВАНО из update() во избежание конфликта
      */
-    void update() {
+    void updateAltitude() {
         // Опрос идет если датчик ОК. 
         // Мы считаем livePressure всегда, если включен мониторинг, даже если нет калибровки.
         if (!isHardwareOK || !isMonitoring) return;

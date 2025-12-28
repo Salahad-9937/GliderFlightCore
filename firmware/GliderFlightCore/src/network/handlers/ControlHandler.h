@@ -6,7 +6,7 @@
 
 namespace Network {
     /**
-     * Быстрое обнуление высоты
+     * Быстрое обнуление высоты (Асинхронное)
      */
     void handleZero() {
         Serial.println("[HTTP] Команда на обнуление /zero");
@@ -14,8 +14,15 @@ namespace Network {
             server.send(503, "text/plain", "Hardware Error");
             return;
         }
-        Sensors::zero();
-        server.send(200, "text/plain", "Zero set");
+        
+        if (Sensors::calibState != Sensors::CALIB_IDLE) {
+             server.send(409, "text/plain", "Calibration/Zeroing already in progress");
+             return;
+        }
+
+        Sensors::startZeroing();
+        // 202 Accepted - запрос принят, выполняется в фоне
+        server.send(202, "text/plain", "Zeroing started");
     }
 
     /**

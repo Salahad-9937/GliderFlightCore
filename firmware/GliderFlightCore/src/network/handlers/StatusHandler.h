@@ -7,23 +7,26 @@
 
 namespace Network {
     /**
-     * Возвращает полный статус устройства, включая состояние сенсоров и телеметрию
+     * Возвращает полный статус устройства
      */
     void handleStatus() {
         Serial.println("[HTTP] Запрос статуса /status");
         
         StaticJsonDocument<512> doc;
-        doc["status"] = "ok";
+        
+        // Основные флаги
         doc["hw_ok"] = Sensors::isHardwareOK;
-        doc["calibrating"] = Sensors::isCalibrating;
         doc["calibrated"] = Sensors::isCalibrated;
         doc["monitoring"] = Sensors::isMonitoring;
         doc["logging"] = Sensors::isLogging;
         
-        // Индикация наличия сохраненной калибровки в файле
+        // Статус калибровки для UI
+        doc["calibrating"] = (Sensors::calibState != Sensors::CALIB_IDLE);
+        doc["calib_phase"] = Sensors::getCalibrationPhase(); // "stabilization", "measuring", "idle"
+        doc["calib_progress"] = Sensors::getCalibrationProgress(); // 0-100
+        
         doc["stored_base"] = Sensors::storedBasePressure;
         
-        // Текущее атмосферное давление в реальном времени (если мониторинг ВКЛ)
         if (Sensors::isMonitoring) {
             doc["current_p"] = Sensors::livePressure;
         }
@@ -32,7 +35,7 @@ namespace Network {
             doc["alt"] = Sensors::currentAltitude;
             doc["temp"] = Sensors::currentTemp;
             doc["stable"] = Sensors::isStable;
-            doc["base"] = Sensors::basePressure; // Текущее активное базовое давление
+            doc["base"] = Sensors::basePressure;
         }
         
         String output;

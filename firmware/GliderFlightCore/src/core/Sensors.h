@@ -13,7 +13,22 @@ namespace Sensors {
     void begin() {
         initBarometer();
         if (isHardwareOK) {
-            loadFromFS(); // Попытка загрузки сохраненных данных
+            loadFromFS(); 
+        }
+    }
+
+    /**
+     * Главный цикл обновления сенсоров
+     */
+    void update() {
+        // 1. Обновление логики калибровки (машина состояний)
+        updateCalibrationLogic();
+        
+        // 2. Расчет высоты
+        // Не запускаем расчет, если идет активный сбор данных (MEASURING или ZEROING),
+        // так как датчик занят набором статистики.
+        if (calibState != CALIB_MEASURING && calibState != CALIB_ZEROING) {
+             updateAltitude(); 
         }
     }
 }

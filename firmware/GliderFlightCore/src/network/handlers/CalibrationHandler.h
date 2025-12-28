@@ -16,9 +16,16 @@ namespace Network {
             return;
         }
         
-        // Ответ 202 сообщает приложению, что запрос принят и выполняется
+        if (Sensors::calibState != Sensors::CALIB_IDLE) {
+             server.send(409, "text/plain", "Calibration already in progress");
+             return;
+        }
+        
+        // Запускаем неблокирующий процесс
+        Sensors::startCalibration();
+        
+        // 202 Accepted - запрос принят на обработку
         server.send(202, "text/plain", "Calibration process started");
-        Sensors::calibrate();
         Serial.println("[HTTP] Калибровка по HTTP завершена");
     }
 
