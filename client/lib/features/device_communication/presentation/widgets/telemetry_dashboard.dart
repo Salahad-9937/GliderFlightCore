@@ -3,13 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/device.dart';
 import '../providers/device_connection_providers.dart';
+import 'calibration_bottom_sheet.dart';
 
 /// Виджет отображения телеметрии (высота, температура, давление).
-///
-/// Ответственность:
-/// - Визуализация данных "на лету".
-/// - Отображение ошибок оборудования (Hardware Error).
-/// - Предоставление кнопки для разрыва соединения.
 class TelemetryDashboard extends ConsumerWidget {
   const TelemetryDashboard({super.key});
 
@@ -46,12 +42,11 @@ class TelemetryDashboard extends ConsumerWidget {
     final temp = device.temperature?.toStringAsFixed(1) ?? '--';
     final pressure = device.currentPressure?.toStringAsFixed(0) ?? '--';
     
-    // Цвет высоты зависит от стабильности
     final altColor = device.isStable ? Colors.white : Colors.amberAccent;
 
     return Column(
       key: const ValueKey('telemetry_state'),
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch, // Растягиваем по ширине
       children: [
         _buildHeader(context, ref, device),
         const SizedBox(height: 8),
@@ -70,7 +65,7 @@ class TelemetryDashboard extends ConsumerWidget {
                     style: Theme.of(context).textTheme.displayLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: altColor,
-                      fontSize: 64, // Очень крупно
+                      fontSize: 64, 
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -108,6 +103,21 @@ class TelemetryDashboard extends ConsumerWidget {
             _buildInfoItem(context, Icons.speed, '$pressure Pa', 'Давление'),
           ],
         ),
+
+        const SizedBox(height: 24),
+
+        // Кнопка калибровки
+        OutlinedButton.icon(
+          onPressed: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              builder: (context) => const CalibrationBottomSheet(),
+            );
+          },
+          icon: const Icon(Icons.settings_input_component),
+          label: const Text('Калибровка датчиков'),
+        ),
       ],
     );
   }
@@ -133,7 +143,6 @@ class TelemetryDashboard extends ConsumerWidget {
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
             ),
             const SizedBox(width: 8),
-            // Кнопка отключения
             IconButton(
               onPressed: () {
                 ref.read(deviceConnectionNotifierProvider.notifier).disconnect();

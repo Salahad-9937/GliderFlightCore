@@ -8,4 +8,13 @@ abstract class DeviceRepository {
 
   /// Загружает полетную программу на устройство.
   Future<bool> uploadProgram(String ipAddress, FlightProgram program);
+
+  /// Обнуляет текущую высоту (Zero).
+  Future<bool> zeroAltitude(String ipAddress);
+
+  /// Запускает процесс калибровки (Calibrate).
+  Future<bool> startCalibration(String ipAddress);
+
+  /// Сохраняет калибровку в энергонезависимую память (Save).
+  Future<bool> saveCalibration(String ipAddress);
 }

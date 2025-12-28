@@ -21,17 +21,14 @@ class DeviceRepositoryImpl implements DeviceRepository {
   Future<Device> connectToDeviceAP() async {
     try {
       final url = Uri.http(_apIpAddress, '/status');
-      // Таймаут короткий, чтобы интерфейс не зависал при опросе
       final response = await http.get(url).timeout(const Duration(milliseconds: 1500));
 
       if (response.statusCode == 200) {
-        // Парсим JSON ответ от платы
         final Map<String, dynamic> json = jsonDecode(response.body);
         
         return Device(
           status: DeviceStatus.connected,
           ipAddress: _apIpAddress,
-          // Маппинг полей из JSON (см. StatusHandler.h)
           isHardwareOk: json['hw_ok'] ?? false,
           isCalibrating: json['calibrating'] ?? false,
           isCalibrated: json['calibrated'] ?? false,
@@ -68,6 +65,40 @@ class DeviceRepositoryImpl implements DeviceRepository {
         body: program.toJson(),
       ).timeout(const Duration(seconds: 5));
 
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> zeroAltitude(String ipAddress) async {
+    try {
+      final url = Uri.http(ipAddress, '/zero');
+      final response = await http.get(url).timeout(const Duration(seconds: 3));
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> startCalibration(String ipAddress) async {
+    try {
+      final url = Uri.http(ipAddress, '/calibrate');
+      // Ожидаем 202 Accepted или 200 OK
+      final response = await http.get(url).timeout(const Duration(seconds: 3));
+      return response.statusCode == 200 || response.statusCode == 202;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> saveCalibration(String ipAddress) async {
+    try {
+      final url = Uri.http(ipAddress, '/calibrate/save');
+      final response = await http.get(url).timeout(const Duration(seconds: 3));
       return response.statusCode == 200;
     } catch (e) {
       return false;
