@@ -21,16 +21,21 @@ namespace Network {
              return;
         }
         
-        // Запускаем неблокирующий процесс
         Sensors::startCalibration();
-        
-        // 202 Accepted - запрос принят на обработку
         server.send(202, "text/plain", "Calibration process started");
-        Serial.println("[HTTP] Калибровка по HTTP завершена");
     }
 
     /**
-     * Сохранение текущей калибровки в постоянную память
+     * Отмена текущего процесса (Калибровки или Обнуления)
+     */
+    void handleCancel() {
+        Serial.println("[HTTP] Команда /cancel");
+        Sensors::cancelCalibration();
+        server.send(200, "text/plain", "Operation cancelled");
+    }
+
+    /**
+     * Сохранение текущей калибровки
      */
     void handleSaveCalib() {
         Serial.println("[HTTP] Запрос сохранения калибровки /calibrate/save");

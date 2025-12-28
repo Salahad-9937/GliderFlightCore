@@ -18,6 +18,13 @@ namespace Sensors {
     }
 
     /**
+     * Обертка для отмены калибровки
+     */
+    void cancelCalibration() {
+        cancel();
+    }
+
+    /**
      * Главный цикл обновления сенсоров
      */
     void update() {
@@ -25,8 +32,7 @@ namespace Sensors {
         updateCalibrationLogic();
         
         // 2. Расчет высоты
-        // Не запускаем расчет, если идет активный сбор данных (MEASURING или ZEROING),
-        // так как датчик занят набором статистики.
+        // Не запускаем расчет, если идет активный сбор данных
         if (calibState != CALIB_MEASURING && calibState != CALIB_ZEROING) {
              updateAltitude(); 
         }

@@ -9,9 +9,10 @@
 #include "../network/handlers/ProgramHandler.h"
 
 namespace Network {
-    // Forward declarations для корректной регистрации обработчиков
+    // Forward declarations
     void handleStatus();
     void handleCalibrate();
+    void handleCancel(); // Новый обработчик
     void handleSaveCalib();
     void handleZero();
     void handleBaroControl();
@@ -27,6 +28,7 @@ namespace Network {
         Serial.println("[WebServer] Регистрация эндпоинтов...");
         server.on("/status", HTTP_GET, handleStatus);
         server.on("/calibrate", HTTP_GET, handleCalibrate);
+        server.on("/cancel", HTTP_GET, handleCancel); // Регистрация /cancel
         server.on("/calibrate/save", HTTP_GET, handleSaveCalib);
         server.on("/zero", HTTP_GET, handleZero);
         server.on("/baro", HTTP_GET, handleBaroControl);

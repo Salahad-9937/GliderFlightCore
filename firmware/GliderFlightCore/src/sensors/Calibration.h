@@ -102,6 +102,19 @@ namespace Sensors {
     }
 
     /**
+     * Принудительная отмена текущей операции
+     */
+    void cancel() {
+        if (calibState == CALIB_IDLE) return;
+        
+        Serial.println("[Sensors] Операция прервана пользователем!");
+        calibState = CALIB_IDLE;
+        // Сбрасываем накопленные данные
+        pressureSum = 0;
+        samplesCollected = 0;
+    }
+
+    /**
      * Основной цикл машины состояний калибровки.
      * Вызывается из Sensors::update()
      */
@@ -151,9 +164,6 @@ namespace Sensors {
 
         // --- ФАЗА 3: Быстрое обнуление ---
         if (calibState == CALIB_ZEROING) {
-            // Читаем без задержки (насколько позволяет датчик)
-            // Сама функция readPressure() блокирует на ~26мс (стандартная библиотека),
-            // но между вызовами мы возвращаем управление в loop(), поэтому сервер отвечает.
             pressureSum += readPressure();
             samplesCollected++;
 
@@ -172,7 +182,7 @@ namespace Sensors {
         }
     }
 
-    // --- Работа с файловой системой (без изменений) ---
+    // --- Работа с файловой системой ---
     bool saveToFS() {
         if (!isCalibrated) return false;
         StaticJsonDocument<128> doc;
