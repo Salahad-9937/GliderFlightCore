@@ -40,6 +40,9 @@ class DeviceRepositoryImpl implements DeviceRepository {
           temperature: (json['temp'] as num?)?.toDouble(),
           isStable: json['stable'] ?? false,
           basePressure: (json['base'] as num?)?.toDouble(),
+          // Новые поля для отслеживания прогресса
+          calibrationPhase: json['calib_phase'],
+          calibrationProgress: json['calib_progress'],
         );
       } else {
         return Device(
@@ -75,8 +78,9 @@ class DeviceRepositoryImpl implements DeviceRepository {
   Future<bool> zeroAltitude(String ipAddress) async {
     try {
       final url = Uri.http(ipAddress, '/zero');
+      // Ожидаем 202 Accepted
       final response = await http.get(url).timeout(const Duration(seconds: 3));
-      return response.statusCode == 200;
+      return response.statusCode == 200 || response.statusCode == 202;
     } catch (e) {
       return false;
     }
@@ -86,7 +90,6 @@ class DeviceRepositoryImpl implements DeviceRepository {
   Future<bool> startCalibration(String ipAddress) async {
     try {
       final url = Uri.http(ipAddress, '/calibrate');
-      // Ожидаем 202 Accepted или 200 OK
       final response = await http.get(url).timeout(const Duration(seconds: 3));
       return response.statusCode == 200 || response.statusCode == 202;
     } catch (e) {

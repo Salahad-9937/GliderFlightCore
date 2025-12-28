@@ -26,6 +26,10 @@ class Device {
   final double? basePressure;    // Базовое давление (активное)
   final double? storedBasePressure; // Сохраненное в памяти давление
 
+  // --- Данные процесса калибровки (Real-time) ---
+  final String? calibrationPhase; // "stabilization", "measuring", "zeroing", "idle"
+  final int? calibrationProgress; // 0..100
+
   const Device({
     this.status = DeviceStatus.disconnected,
     this.ipAddress,
@@ -41,6 +45,8 @@ class Device {
     this.currentPressure,
     this.basePressure,
     this.storedBasePressure,
+    this.calibrationPhase,
+    this.calibrationProgress,
   });
 
   /// Создает копию объекта с измененными полями.
@@ -59,6 +65,8 @@ class Device {
     double? currentPressure,
     double? basePressure,
     double? storedBasePressure,
+    String? calibrationPhase,
+    int? calibrationProgress,
   }) {
     return Device(
       status: status ?? this.status,
@@ -75,6 +83,8 @@ class Device {
       currentPressure: currentPressure ?? this.currentPressure,
       basePressure: basePressure ?? this.basePressure,
       storedBasePressure: storedBasePressure ?? this.storedBasePressure,
+      calibrationPhase: calibrationPhase ?? this.calibrationPhase,
+      calibrationProgress: calibrationProgress ?? this.calibrationProgress,
     );
   }
 }
