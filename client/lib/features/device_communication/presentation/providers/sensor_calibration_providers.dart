@@ -36,7 +36,6 @@ class SensorCalibrationNotifier extends Notifier<CalibrationState> {
   
   @override
   CalibrationState build() {
-    // Подписываемся на изменения состояния устройства
     ref.listen<Device>(deviceConnectionNotifierProvider, (previous, next) {
       _handleDeviceUpdate(next);
     });
@@ -44,10 +43,8 @@ class SensorCalibrationNotifier extends Notifier<CalibrationState> {
     return const CalibrationState();
   }
 
-  /// Обработка обновлений от устройства.
-  /// Логика основана на текущем состоянии UI и пришедшем состоянии устройства.
   void _handleDeviceUpdate(Device next) {
-    // 1. Если связь потеряна - сразу ошибка
+    // 1. Потеря связи
     if (next.status != DeviceStatus.connected) {
       if (state.phase != CalibrationPhase.idle && state.phase != CalibrationPhase.error) {
         state = const CalibrationState(phase: CalibrationPhase.error, errorMessage: 'Связь потеряна');
@@ -55,36 +52,33 @@ class SensorCalibrationNotifier extends Notifier<CalibrationState> {
       return;
     }
 
-    // 2. Если устройство сообщает, что идет процесс
+    // 2. Устройство в процессе калибровки
     if (next.isCalibrating) {
       final phase = _mapPhase(next.calibrationPhase);
       final progress = (next.calibrationProgress ?? 0) / 100.0;
       
-      // Просто синхронизируем UI с устройством
+      // Обновляем UI только данными с устройства
       state = CalibrationState(phase: phase, progress: progress);
     } 
-    // 3. Если устройство сообщает, что процесс НЕ идет (IDLE)
+    // 3. Устройство НЕ калибруется (IDLE)
     else {
-      // Проверяем, находится ли наш UI в режиме ожидания завершения
-      // (то есть мы показываем прогресс-бар, а плата уже всё)
+      // Если UI показывал прогресс, а устройство закончило
       final isUiThinkingItIsCalibrating = 
           state.phase == CalibrationPhase.stabilization ||
           state.phase == CalibrationPhase.measuring ||
           state.phase == CalibrationPhase.zeroing;
 
       if (isUiThinkingItIsCalibrating) {
-        // Процесс завершился. Проверяем результат.
         if (next.isCalibrated) {
           state = const CalibrationState(phase: CalibrationPhase.success, progress: 1.0);
         } else {
-          // Если флаг calibrated не стоит, значит что-то пошло не так
-          state = const CalibrationState(phase: CalibrationPhase.error, errorMessage: 'Сбой калибровки');
+          // Если флаг calibrated не стоит, значит была отмена или ошибка
+          state = const CalibrationState(phase: CalibrationPhase.idle);
         }
       }
     }
   }
 
-  /// Маппинг строковых статусов с прошивки в Enum приложения
   CalibrationPhase _mapPhase(String? phaseStr) {
     switch (phaseStr) {
       case 'stabilization': return CalibrationPhase.stabilization;
@@ -94,7 +88,6 @@ class SensorCalibrationNotifier extends Notifier<CalibrationState> {
     }
   }
 
-  /// Быстрое обнуление высоты.
   Future<bool> zeroAltitude() async {
     final device = ref.read(deviceConnectionNotifierProvider);
     if (device.status != DeviceStatus.connected || device.ipAddress == null) {
@@ -102,11 +95,10 @@ class SensorCalibrationNotifier extends Notifier<CalibrationState> {
       return false;
     }
 
-    // Ставим UI в режим ожидания, чтобы _handleDeviceUpdate подхватил процесс
-    state = const CalibrationState(phase: CalibrationPhase.zeroing, progress: 0.0);
+    // УБРАНО: state = const CalibrationState(phase: CalibrationPhase.zeroing...);
+    // Ждем, пока поллинг сам подхватит изменение статуса
 
     final success = await _repository.zeroAltitude(device.ipAddress!);
-    
     if (!success) {
       state = const CalibrationState(phase: CalibrationPhase.error, errorMessage: 'Ошибка отправки команды');
       return false;
@@ -114,7 +106,6 @@ class SensorCalibrationNotifier extends Notifier<CalibrationState> {
     return true;
   }
 
-  /// Запуск полной калибровки.
   Future<void> startFullCalibration() async {
     final device = ref.read(deviceConnectionNotifierProvider);
     if (device.status != DeviceStatus.connected || device.ipAddress == null) {
@@ -122,8 +113,7 @@ class SensorCalibrationNotifier extends Notifier<CalibrationState> {
       return;
     }
 
-    // Ставим UI в режим ожидания
-    state = const CalibrationState(phase: CalibrationPhase.stabilization, progress: 0.0);
+    // УБРАНО: state = const CalibrationState(phase: CalibrationPhase.stabilization...);
 
     final success = await _repository.startCalibration(device.ipAddress!);
     if (!success) {
@@ -131,17 +121,23 @@ class SensorCalibrationNotifier extends Notifier<CalibrationState> {
     }
   }
 
-  /// Сохранение результатов.
+  Future<void> cancelOperation() async {
+    final device = ref.read(deviceConnectionNotifierProvider);
+    if (device.status != DeviceStatus.connected || device.ipAddress == null) return;
+
+    await _repository.cancelCalibration(device.ipAddress!);
+    // При отмене сбрасываем сразу для отзывчивости
+    state = const CalibrationState(phase: CalibrationPhase.idle);
+  }
+
   Future<void> saveCalibration() async {
     final device = ref.read(deviceConnectionNotifierProvider);
     if (device.status != DeviceStatus.connected || device.ipAddress == null) return;
 
     await _repository.saveCalibration(device.ipAddress!);
-    
     state = const CalibrationState(phase: CalibrationPhase.idle);
   }
   
-  /// Сброс UI в исходное состояние.
   void reset() {
     state = const CalibrationState(phase: CalibrationPhase.idle);
   }

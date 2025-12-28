@@ -14,7 +14,6 @@ final deviceRepositoryProvider = Provider<DeviceRepository>((ref) {
 
 /// Реализация репозитория для взаимодействия с устройством по HTTP.
 class DeviceRepositoryImpl implements DeviceRepository {
-  // IP-адрес ESP8266 по умолчанию в режиме точки доступа.
   static const String _apIpAddress = '192.168.4.1';
 
   @override
@@ -40,9 +39,9 @@ class DeviceRepositoryImpl implements DeviceRepository {
           temperature: (json['temp'] as num?)?.toDouble(),
           isStable: json['stable'] ?? false,
           basePressure: (json['base'] as num?)?.toDouble(),
-          // Новые поля для отслеживания прогресса
           calibrationPhase: json['calib_phase'],
-          calibrationProgress: json['calib_progress'],
+          // Безопасное приведение к int через num
+          calibrationProgress: (json['calib_progress'] as num?)?.toInt(),
         );
       } else {
         return Device(
@@ -78,7 +77,6 @@ class DeviceRepositoryImpl implements DeviceRepository {
   Future<bool> zeroAltitude(String ipAddress) async {
     try {
       final url = Uri.http(ipAddress, '/zero');
-      // Ожидаем 202 Accepted
       final response = await http.get(url).timeout(const Duration(seconds: 3));
       return response.statusCode == 200 || response.statusCode == 202;
     } catch (e) {
@@ -92,6 +90,17 @@ class DeviceRepositoryImpl implements DeviceRepository {
       final url = Uri.http(ipAddress, '/calibrate');
       final response = await http.get(url).timeout(const Duration(seconds: 3));
       return response.statusCode == 200 || response.statusCode == 202;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> cancelCalibration(String ipAddress) async {
+    try {
+      final url = Uri.http(ipAddress, '/cancel');
+      final response = await http.get(url).timeout(const Duration(seconds: 3));
+      return response.statusCode == 200;
     } catch (e) {
       return false;
     }

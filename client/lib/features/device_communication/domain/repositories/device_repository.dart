@@ -15,6 +15,9 @@ abstract class DeviceRepository {
   /// Запускает процесс калибровки (Calibrate).
   Future<bool> startCalibration(String ipAddress);
 
+  /// Отменяет текущую операцию (Zero или Calibrate).
+  Future<bool> cancelCalibration(String ipAddress);
+
   /// Сохраняет калибровку в энергонезависимую память (Save).
   Future<bool> saveCalibration(String ipAddress);
 }
