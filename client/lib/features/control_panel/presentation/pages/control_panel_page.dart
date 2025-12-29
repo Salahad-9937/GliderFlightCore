@@ -4,16 +4,72 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../glider_profiles/glider_profiles.dart';
 import '../../../glider_profiles/presentation/widgets/edit_profile_dialog.dart';
 import '../../../flight_programs/flight_programs.dart';
-import '../../../device_communication/device_communication.dart'; 
+import '../../../device_communication/device_communication.dart';
+import '../../../device_communication/presentation/providers/sensor_settings_controller.dart';
+import '../../../device_communication/presentation/providers/device_connection_providers.dart';
+import '../../../device_communication/domain/entities/device_status.dart';
 import '../widgets/flight_history_section.dart';
 
-class ControlPanelPage extends ConsumerWidget {
+class ControlPanelPage extends ConsumerStatefulWidget {
   final String gliderProfileId;
   const ControlPanelPage({super.key, required this.gliderProfileId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final profile = ref.watch(profileByIdProvider(gliderProfileId));
+  ConsumerState<ControlPanelPage> createState() => _ControlPanelPageState();
+}
+
+class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
+    with WidgetsBindingObserver {
+  late DeviceConnectionNotifier _connectionNotifier;
+  late SensorSettingsController _settingsController;
+
+  bool _isBackgrounded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _connectionNotifier = ref.read(deviceConnectionNotifierProvider.notifier);
+    _settingsController = ref.read(sensorSettingsControllerProvider);
+
+    WidgetsBinding.instance.addObserver(this);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _connectionNotifier.connect();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _connectionNotifier.disconnect();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final device = ref.read(deviceConnectionNotifierProvider);
+    if (device.status != DeviceStatus.connected) return;
+
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      if (!_isBackgrounded) {
+        _isBackgrounded = true;
+        _connectionNotifier.pausePolling();
+        _settingsController.toggleMonitoring(false);
+      }
+    } else if (state == AppLifecycleState.resumed) {
+      if (_isBackgrounded) {
+        _isBackgrounded = false;
+        _settingsController.toggleMonitoring(true).then((_) {
+          _connectionNotifier.resumePolling();
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = ref.watch(profileByIdProvider(widget.gliderProfileId));
 
     if (profile == null) {
       return Scaffold(
@@ -27,17 +83,22 @@ class ControlPanelPage extends ConsumerWidget {
         title: Text(profile.name),
         actions: [
           IconButton(
-            onPressed: () => showEditProfileDialog(context, ref, gliderProfileId, profile.name),
+            onPressed: () => showEditProfileDialog(
+              context,
+              ref,
+              widget.gliderProfileId,
+              profile.name,
+            ),
             icon: const Icon(Icons.edit_outlined),
-          )
+          ),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          DeviceStatusCard(profileId: gliderProfileId),
+          DeviceStatusCard(profileId: widget.gliderProfileId),
           const SizedBox(height: 24),
-          FlightProgramsList(profileId: gliderProfileId),
+          FlightProgramsList(profileId: widget.gliderProfileId),
           const SizedBox(height: 24),
           const FlightHistorySection(),
         ],
