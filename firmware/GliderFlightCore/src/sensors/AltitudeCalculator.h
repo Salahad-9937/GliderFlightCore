@@ -31,50 +31,55 @@ namespace Sensors {
     unsigned long last_log_time = 0;
 
     /**
-     * Основной цикл вычислений высоты
-     * ПЕРЕИМЕНОВАНО из update() во избежание конфликта
+     * Основной цикл вычислений высоты.
+     * Частота обновления данных в /status теперь зависит от BARO_INTERVAL (500мс).
      */
     void updateAltitude() {
-        // Опрос идет если датчик ОК. 
-        // Мы считаем livePressure всегда, если включен мониторинг, даже если нет калибровки.
         if (!isHardwareOK || !isMonitoring) return;
 
         unsigned long now = millis();
+        
+        // Накопление данных происходит максимально часто (в каждом цикле loop)
         pressureAccumulator += readPressure();
         sampleCount++;
 
+        // Обработка накопленных данных по истечении интервала
         if (now - last_log_time >= BARO_INTERVAL) {
             last_log_time = now;
 
-            livePressure = pressureAccumulator / (double)sampleCount;
+            if (sampleCount > 0) {
+                livePressure = pressureAccumulator / (double)sampleCount;
+            }
             
-            // Если еще не откалиброваны, просто сбрасываем счетчики и выходим
+            // Если еще не откалиброваны, сбрасываем счетчики
             if (!isCalibrated) {
                 pressureAccumulator = 0;
                 sampleCount = 0;
                 return;
             }
             
-            // Расчет высоты (стандартная формула)
+            // Расчет высоты (барометрическая формула)
             float rawAltitude = 44330.0 * (1.0 - pow(livePressure / adaptiveBaseline, 0.190295));
             
             // Адаптивная компенсация дрейфа
             float altChange = abs(rawAltitude - lastRawAltitude);
             
+            // Если изменение незначительно, считаем отсчет "стабильным"
             if (altChange < 0.25) {
                 stableReadings++;
             } else {
                 stableReadings = 0;
             }
             
+            // Коэффициент адаптации базовой линии зависит от стабильности
             float baselineAlpha = (stableReadings > STABLE_THRESHOLD) ? 0.05 : 0.001;
             adaptiveBaseline = adaptiveBaseline * (1.0 - baselineAlpha) + livePressure * baselineAlpha;
             lastRawAltitude = rawAltitude;
             
-            // Фильтрация Калманом
+            // Фильтрация шумов фильтром Калмана
             currentAltitude = kalmanUpdate(&kAlt, rawAltitude);
             
-            // Мертвая зона
+            // Программная "мертвая зона" около нуля
             if (abs(currentAltitude) < 0.12) {
                 currentAltitude = 0.00;
             }
@@ -82,7 +87,7 @@ namespace Sensors {
             currentTemp = readTemperature();
             isStable = (stableReadings > STABLE_THRESHOLD);
 
-            // Отладочный лог в Serial
+            // Отладочный лог в Serial (теперь каждые 0.5 сек)
             if (isLogging) {
                 float relTime = (now - logStartTime) / 1000.0;
                 Serial.print("["); Serial.print(relTime, 1); Serial.print("s] ");
@@ -91,6 +96,7 @@ namespace Sensors {
                 Serial.println(isStable ? "STABLE" : "MOVING");
             }
 
+            // Сброс накопителей для следующего цикла
             pressureAccumulator = 0;
             sampleCount = 0;
         }
