@@ -3,6 +3,10 @@
 #include "src/core/Sensors.h"
 #include "src/core/Network.h"
 
+// Переключение АЦП в режим измерения напряжения питания (VCC)
+// В этом режиме чтение аналогового пина A0 становится невозможным.
+ADC_MODE(ADC_VCC);
+
 void setup() {
     delay(500);
     Serial.begin(115200);

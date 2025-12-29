@@ -7,17 +7,19 @@
 #include "../network/handlers/CalibrationHandler.h"
 #include "../network/handlers/ControlHandler.h"
 #include "../network/handlers/ProgramHandler.h"
+#include "../network/handlers/SystemHandler.h"
 
 namespace Network {
     // Forward declarations
     void handleStatus();
     void handleCalibrate();
-    void handleCancel(); // Новый обработчик
+    void handleCancel();
     void handleSaveCalib();
     void handleZero();
     void handleBaroControl();
     void handleLogControl();
     void handleProgramUpload();
+    void handleSystem(); // Новый обработчик
     
     /**
      * Настройка Wi-Fi и маршрутов сервера
@@ -27,8 +29,9 @@ namespace Network {
         
         Serial.println("[WebServer] Регистрация эндпоинтов...");
         server.on("/status", HTTP_GET, handleStatus);
+        server.on("/system", HTTP_GET, handleSystem); // Регистрация /system
         server.on("/calibrate", HTTP_GET, handleCalibrate);
-        server.on("/cancel", HTTP_GET, handleCancel); // Регистрация /cancel
+        server.on("/cancel", HTTP_GET, handleCancel);
         server.on("/calibrate/save", HTTP_GET, handleSaveCalib);
         server.on("/zero", HTTP_GET, handleZero);
         server.on("/baro", HTTP_GET, handleBaroControl);

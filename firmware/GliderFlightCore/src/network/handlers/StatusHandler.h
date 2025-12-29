@@ -7,7 +7,7 @@
 
 namespace Network {
     /**
-     * Возвращает полный статус устройства
+     * Возвращает полный статус устройства (Телеметрия)
      */
     void handleStatus() {
         Serial.println("[HTTP] Запрос статуса /status");
@@ -22,10 +22,13 @@ namespace Network {
         
         // Статус калибровки для UI
         doc["calibrating"] = (Sensors::calibState != Sensors::CALIB_IDLE);
-        doc["calib_phase"] = Sensors::getCalibrationPhase(); // "stabilization", "measuring", "idle"
-        doc["calib_progress"] = Sensors::getCalibrationProgress(); // 0-100
+        doc["calib_phase"] = Sensors::getCalibrationPhase();
+        doc["calib_progress"] = Sensors::getCalibrationProgress();
         
         doc["stored_base"] = Sensors::storedBasePressure;
+        
+        // Напряжение питания (в Вольтах)
+        doc["vcc"] = ESP.getVcc() / 1000.0;
         
         if (Sensors::isMonitoring) {
             doc["current_p"] = Sensors::livePressure;
