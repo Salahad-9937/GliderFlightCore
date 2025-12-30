@@ -1,10 +1,14 @@
 import '../../../../features/flight_programs/domain/entities/flight_program.dart';
 import '../entities/device.dart';
+import '../entities/system_health.dart';
 
 /// Абстрактный репозиторий для взаимодействия с устройством.
 abstract class DeviceRepository {
   /// Пытается подключиться к устройству в режиме точки доступа.
   Future<Device> connectToDeviceAP();
+
+  /// Получает расширенную диагностику системы.
+  Future<SystemHealth> getSystemHealth(String ipAddress);
 
   /// Загружает полетную программу на устройство.
   Future<bool> uploadProgram(String ipAddress, FlightProgram program);

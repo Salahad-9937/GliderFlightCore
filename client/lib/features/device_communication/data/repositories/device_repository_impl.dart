@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../../../features/flight_programs/domain/entities/flight_program.dart';
 import '../../domain/entities/device.dart';
 import '../../domain/entities/device_status.dart';
+import '../../domain/entities/system_health.dart';
 import '../../domain/repositories/device_repository.dart';
 
 /// Провайдер для репозитория устройства.
@@ -37,7 +38,7 @@ class DeviceRepositoryImpl implements DeviceRepository {
           currentPressure: (json['current_p'] as num?)?.toDouble(),
           altitude: (json['alt'] as num?)?.toDouble(),
           temperature: (json['temp'] as num?)?.toDouble(),
-          vcc: (json['vcc'] as num?)?.toDouble(), // Парсинг напряжения
+          vcc: (json['vcc'] as num?)?.toDouble(),
           isStable: json['stable'] ?? false,
           basePressure: (json['base'] as num?)?.toDouble(),
           calibrationPhase: json['calib_phase'],
@@ -54,6 +55,18 @@ class DeviceRepositoryImpl implements DeviceRepository {
         status: DeviceStatus.error,
         errorMessage: 'Нет связи с $_apIpAddress',
       );
+    }
+  }
+
+  @override
+  Future<SystemHealth> getSystemHealth(String ipAddress) async {
+    final url = Uri.http(ipAddress, '/system');
+    final response = await http.get(url).timeout(const Duration(seconds: 3));
+
+    if (response.statusCode == 200) {
+      return SystemHealth.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Ошибка получения диагностики: ${response.statusCode}');
     }
   }
 
