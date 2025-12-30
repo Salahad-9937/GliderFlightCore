@@ -25,6 +25,7 @@ class Device {
   final double? currentPressure; // Текущее давление (live)
   final double? basePressure;    // Базовое давление (активное)
   final double? storedBasePressure; // Сохраненное в памяти давление
+  final double? vcc;             // Напряжение питания (Вольты)
 
   // --- Данные процесса калибровки (Real-time) ---
   final String? calibrationPhase; // "stabilization", "measuring", "zeroing", "idle"
@@ -45,6 +46,7 @@ class Device {
     this.currentPressure,
     this.basePressure,
     this.storedBasePressure,
+    this.vcc,
     this.calibrationPhase,
     this.calibrationProgress,
   });
@@ -65,6 +67,7 @@ class Device {
     double? currentPressure,
     double? basePressure,
     double? storedBasePressure,
+    double? vcc,
     String? calibrationPhase,
     int? calibrationProgress,
   }) {
@@ -83,6 +86,7 @@ class Device {
       currentPressure: currentPressure ?? this.currentPressure,
       basePressure: basePressure ?? this.basePressure,
       storedBasePressure: storedBasePressure ?? this.storedBasePressure,
+      vcc: vcc ?? this.vcc,
       calibrationPhase: calibrationPhase ?? this.calibrationPhase,
       calibrationProgress: calibrationProgress ?? this.calibrationProgress,
     );

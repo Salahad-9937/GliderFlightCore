@@ -5,9 +5,7 @@ import '../../domain/entities/device.dart';
 import '../providers/device_connection_providers.dart';
 import 'calibration_bottom_sheet.dart';
 
-/// Виджет отображения телеметрии.
-///
-/// Управление мониторингом теперь автоматизировано и удалено из UI.
+/// Виджет отображения телеметрии (высота, температура, давление, напряжение).
 class TelemetryDashboard extends ConsumerWidget {
   const TelemetryDashboard({super.key});
 
@@ -29,6 +27,7 @@ class TelemetryDashboard extends ConsumerWidget {
     final altitude = device.altitude?.toStringAsFixed(1) ?? '--';
     final temp = device.temperature?.toStringAsFixed(1) ?? '--';
     final pressure = device.currentPressure?.toStringAsFixed(0) ?? '--';
+    final vcc = device.vcc?.toStringAsFixed(2) ?? '--';
     final altColor = device.isStable ? Colors.white : Colors.amberAccent;
 
     return Column(
@@ -81,10 +80,19 @@ class TelemetryDashboard extends ConsumerWidget {
         const SizedBox(height: 24),
 
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _buildInfoItem(context, Icons.thermostat, '$temp°C', 'Температура'),
             _buildInfoItem(context, Icons.speed, '$pressure Pa', 'Давление'),
+            _buildInfoItem(
+              context,
+              Icons.bolt,
+              '$vcc V',
+              'Питание',
+              color: (device.vcc != null && device.vcc! < 3.0)
+                  ? Colors.redAccent
+                  : null,
+            ),
           ],
         ),
 
@@ -162,15 +170,21 @@ class TelemetryDashboard extends ConsumerWidget {
     BuildContext context,
     IconData icon,
     String value,
-    String label,
-  ) {
+    String label, {
+    Color? color,
+  }) {
     return Column(
       children: [
         Row(
           children: [
-            Icon(icon, size: 18, color: Colors.grey),
-            const SizedBox(width: 6),
-            Text(value, style: Theme.of(context).textTheme.titleMedium),
+            Icon(icon, size: 16, color: color ?? Colors.grey),
+            const SizedBox(width: 4),
+            Text(
+              value,
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(color: color),
+            ),
           ],
         ),
         const SizedBox(height: 2),
@@ -178,7 +192,7 @@ class TelemetryDashboard extends ConsumerWidget {
           label,
           style: Theme.of(
             context,
-          ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+          ).textTheme.bodySmall?.copyWith(color: Colors.grey, fontSize: 10),
         ),
       ],
     );

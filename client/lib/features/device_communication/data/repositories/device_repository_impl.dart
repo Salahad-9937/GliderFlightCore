@@ -37,6 +37,7 @@ class DeviceRepositoryImpl implements DeviceRepository {
           currentPressure: (json['current_p'] as num?)?.toDouble(),
           altitude: (json['alt'] as num?)?.toDouble(),
           temperature: (json['temp'] as num?)?.toDouble(),
+          vcc: (json['vcc'] as num?)?.toDouble(), // Парсинг напряжения
           isStable: json['stable'] ?? false,
           basePressure: (json['base'] as num?)?.toDouble(),
           calibrationPhase: json['calib_phase'],
