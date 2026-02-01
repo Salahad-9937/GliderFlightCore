@@ -17,7 +17,8 @@ namespace Network
     void fillCalibrationStatus(JsonObject &doc)
     {
         doc["calibrated"] = Sensors::sys.calibrated;
-        doc["calibrating"] = (Sensors::calibState != Sensors::CALIB_IDLE);
+        // Полиморфный вызов вместо проверки enum
+        doc["calibrating"] = Sensors::currentState->isMeasuring();
         doc["calib_phase"] = Sensors::getCalibrationPhase();
         doc["calib_progress"] = Sensors::getCalibrationProgress();
         doc["stored_base"] = Sensors::storedBasePressure;
@@ -45,7 +46,6 @@ namespace Network
     void handleStatus()
     {
         Serial.println("[HTTP] Запрос статуса /status");
-
         StaticJsonDocument<512> doc;
         JsonObject obj = doc.to<JsonObject>();
 
@@ -56,7 +56,6 @@ namespace Network
         String output;
         serializeJson(doc, output);
         server.send(200, "application/json", output);
-
         Serial.print("[HTTP] Ответ отправлен: ");
         Serial.println(output);
     }

@@ -9,147 +9,163 @@
 
 namespace Sensors
 {
-    // Предварительное объявление для доступа к sys
-    struct SystemStatus;
-    extern SystemStatus sys;
 
-    enum CalibState
+    class CalibrationState
     {
-        CALIB_IDLE,
-        CALIB_WARMUP,
-        CALIB_MEASURING,
-        CALIB_ZEROING
+    public:
+        virtual void update(unsigned long now) = 0;
+        virtual int getProgress() = 0;
+        virtual String getPhaseName() = 0;
+        virtual void onEnter() {}
+        virtual bool isMeasuring() { return true; }
+        virtual bool isIdle() { return false; }
     };
-
-    struct CalibrationSession
-    {
-        unsigned long startTime = 0;
-        int samplesCollected = 0;
-        double pressureSum = 0;
-        const int targetFull = 2000;
-        const int targetZero = 500;
-        const int warmupMs = 10000;
-    };
-
-    CalibState calibState = CALIB_IDLE;
-    CalibrationSession session;
-    unsigned long lastSampleTime = 0;
 
     double basePressure = 0;
     double adaptiveBaseline = 0;
     double storedBasePressure = 0;
-
     extern KalmanState kAlt;
     extern int stableReadings;
 
-    // --- Вспомогательные методы ---
-
-    void handleWarmupPhase(unsigned long now)
+    class IdleState : public CalibrationState
     {
-        if (now - lastSampleTime >= 50)
-        {
-            lastSampleTime = now;
-            readPressure();
-            readTemperature();
-        }
-        if (now - session.startTime >= session.warmupMs)
-        {
-            Serial.println("[Sensors] Термостабилизация завершена -> Сбор данных");
-            calibState = CALIB_MEASURING;
-            lastSampleTime = now;
-            session.pressureSum = 0;
-            session.samplesCollected = 0;
-        }
-    }
+    public:
+        void update(unsigned long now) override {}
+        int getProgress() override { return 0; }
+        String getPhaseName() override { return "idle"; }
+        bool isMeasuring() override { return false; }
+        bool isIdle() override { return true; }
+    };
 
-    void handleMeasuringPhase(unsigned long now)
+    class WarmupState : public CalibrationState
     {
-        if (now - lastSampleTime >= 5)
-        {
-            lastSampleTime = now;
-            session.pressureSum += readPressure();
-            session.samplesCollected++;
+        unsigned long startTime;
+        unsigned long lastSample;
 
-            if (session.samplesCollected >= session.targetFull)
+    public:
+        void onEnter() override
+        {
+            startTime = lastSample = millis();
+        }
+        void update(unsigned long now) override
+        {
+            if (now - lastSample >= 50)
             {
-                basePressure = session.pressureSum / (double)session.targetFull;
-                adaptiveBaseline = basePressure;
-                kAlt.x = 0;
-                sys.calibrated = true;
-                calibState = CALIB_IDLE;
-
-                Serial.print("[Sensors] Калибровка завершена. База: ");
-                Serial.println(basePressure, 2);
+                lastSample = now;
+                readPressure();
+                readTemperature();
+            }
+            if (now - startTime >= 10000)
+            {
+                Serial.println("[Sensors] Термостабилизация завершена -> Сбор данных");
+                void transitionToMeasuring();
+                transitionToMeasuring();
             }
         }
-    }
+        int getProgress() override
+        {
+            return constrain(((millis() - startTime) * 100) / 10000, 0, 99);
+        }
+        String getPhaseName() override { return "stabilization"; }
+    };
 
-    void handleZeroingPhase()
+    class MeasuringState : public CalibrationState
     {
-        session.pressureSum += readPressure();
-        session.samplesCollected++;
+        int samples = 0;
+        double sum = 0;
+        unsigned long lastSample;
 
-        if (session.samplesCollected >= session.targetZero)
+    public:
+        void onEnter() override
         {
-            adaptiveBaseline = session.pressureSum / (double)session.targetZero;
-            kAlt.x = 0;
-            stableReadings = 0;
-            sys.calibrated = true;
-            calibState = CALIB_IDLE;
-
-            Serial.print("[Sensors] Ноль установлен: ");
-            Serial.println(adaptiveBaseline, 2);
+            samples = 0;
+            sum = 0;
+            lastSample = millis();
         }
-    }
+        void update(unsigned long now) override
+        {
+            if (now - lastSample >= 5)
+            {
+                lastSample = now;
+                sum += readPressure();
+                samples++;
 
-    // --- Публичный интерфейс ---
+                if (samples >= 2000)
+                {
+                    basePressure = sum / 2000.0;
+                    adaptiveBaseline = basePressure;
+                    kAlt.x = 0;
+                    sys.calibrated = true;
+                    Serial.print("[Sensors] Калибровка завершена. База: ");
+                    Serial.println(basePressure, 2);
+                    void transitionToIdle();
+                    transitionToIdle();
+                }
+            }
+        }
+        int getProgress() override { return constrain((samples * 100) / 2000, 0, 99); }
+        String getPhaseName() override { return "measuring"; }
+    };
 
-    int getCalibrationProgress()
+    class ZeroingState : public CalibrationState
     {
-        if (calibState == CALIB_IDLE)
-            return 0;
-        if (calibState == CALIB_WARMUP)
+        int samples = 0;
+        double sum = 0;
+
+    public:
+        void onEnter() override
         {
-            unsigned long elapsed = millis() - session.startTime;
-            return constrain((elapsed * 100) / session.warmupMs, 0, 99);
+            samples = 0;
+            sum = 0;
         }
-        if (calibState == CALIB_MEASURING)
+        void update(unsigned long now) override
         {
-            return constrain((session.samplesCollected * 100) / session.targetFull, 0, 99);
+            sum += readPressure();
+            samples++;
+
+            if (samples >= 500)
+            {
+                adaptiveBaseline = sum / 500.0;
+                kAlt.x = 0;
+                stableReadings = 0;
+                sys.calibrated = true;
+                Serial.print("[Sensors] Ноль установлен: ");
+                Serial.println(adaptiveBaseline, 2);
+                void transitionToIdle();
+                transitionToIdle();
+            }
         }
-        if (calibState == CALIB_ZEROING)
-        {
-            return constrain((session.samplesCollected * 100) / session.targetZero, 0, 99);
-        }
-        return 100;
+        int getProgress() override { return constrain((samples * 100) / 500, 0, 99); }
+        String getPhaseName() override { return "zeroing"; }
+    };
+
+    IdleState idleStateObj;
+    WarmupState warmupStateObj;
+    MeasuringState measuringStateObj;
+    ZeroingState zeroingStateObj;
+    CalibrationState *currentState = &idleStateObj;
+
+    void transitionToIdle()
+    {
+        currentState = &idleStateObj;
+        currentState->onEnter();
+    }
+    void transitionToMeasuring()
+    {
+        currentState = &measuringStateObj;
+        currentState->onEnter();
     }
 
-    String getCalibrationPhase()
-    {
-        switch (calibState)
-        {
-        case CALIB_WARMUP:
-            return "stabilization";
-        case CALIB_MEASURING:
-            return "measuring";
-        case CALIB_ZEROING:
-            return "zeroing";
-        default:
-            return "idle";
-        }
-    }
+    bool isCalibrationIdle() { return currentState->isIdle(); }
 
     void startCalibration()
     {
         if (!sys.hardwareOK)
             return;
         Serial.println("[Sensors] Запуск неблокирующей калибровки...");
-        calibState = CALIB_WARMUP;
-        session.startTime = millis();
-        lastSampleTime = millis();
         sys.calibrated = false;
-        session.pressureSum = 0;
-        session.samplesCollected = 0;
+        currentState = &warmupStateObj;
+        currentState->onEnter();
     }
 
     void startZeroing()
@@ -157,36 +173,25 @@ namespace Sensors
         if (!sys.hardwareOK)
             return;
         Serial.println("[Sensors] Запуск неблокирующего обнуления...");
-        calibState = CALIB_ZEROING;
-        session.startTime = millis();
-        lastSampleTime = millis();
-        session.pressureSum = 0;
-        session.samplesCollected = 0;
+        currentState = &zeroingStateObj;
+        currentState->onEnter();
     }
 
     void cancel()
     {
-        if (calibState == CALIB_IDLE)
+        if (currentState->isIdle())
             return;
         Serial.println("[Sensors] Операция прервана пользователем!");
-        calibState = CALIB_IDLE;
-        session.pressureSum = 0;
-        session.samplesCollected = 0;
+        transitionToIdle();
     }
 
     void updateCalibrationLogic()
     {
-        if (calibState == CALIB_IDLE)
-            return;
-        unsigned long now = millis();
-
-        if (calibState == CALIB_WARMUP)
-            handleWarmupPhase(now);
-        else if (calibState == CALIB_MEASURING)
-            handleMeasuringPhase(now);
-        else if (calibState == CALIB_ZEROING)
-            handleZeroingPhase();
+        currentState->update(millis());
     }
+
+    int getCalibrationProgress() { return currentState->getProgress(); }
+    String getCalibrationPhase() { return currentState->getPhaseName(); }
 
     bool saveToFS()
     {
@@ -217,9 +222,7 @@ namespace Sensors
             double val = doc["basePressure"];
             if (val > 0)
             {
-                storedBasePressure = val;
-                basePressure = val;
-                adaptiveBaseline = val;
+                storedBasePressure = basePressure = adaptiveBaseline = val;
                 kAlt.x = 0;
                 sys.calibrated = true;
                 Serial.print("[Sensors] Данные успешно загружены из ФС: ");

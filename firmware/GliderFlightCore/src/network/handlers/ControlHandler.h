@@ -6,6 +6,9 @@
 
 namespace Network
 {
+    /**
+     * Быстрое обнуление высоты (Асинхронное)
+     */
     void handleZero()
     {
         Serial.println("[HTTP] Команда на обнуление /zero");
@@ -15,16 +18,22 @@ namespace Network
             return;
         }
 
-        if (Sensors::calibState != Sensors::CALIB_IDLE)
+        // Используем полиморфный метод вместо проверки enum
+        if (!Sensors::isCalibrationIdle())
         {
             server.send(409, "text/plain", "Calibration/Zeroing already in progress");
             return;
         }
 
         Sensors::startZeroing();
+        // 202 Accepted - запрос принят, выполняется в фоне
         server.send(202, "text/plain", "Zeroing started");
     }
 
+    /**
+     * Включение/выключение мониторинга барометра
+     * Использование: /baro?enable=1 или /baro?enable=0
+     */
     void handleBaroControl()
     {
         if (server.hasArg("enable"))
@@ -41,6 +50,10 @@ namespace Network
         }
     }
 
+    /**
+     * Управление выводом логов в Serial терминал
+     * Использование: /log?enable=1 или /log?enable=0
+     */
     void handleLogControl()
     {
         if (server.hasArg("enable"))
@@ -59,4 +72,5 @@ namespace Network
         }
     }
 }
+
 #endif
