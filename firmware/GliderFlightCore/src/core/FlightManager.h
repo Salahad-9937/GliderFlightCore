@@ -17,9 +17,15 @@ namespace Flight
 
     FlightState currentState = STATE_SETUP;
 
+    // Состояние датчика
     bool lastHallState = HIGH;
     unsigned long pressStartTime = 0;
-    bool isWaitRelease = false;
+    unsigned long lastReleaseTime = 0;
+
+    // Флаги логики
+    bool isHolding = false;
+    bool readyForFlightRelease = false;
+    int clickCount = 0;
 
     /**
      * Логика переходов между состояниями
@@ -37,15 +43,14 @@ namespace Flight
         {
         case STATE_SETUP:
             Serial.println("--- System Mode: SETUP (Wi-Fi ON) ---");
+            if (oldState != STATE_SETUP)
+                Network::setupWiFi();
             break;
 
         case STATE_ARMED:
             Serial.println("--- System Mode: ARMED (Ready to Launch) ---");
-            // Если вернулись из полета — включаем Wi-Fi обратно
             if (oldState == STATE_FLIGHT)
-            {
                 Network::setupWiFi();
-            }
             break;
 
         case STATE_FLIGHT:
@@ -56,33 +61,29 @@ namespace Flight
     }
 
     /**
-     * Обработка короткого нажатия (Цикл вперед)
+     * Переход вперед (через Long Press)
      */
-    void handleShortPress()
+    void handleForwardTransition()
     {
         if (currentState == STATE_SETUP)
         {
             transitionTo(STATE_ARMED);
         }
-        else if (currentState == STATE_ARMED)
-        {
-            transitionTo(STATE_FLIGHT);
-        }
     }
 
     /**
-     * Обработка длинного нажатия (Цикл назад / Отмена)
+     * Переход назад (через Double Click)
      */
-    void handleLongPress()
+    void handleBackwardTransition()
     {
         if (currentState == STATE_ARMED)
         {
-            Serial.println("[Flight] Отмена взведения -> SETUP");
+            Serial.println("[Flight] Возврат: ARMED -> SETUP");
             transitionTo(STATE_SETUP);
         }
         else if (currentState == STATE_FLIGHT)
         {
-            Serial.println("[Flight] Прерывание полета -> ARMED");
+            Serial.println("[Flight] Прерывание: FLIGHT -> ARMED");
             transitionTo(STATE_ARMED);
         }
     }
@@ -91,7 +92,7 @@ namespace Flight
     {
         pinMode(PIN_HALL, INPUT_PULLUP);
         lastHallState = digitalRead(PIN_HALL);
-        Serial.println("[Flight] Менеджер полета инициализирован.");
+        Serial.println("[Flight] Менеджер полета (Advanced Hall Logic) готов.");
     }
 
     void update()
@@ -99,33 +100,69 @@ namespace Flight
         bool currentHallState = digitalRead(PIN_HALL);
         unsigned long now = millis();
 
-        // Детекция нажатия (LOW)
+        // 1. Детекция нажатия (Магнит поднесен)
         if (currentHallState == LOW && lastHallState == HIGH)
         {
             pressStartTime = now;
-            isWaitRelease = true;
-        }
-        // Детекция отпускания (HIGH)
-        else if (currentHallState == HIGH && lastHallState == LOW)
-        {
-            unsigned long duration = now - pressStartTime;
-
-            if (duration >= LONG_PRESS_MS)
-            {
-                handleLongPress();
-            }
-            else if (duration >= DEBOUNCE_MS)
-            {
-                handleShortPress();
-            }
-            isWaitRelease = false;
+            isHolding = true;
+            readyForFlightRelease = false;
         }
 
-        // Автоматическое срабатывание длинного нажатия без отпускания
-        if (isWaitRelease && (now - pressStartTime >= LONG_PRESS_MS))
+        // 2. Логика во время удержания
+        if (isHolding)
         {
-            handleLongPress();
-            isWaitRelease = false;
+            unsigned long holdDuration = now - pressStartTime;
+
+            if (holdDuration >= LONG_PRESS_MS)
+            {
+                if (currentState == STATE_SETUP)
+                {
+                    handleForwardTransition();
+                    isHolding = false; // Сбрасываем, чтобы не срабатывало по кругу
+                }
+                else if (currentState == STATE_ARMED)
+                {
+                    // Для полета только взводим флаг, ждем отпускания
+                    if (!readyForFlightRelease)
+                    {
+                        Serial.println("[Flight] Система готова к пуску (отпустите магнит)");
+                        readyForFlightRelease = true;
+                    }
+                }
+            }
+        }
+
+        // 3. Детекция отпускания (Магнит удален)
+        if (currentHallState == HIGH && lastHallState == LOW)
+        {
+            unsigned long pressDuration = now - pressStartTime;
+            isHolding = false;
+
+            if (readyForFlightRelease)
+            {
+                // Специфический переход в полет по отпусканию
+                if (currentState == STATE_ARMED)
+                {
+                    transitionTo(STATE_FLIGHT);
+                }
+                readyForFlightRelease = false;
+            }
+            else if (pressDuration >= DEBOUNCE_MS && pressDuration < LONG_PRESS_MS)
+            {
+                // Считаем клики для двойного нажатия
+                clickCount++;
+                lastReleaseTime = now;
+            }
+        }
+
+        // 4. Обработка двойного клика по таймауту
+        if (clickCount > 0 && (now - lastReleaseTime >= DOUBLE_CLICK_MS))
+        {
+            if (clickCount == 2)
+            {
+                handleBackwardTransition();
+            }
+            clickCount = 0;
         }
 
         lastHallState = currentHallState;
