@@ -5,12 +5,11 @@
 #include "BarometerDriver.h"
 #include "KalmanFilter.h"
 #include "Calibration.h"
+#include "TelemetryData.h"
 #include "../config/Config.h"
 
 namespace Sensors
 {
-    struct SystemStatus;
-    extern SystemStatus sys;
 
     class PressureSampler
     {
@@ -45,15 +44,11 @@ namespace Sensors
         const float altExponent = 0.190295;
         const float stabilityThreshold = 0.25;
         const float deadZone = 0.12;
+        const unsigned long interval = BARO_INTERVAL;
     };
 
-    struct TelemetryData
-    {
-        float altitude = 0;
-        float temperature = 0;
-        bool isStable = false;
-        double pressure = 0;
-    };
+    // Внешние зависимости
+    extern CalibrationData calData;
 
     const AltimeterConfig cfg;
     TelemetryData telemetry;
@@ -68,28 +63,18 @@ namespace Sensors
     void updateAdaptiveBaseline(float rawAltitude)
     {
         float altChange = abs(rawAltitude - lastRawAltitude);
-        if (altChange < cfg.stabilityThreshold)
-        {
-            stableReadings++;
-        }
-        else
-        {
-            stableReadings = 0;
-        }
+        stableReadings = (altChange < cfg.stabilityThreshold) ? stableReadings + 1 : 0;
 
-        float baselineAlpha = (stableReadings > STABLE_THRESHOLD) ? 0.05 : 0.001;
-        adaptiveBaseline = adaptiveBaseline * (1.0 - baselineAlpha) + telemetry.pressure * baselineAlpha;
+        float alpha = (stableReadings > STABLE_THRESHOLD) ? 0.05 : 0.001;
+        calData.adaptiveBaseline = calData.adaptiveBaseline * (1.0 - alpha) + telemetry.pressure * alpha;
         lastRawAltitude = rawAltitude;
     }
 
     void processTelemetryOutput(float rawAltitude, unsigned long now)
     {
         telemetry.altitude = kalmanUpdate(&kAlt, rawAltitude);
-
         if (abs(telemetry.altitude) < cfg.deadZone)
-        {
             telemetry.altitude = 0.00;
-        }
 
         telemetry.temperature = readTemperature();
         telemetry.isStable = (stableReadings > STABLE_THRESHOLD);
@@ -113,12 +98,11 @@ namespace Sensors
     void performCalculations(unsigned long now)
     {
         telemetry.pressure = sampler.getAverageAndReset();
-
         if (!sys.calibrated)
             return;
 
-        float rawAltitude = cfg.altFactor * (1.0 - pow(telemetry.pressure / adaptiveBaseline, cfg.altExponent));
-
+        // Используем calData.adaptiveBaseline явно
+        float rawAltitude = cfg.altFactor * (1.0 - pow(telemetry.pressure / calData.adaptiveBaseline, cfg.altExponent));
         updateAdaptiveBaseline(rawAltitude);
         processTelemetryOutput(rawAltitude, now);
     }
@@ -127,12 +111,9 @@ namespace Sensors
     {
         if (!sys.hardwareOK || !sys.monitoring)
             return;
-
-        // Накопление данных происходит максимально часто (как в оригинале)
         sampler.add(readPressure());
-
         unsigned long now = millis();
-        if (now - last_log_time >= BARO_INTERVAL)
+        if (now - last_log_time >= cfg.interval)
         {
             last_log_time = now;
             performCalculations(now);

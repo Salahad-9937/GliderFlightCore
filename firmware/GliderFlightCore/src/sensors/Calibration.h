@@ -4,6 +4,7 @@
 #include <ArduinoJson.h>
 #include "BarometerDriver.h"
 #include "KalmanFilter.h"
+#include "CalibrationData.h"
 #include "../core/Storage.h"
 #include "../config/Config.h"
 
@@ -16,16 +17,18 @@ namespace Sensors
         virtual void update(unsigned long now) = 0;
         virtual int getProgress() = 0;
         virtual String getPhaseName() = 0;
+        virtual void serialize(JsonObject &doc) = 0;
         virtual void onEnter() {}
         virtual bool isMeasuring() { return true; }
         virtual bool isIdle() { return false; }
     };
 
-    double basePressure = 0;
-    double adaptiveBaseline = 0;
-    double storedBasePressure = 0;
+    // Внешние зависимости
+    extern CalibrationData calData;
     extern KalmanState kAlt;
     extern int stableReadings;
+
+    // --- Реализация состояний ---
 
     class IdleState : public CalibrationState
     {
@@ -35,6 +38,12 @@ namespace Sensors
         String getPhaseName() override { return "idle"; }
         bool isMeasuring() override { return false; }
         bool isIdle() override { return true; }
+        void serialize(JsonObject &doc) override
+        {
+            doc["calibrating"] = false;
+            doc["calib_phase"] = "idle";
+            doc["calib_progress"] = 0;
+        }
     };
 
     class WarmupState : public CalibrationState
@@ -43,10 +52,7 @@ namespace Sensors
         unsigned long lastSample;
 
     public:
-        void onEnter() override
-        {
-            startTime = lastSample = millis();
-        }
+        void onEnter() override { startTime = lastSample = millis(); }
         void update(unsigned long now) override
         {
             if (now - lastSample >= 50)
@@ -62,11 +68,14 @@ namespace Sensors
                 transitionToMeasuring();
             }
         }
-        int getProgress() override
-        {
-            return constrain(((millis() - startTime) * 100) / 10000, 0, 99);
-        }
+        int getProgress() override { return constrain(((millis() - startTime) * 100) / 10000, 0, 99); }
         String getPhaseName() override { return "stabilization"; }
+        void serialize(JsonObject &doc) override
+        {
+            doc["calibrating"] = true;
+            doc["calib_phase"] = getPhaseName();
+            doc["calib_progress"] = getProgress();
+        }
     };
 
     class MeasuringState : public CalibrationState
@@ -89,15 +98,14 @@ namespace Sensors
                 lastSample = now;
                 sum += readPressure();
                 samples++;
-
                 if (samples >= 2000)
                 {
-                    basePressure = sum / 2000.0;
-                    adaptiveBaseline = basePressure;
+                    calData.basePressure = sum / 2000.0;
+                    calData.adaptiveBaseline = calData.basePressure;
                     kAlt.x = 0;
                     sys.calibrated = true;
                     Serial.print("[Sensors] Калибровка завершена. База: ");
-                    Serial.println(basePressure, 2);
+                    Serial.println(calData.basePressure, 2);
                     void transitionToIdle();
                     transitionToIdle();
                 }
@@ -105,6 +113,12 @@ namespace Sensors
         }
         int getProgress() override { return constrain((samples * 100) / 2000, 0, 99); }
         String getPhaseName() override { return "measuring"; }
+        void serialize(JsonObject &doc) override
+        {
+            doc["calibrating"] = true;
+            doc["calib_phase"] = getPhaseName();
+            doc["calib_progress"] = getProgress();
+        }
     };
 
     class ZeroingState : public CalibrationState
@@ -122,21 +136,26 @@ namespace Sensors
         {
             sum += readPressure();
             samples++;
-
             if (samples >= 500)
             {
-                adaptiveBaseline = sum / 500.0;
+                calData.adaptiveBaseline = sum / 500.0;
                 kAlt.x = 0;
                 stableReadings = 0;
                 sys.calibrated = true;
                 Serial.print("[Sensors] Ноль установлен: ");
-                Serial.println(adaptiveBaseline, 2);
+                Serial.println(calData.adaptiveBaseline, 2);
                 void transitionToIdle();
                 transitionToIdle();
             }
         }
         int getProgress() override { return constrain((samples * 100) / 500, 0, 99); }
         String getPhaseName() override { return "zeroing"; }
+        void serialize(JsonObject &doc) override
+        {
+            doc["calibrating"] = true;
+            doc["calib_phase"] = getPhaseName();
+            doc["calib_progress"] = getProgress();
+        }
     };
 
     IdleState idleStateObj;
@@ -185,11 +204,7 @@ namespace Sensors
         transitionToIdle();
     }
 
-    void updateCalibrationLogic()
-    {
-        currentState->update(millis());
-    }
-
+    void updateCalibrationLogic() { currentState->update(millis()); }
     int getCalibrationProgress() { return currentState->getProgress(); }
     String getCalibrationPhase() { return currentState->getPhaseName(); }
 
@@ -197,15 +212,11 @@ namespace Sensors
     {
         if (!sys.calibrated)
             return false;
-        StaticJsonDocument<128> doc;
-        doc["basePressure"] = basePressure;
-        String output;
-        serializeJson(doc, output);
-        if (Storage::saveCalibration(output))
+        if (Storage::saveCalibration(calData.serialize()))
         {
-            storedBasePressure = basePressure;
+            calData.storedBasePressure = calData.basePressure;
             Serial.print("[Sensors] Калибровка сохранена в ФС: ");
-            Serial.println(storedBasePressure, 2);
+            Serial.println(calData.storedBasePressure, 2);
             return true;
         }
         return false;
@@ -213,21 +224,12 @@ namespace Sensors
 
     void loadFromFS()
     {
-        String data = Storage::loadCalibration();
-        if (data == "")
-            return;
-        StaticJsonDocument<128> doc;
-        if (!deserializeJson(doc, data))
+        if (calData.deserialize(Storage::loadCalibration()))
         {
-            double val = doc["basePressure"];
-            if (val > 0)
-            {
-                storedBasePressure = basePressure = adaptiveBaseline = val;
-                kAlt.x = 0;
-                sys.calibrated = true;
-                Serial.print("[Sensors] Данные успешно загружены из ФС: ");
-                Serial.println(storedBasePressure);
-            }
+            kAlt.x = 0;
+            sys.calibrated = true;
+            Serial.print("[Sensors] Данные успешно загружены из ФС: ");
+            Serial.println(calData.storedBasePressure);
         }
     }
 }

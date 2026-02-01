@@ -7,55 +7,24 @@
 
 namespace Network
 {
-
-    void fillHardwareStatus(JsonObject &doc)
-    {
-        doc["hw_ok"] = Sensors::sys.hardwareOK;
-        doc["vcc"] = ESP.getVcc() / 1000.0;
-    }
-
-    void fillCalibrationStatus(JsonObject &doc)
-    {
-        doc["calibrated"] = Sensors::sys.calibrated;
-        // Полиморфный вызов вместо проверки enum
-        doc["calibrating"] = Sensors::currentState->isMeasuring();
-        doc["calib_phase"] = Sensors::getCalibrationPhase();
-        doc["calib_progress"] = Sensors::getCalibrationProgress();
-        doc["stored_base"] = Sensors::storedBasePressure;
-    }
-
-    void fillTelemetryStatus(JsonObject &doc)
-    {
-        doc["monitoring"] = Sensors::sys.monitoring;
-        doc["logging"] = Sensors::sys.logging;
-
-        if (Sensors::sys.monitoring)
-        {
-            doc["current_p"] = Sensors::telemetry.pressure;
-        }
-
-        if (Sensors::sys.calibrated && Sensors::sys.monitoring)
-        {
-            doc["alt"] = Sensors::telemetry.altitude;
-            doc["temp"] = Sensors::telemetry.temperature;
-            doc["stable"] = Sensors::telemetry.isStable;
-            doc["base"] = Sensors::basePressure;
-        }
-    }
-
+    /**
+     * Возвращает полный статус устройства (Телеметрия).
+     * Теперь метод максимально прост и не требует правок при изменении структуры датчиков.
+     */
     void handleStatus()
     {
         Serial.println("[HTTP] Запрос статуса /status");
+
         StaticJsonDocument<512> doc;
         JsonObject obj = doc.to<JsonObject>();
 
-        fillHardwareStatus(obj);
-        fillCalibrationStatus(obj);
-        fillTelemetryStatus(obj);
+        // Делегируем сборку данных самому слою Sensors
+        Sensors::serializeFullStatus(obj);
 
         String output;
         serializeJson(doc, output);
         server.send(200, "application/json", output);
+
         Serial.print("[HTTP] Ответ отправлен: ");
         Serial.println(output);
     }
