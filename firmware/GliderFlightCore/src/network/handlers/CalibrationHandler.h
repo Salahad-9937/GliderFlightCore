@@ -4,23 +4,27 @@
 #include "../../core/Sensors.h"
 #include "../WebServer.h"
 
-namespace Network {
+namespace Network
+{
     /**
      * Запуск процесса калибровки барометра
      */
-    void handleCalibrate() {
+    void handleCalibrate()
+    {
         Serial.println("[HTTP] Команда на калибровку /calibrate");
-        if (!Sensors::isHardwareOK) {
+        if (!Sensors::isHardwareOK)
+        {
             server.send(503, "text/plain", "Hardware Error: Sensor not found");
             Serial.println("[HTTP] Ошибка: датчик не найден");
             return;
         }
-        
-        if (Sensors::calibState != Sensors::CALIB_IDLE) {
-             server.send(409, "text/plain", "Calibration already in progress");
-             return;
+
+        if (Sensors::calibState != Sensors::CALIB_IDLE)
+        {
+            server.send(409, "text/plain", "Calibration already in progress");
+            return;
         }
-        
+
         Sensors::startCalibration();
         server.send(202, "text/plain", "Calibration process started");
     }
@@ -28,7 +32,8 @@ namespace Network {
     /**
      * Отмена текущего процесса (Калибровки или Обнуления)
      */
-    void handleCancel() {
+    void handleCancel()
+    {
         Serial.println("[HTTP] Команда /cancel");
         Sensors::cancelCalibration();
         server.send(200, "text/plain", "Operation cancelled");
@@ -37,11 +42,15 @@ namespace Network {
     /**
      * Сохранение текущей калибровки
      */
-    void handleSaveCalib() {
+    void handleSaveCalib()
+    {
         Serial.println("[HTTP] Запрос сохранения калибровки /calibrate/save");
-        if (Sensors::saveToFS()) {
+        if (Sensors::saveToFS())
+        {
             server.send(200, "text/plain", "Calibration stored in FS");
-        } else {
+        }
+        else
+        {
             server.send(500, "text/plain", "Failed to save calibration");
         }
     }

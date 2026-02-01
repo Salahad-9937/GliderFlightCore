@@ -3,21 +3,24 @@
 
 #include <ESP8266WebServer.h>
 
-namespace Network {
+namespace Network
+{
     // Глобальный экземпляр веб-сервера
     ESP8266WebServer server(80);
 
     /**
      * Обработчик для несуществующих маршрутов
      */
-    void handleNotFound() {
+    void handleNotFound()
+    {
         server.send(404, "text/plain", "Not found");
     }
 
     /**
      * Запуск веб-сервера
      */
-    void startWebServer() {
+    void startWebServer()
+    {
         server.begin();
         Serial.println("[WebServer] Сервер запущен.");
     }
@@ -25,7 +28,8 @@ namespace Network {
     /**
      * Основной цикл обработки HTTP-запросов
      */
-    void processWebServer() {
+    void processWebServer()
+    {
         server.handleClient();
     }
 }

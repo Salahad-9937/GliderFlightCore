@@ -4,13 +4,16 @@
 #include <ESP8266WiFi.h>
 #include "../config/Config.h"
 
-namespace Network {
+namespace Network
+{
     /**
      * Настройка точки доступа Wi-Fi
      */
-    void setupWiFi() {
+    void setupWiFi()
+    {
         Serial.println("[WiFi] Запуск точки доступа...");
-        if (WiFi.softAP(AP_SSID, AP_PASS)) {
+        if (WiFi.softAP(AP_SSID, AP_PASS))
+        {
             Serial.print("[WiFi] IP-адрес: ");
             Serial.println(WiFi.softAPIP());
         }

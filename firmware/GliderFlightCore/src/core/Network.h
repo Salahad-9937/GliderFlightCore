@@ -9,7 +9,8 @@
 #include "../network/handlers/ProgramHandler.h"
 #include "../network/handlers/SystemHandler.h"
 
-namespace Network {
+namespace Network
+{
     // Forward declarations
     void handleStatus();
     void handleCalibrate();
@@ -20,13 +21,14 @@ namespace Network {
     void handleLogControl();
     void handleProgramUpload();
     void handleSystem(); // Новый обработчик
-    
+
     /**
      * Настройка Wi-Fi и маршрутов сервера
      */
-    void setup() {
+    void setup()
+    {
         setupWiFi();
-        
+
         Serial.println("[WebServer] Регистрация эндпоинтов...");
         server.on("/status", HTTP_GET, handleStatus);
         server.on("/system", HTTP_GET, handleSystem); // Регистрация /system
@@ -38,11 +40,12 @@ namespace Network {
         server.on("/log", HTTP_GET, handleLogControl);
         server.on("/program", HTTP_POST, handleProgramUpload);
         server.onNotFound(handleNotFound);
-        
+
         startWebServer();
     }
 
-    void loop() {
+    void loop()
+    {
         processWebServer();
     }
 }
