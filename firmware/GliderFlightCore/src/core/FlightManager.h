@@ -41,12 +41,15 @@ namespace Flight
         {
         case STATE_SETUP:
             Serial.println("--- System Mode: SETUP (Wi-Fi ON) ---");
-            if (oldState != STATE_SETUP)
+            // ИСПРАВЛЕНО: Включаем Wi-Fi только если вернулись из полета.
+            // При переходе ARMED -> SETUP Wi-Fi уже работает, трогать не надо.
+            if (oldState == STATE_FLIGHT)
                 Network::setupWiFi();
             break;
 
         case STATE_ARMED:
             Serial.println("--- System Mode: ARMED (Ready to Launch) ---");
+            // Аналогично: включаем только при возврате из полета
             if (oldState == STATE_FLIGHT)
                 Network::setupWiFi();
             break;
@@ -70,7 +73,7 @@ namespace Flight
     }
 
     /**
-     * Переход назад (Double Click) - Восстановлены оригинальные логи
+     * Переход назад (Double Click)
      */
     void handleBackwardTransition()
     {
