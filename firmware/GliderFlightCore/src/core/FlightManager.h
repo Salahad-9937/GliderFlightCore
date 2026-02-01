@@ -10,178 +10,220 @@ namespace Flight
 {
     using namespace Config;
 
-    FlightState currentState = STATE_SETUP;
-
-    bool lastHallState = HIGH;
-    unsigned long pressStartTime = 0;
-    unsigned long lastReleaseTime = 0;
-
-    bool isHolding = false;
-    bool readyForFlightRelease = false;
-    int clickCount = 0;
+    class FlightMode;
 
     /**
-     * Логика переходов между состояниями
+     * Инкапсуляция физики датчика Холла.
      */
-    void transitionTo(FlightState newState)
+    class HallSensorHandler
     {
-        if (currentState == newState)
+    private:
+        Pin _pin;
+        bool _lastState = HIGH;
+        unsigned long _pressStartTime = 0;
+        unsigned long _lastReleaseTime = 0;
+        bool _isHolding = false;
+        bool _readyForFlightRelease = false;
+        int _clickCount = 0;
+
+        void processPress(unsigned long now)
+        {
+            _pressStartTime = now;
+            _isHolding = true;
+            _readyForFlightRelease = false;
+        }
+
+        void handleHolding(unsigned long now, FlightMode *currentMode);
+        void processRelease(unsigned long now, FlightMode *currentMode);
+        void processClickTimeout(unsigned long now, FlightMode *currentMode);
+
+    public:
+        HallSensorHandler(Pin pin) : _pin(pin) {}
+        void init()
+        {
+            pinMode(_pin, INPUT_PULLUP);
+            _lastState = digitalRead(_pin);
+            Serial.printf("[Flight] Hall sensor initialized on GPIO %d\n", _pin);
+        }
+        void update(unsigned long now, FlightMode *currentMode)
+        {
+            bool currentState = digitalRead(_pin);
+            if (currentState == LOW && _lastState == HIGH)
+                processPress(now);
+            if (_isHolding)
+                handleHolding(now, currentMode);
+            if (currentState == HIGH && _lastState == LOW)
+                processRelease(now, currentMode);
+            processClickTimeout(now, currentMode);
+            _lastState = currentState;
+        }
+    };
+
+    /**
+     * Интерфейс состояний полета.
+     */
+    class FlightMode
+    {
+    public:
+        virtual void onEnter(FlightState oldState) = 0;
+        virtual void update(unsigned long now) = 0;
+        virtual void onDoubleClick() {}
+        virtual void onLongPress() {}
+        virtual void onRelease(bool wasReady) {}
+        virtual FlightState getType() = 0;
+    };
+
+    // --- Определения классов состояний (только интерфейс) ---
+
+    class SetupMode : public FlightMode
+    {
+    public:
+        FlightState getType() override { return STATE_SETUP; }
+        void onEnter(FlightState oldState) override;
+        void update(unsigned long now) override {}
+        void onLongPress() override;
+    };
+
+    class ArmedMode : public FlightMode
+    {
+    public:
+        FlightState getType() override { return STATE_ARMED; }
+        void onEnter(FlightState oldState) override;
+        void update(unsigned long now) override {}
+        void onDoubleClick() override;
+        void onRelease(bool wasReady) override;
+    };
+
+    class InFlightMode : public FlightMode
+    {
+    public:
+        FlightState getType() override { return STATE_FLIGHT; }
+        void onEnter(FlightState oldState) override;
+        void update(unsigned long now) override {}
+        void onDoubleClick() override;
+    };
+
+    // Глобальные объекты состояний
+    extern SetupMode setupModeObj;
+    extern ArmedMode armedModeObj;
+    extern InFlightMode inFlightModeObj;
+
+    extern FlightMode *currentModePtr;
+    extern HallSensorHandler hallHandler;
+
+    // --- Реализация логики переходов и методов (после полных определений классов) ---
+
+    void transitionTo(FlightMode *newMode)
+    {
+        if (currentModePtr == newMode)
             return;
-
-        FlightState oldState = currentState;
-        currentState = newState;
-        Sensors::sys.flightState = newState;
-
-        switch (newState)
-        {
-        case STATE_SETUP:
-            Serial.println("--- System Mode: SETUP (Wi-Fi ON) ---");
-            if (oldState == STATE_FLIGHT)
-                Network::setupWiFi();
-            break;
-
-        case STATE_ARMED:
-            Serial.println("--- System Mode: ARMED (Ready to Launch) ---");
-            if (oldState == STATE_FLIGHT)
-                Network::setupWiFi();
-            break;
-
-        case STATE_FLIGHT:
-            Serial.println("--- System Mode: FLIGHT (Wi-Fi OFF) ---");
-            Network::stopWiFi();
-            break;
-        }
+        FlightState oldType = (currentModePtr) ? currentModePtr->getType() : STATE_SETUP;
+        currentModePtr = newMode;
+        Sensors::sys.flightState = currentModePtr->getType();
+        currentModePtr->onEnter(oldType);
     }
 
-    /**
-     * Переход вперед (Long Press)
-     */
-    void handleForwardTransition()
+    // Реализация SetupMode
+    void SetupMode::onEnter(FlightState oldState)
     {
-        if (currentState == STATE_SETUP)
-        {
-            transitionTo(STATE_ARMED);
-        }
+        Serial.println("--- System Mode: SETUP (Wi-Fi ON) ---");
+        if (oldState == STATE_FLIGHT)
+            Network::setupWiFi();
+    }
+    void SetupMode::onLongPress() { transitionTo(&armedModeObj); }
+
+    // Реализация ArmedMode
+    void ArmedMode::onEnter(FlightState oldState)
+    {
+        Serial.println("--- System Mode: ARMED (Ready to Launch) ---");
+        if (oldState == STATE_FLIGHT)
+            Network::setupWiFi();
+    }
+    void ArmedMode::onDoubleClick()
+    {
+        Serial.println("[Flight] Возврат: ARMED -> SETUP");
+        transitionTo(&setupModeObj);
+    }
+    void ArmedMode::onRelease(bool wasReady)
+    {
+        if (wasReady)
+            transitionTo(&inFlightModeObj);
     }
 
-    /**
-     * Переход назад (Double Click)
-     */
-    void handleBackwardTransition()
+    // Реализация InFlightMode
+    void InFlightMode::onEnter(FlightState oldState)
     {
-        if (currentState == STATE_ARMED)
-        {
-            Serial.println("[Flight] Возврат: ARMED -> SETUP");
-            transitionTo(STATE_SETUP);
-        }
-        else if (currentState == STATE_FLIGHT)
-        {
-            Serial.println("[Flight] Прерывание: FLIGHT -> ARMED");
-            transitionTo(STATE_ARMED);
-        }
+        Serial.println("--- System Mode: FLIGHT (Wi-Fi OFF) ---");
+        Network::stopWiFi();
+    }
+    void InFlightMode::onDoubleClick()
+    {
+        Serial.println("[Flight] Прерывание: FLIGHT -> ARMED");
+        transitionTo(&armedModeObj);
     }
 
-    /**
-     * Вспомогательный метод: Обработка начала нажатия (Extract Method)
-     */
-    void processPress(unsigned long now)
+    // Реализация методов HallSensorHandler
+    void HallSensorHandler::handleHolding(unsigned long now, FlightMode *currentMode)
     {
-        pressStartTime = now;
-        isHolding = true;
-        readyForFlightRelease = false;
-    }
-
-    /**
-     * Вспомогательный метод: Логика удержания (Extract Method)
-     */
-    void handleHolding(unsigned long now)
-    {
-        unsigned long holdDuration = now - pressStartTime;
+        unsigned long holdDuration = now - _pressStartTime;
         if (holdDuration >= LONG_PRESS_MS)
         {
-            if (currentState == STATE_SETUP)
+            if (currentMode->getType() == STATE_SETUP)
             {
-                handleForwardTransition();
-                isHolding = false;
+                currentMode->onLongPress();
+                _isHolding = false;
             }
-            else if (currentState == STATE_ARMED && !readyForFlightRelease)
+            else if (currentMode->getType() == STATE_ARMED && !_readyForFlightRelease)
             {
                 Serial.println("[Flight] Система готова к пуску (отпустите магнит)");
-                readyForFlightRelease = true;
+                _readyForFlightRelease = true;
             }
         }
     }
 
-    /**
-     * Вспомогательный метод: Обработка отпускания кнопки (Extract Method)
-     */
-    void processRelease(unsigned long now)
+    void HallSensorHandler::processRelease(unsigned long now, FlightMode *currentMode)
     {
-        unsigned long pressDuration = now - pressStartTime;
-        isHolding = false;
-
-        if (readyForFlightRelease)
+        unsigned long pressDuration = now - _pressStartTime;
+        _isHolding = false;
+        if (_readyForFlightRelease)
         {
-            if (currentState == STATE_ARMED)
-                transitionTo(STATE_FLIGHT);
-            readyForFlightRelease = false;
+            currentMode->onRelease(true);
+            _readyForFlightRelease = false;
         }
         else if (pressDuration >= DEBOUNCE_MS && pressDuration < LONG_PRESS_MS)
         {
-            clickCount++;
-            lastReleaseTime = now;
+            _clickCount++;
+            _lastReleaseTime = now;
         }
     }
 
-    /**
-     * Вспомогательный метод: Обработка многократных кликов (Extract Method)
-     */
-    void processClickTimeout(unsigned long now)
+    void HallSensorHandler::processClickTimeout(unsigned long now, FlightMode *currentMode)
     {
-        if (clickCount > 0 && (now - lastReleaseTime >= DOUBLE_CLICK_MS))
+        if (_clickCount > 0 && (now - _lastReleaseTime >= DOUBLE_CLICK_MS))
         {
-            if (clickCount == 2)
-            {
-                handleBackwardTransition();
-            }
-            clickCount = 0;
+            if (_clickCount == 2)
+                currentMode->onDoubleClick();
+            _clickCount = 0;
         }
     }
+
+    // Инициализация объектов
+    SetupMode setupModeObj;
+    ArmedMode armedModeObj;
+    InFlightMode inFlightModeObj;
+    FlightMode *currentModePtr = nullptr;
+    HallSensorHandler hallHandler(pins.hall);
 
     void setup()
     {
-        pinMode(pins.hall, INPUT_PULLUP);
-        lastHallState = digitalRead(pins.hall);
-        Serial.printf("[Flight] Hall sensor initialized on GPIO %d\n", pins.hall);
+        hallHandler.init();
+        transitionTo(&setupModeObj);
     }
-
     void update()
     {
-        bool currentHallState = digitalRead(pins.hall);
         unsigned long now = millis();
-
-        // 1. Детекция нажатия
-        if (currentHallState == LOW && lastHallState == HIGH)
-        {
-            processPress(now);
-        }
-
-        // 2. Логика удержания
-        if (isHolding)
-        {
-            handleHolding(now);
-        }
-
-        // 3. Детекция отпускания
-        if (currentHallState == HIGH && lastHallState == LOW)
-        {
-            processRelease(now);
-        }
-
-        // 4. Обработка таймаута кликов
-        processClickTimeout(now);
-
-        lastHallState = currentHallState;
+        hallHandler.update(now, currentModePtr);
+        currentModePtr->update(now);
     }
 }
 #endif

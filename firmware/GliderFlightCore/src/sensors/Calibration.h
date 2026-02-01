@@ -10,7 +10,6 @@
 
 namespace Sensors
 {
-
     class CalibrationState
     {
     public:
@@ -23,12 +22,9 @@ namespace Sensors
         virtual bool isIdle() { return false; }
     };
 
-    // Внешние зависимости
     extern CalibrationData calData;
     extern KalmanState kAlt;
-    extern int stableReadings;
-
-    // --- Реализация состояний ---
+    extern StabilityMonitor stability;
 
     class IdleState : public CalibrationState
     {
@@ -140,7 +136,7 @@ namespace Sensors
             {
                 calData.adaptiveBaseline = sum / 500.0;
                 kAlt.x = 0;
-                stableReadings = 0;
+                stability.reset();
                 sys.calibrated = true;
                 Serial.print("[Sensors] Ноль установлен: ");
                 Serial.println(calData.adaptiveBaseline, 2);
@@ -174,9 +170,7 @@ namespace Sensors
         currentState = &measuringStateObj;
         currentState->onEnter();
     }
-
     bool isCalibrationIdle() { return currentState->isIdle(); }
-
     void startCalibration()
     {
         if (!sys.hardwareOK)
@@ -186,7 +180,6 @@ namespace Sensors
         currentState = &warmupStateObj;
         currentState->onEnter();
     }
-
     void startZeroing()
     {
         if (!sys.hardwareOK)
@@ -195,7 +188,6 @@ namespace Sensors
         currentState = &zeroingStateObj;
         currentState->onEnter();
     }
-
     void cancel()
     {
         if (currentState->isIdle())
@@ -203,11 +195,9 @@ namespace Sensors
         Serial.println("[Sensors] Операция прервана пользователем!");
         transitionToIdle();
     }
-
     void updateCalibrationLogic() { currentState->update(millis()); }
     int getCalibrationProgress() { return currentState->getProgress(); }
     String getCalibrationPhase() { return currentState->getPhaseName(); }
-
     bool saveToFS()
     {
         if (!sys.calibrated)
@@ -221,7 +211,6 @@ namespace Sensors
         }
         return false;
     }
-
     void loadFromFS()
     {
         if (calData.deserialize(Storage::loadCalibration()))

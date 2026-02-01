@@ -7,15 +7,39 @@
 namespace Sensors
 {
     /**
-     * Value Object: Статус системы.
+     * Инкапсуляция логики определения стабильности.
+     * Вынесено сюда для доступа из Calibration и AltitudeCalculator.
      */
+    class StabilityMonitor
+    {
+    private:
+        float _lastRawAltitude = 0;
+        int _stableReadings = 0;
+        const float _threshold;
+
+    public:
+        StabilityMonitor(float threshold) : _threshold(threshold) {}
+
+        float process(float rawAltitude)
+        {
+            float altChange = abs(rawAltitude - _lastRawAltitude);
+            _stableReadings = (altChange < _threshold) ? _stableReadings + 1 : 0;
+            _lastRawAltitude = rawAltitude;
+
+            return (_stableReadings > STABLE_THRESHOLD) ? 0.05 : 0.001;
+        }
+
+        bool isStable() const { return _stableReadings > STABLE_THRESHOLD; }
+        void reset() { _stableReadings = 0; }
+    };
+
     struct SystemStatus
     {
         bool hardwareOK = false;
         bool calibrated = false;
         bool monitoring = false;
         bool logging = false;
-        Config::FlightState flightState = Config::STATE_SETUP; // Строгая типизация вместо int
+        Config::FlightState flightState = Config::STATE_SETUP;
 
         void serialize(JsonObject &doc) const
         {
@@ -24,13 +48,14 @@ namespace Sensors
             doc["vcc"] = ESP.getVcc() / 1000.0;
             doc["monitoring"] = monitoring;
             doc["logging"] = logging;
-            doc["flight_mode"] = (int)flightState; // Передаем режим в приложение как int для совместимости
+            doc["flight_mode"] = (int)flightState;
         }
     };
 
     struct CalibrationData;
     extern SystemStatus sys;
     extern CalibrationData calData;
+    extern StabilityMonitor stability;
 }
 
 #include "../sensors/BarometerDriver.h"
