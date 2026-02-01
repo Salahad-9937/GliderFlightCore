@@ -7,7 +7,6 @@ namespace Sensors
 {
     /**
      * Value Object: Статус системы.
-     * Управляет сериализацией базовых флагов состояния.
      */
     struct SystemStatus
     {
@@ -15,18 +14,19 @@ namespace Sensors
         bool calibrated = false;
         bool monitoring = false;
         bool logging = false;
+        int flightState = 0; // 0: SETUP, 1: ARMED, 2: FLIGHT
 
         void serialize(JsonObject &doc) const
         {
             doc["hw_ok"] = hardwareOK;
-            doc["calibrated"] = calibrated; // ВОССТАНОВЛЕНО: Ключ для мобильного приложения
+            doc["calibrated"] = calibrated;
             doc["vcc"] = ESP.getVcc() / 1000.0;
             doc["monitoring"] = monitoring;
             doc["logging"] = logging;
+            doc["flight_mode"] = flightState; // Передаем режим в приложение
         }
     };
 
-    // Предварительные объявления
     struct CalibrationData;
     extern SystemStatus sys;
     extern CalibrationData calData;
@@ -43,23 +43,12 @@ namespace Sensors
     SystemStatus sys;
     CalibrationData calData;
 
-    /**
-     * Фасад для сборки полного статуса.
-     * Собирает данные из всех подсистем в один JSON объект.
-     */
     void serializeFullStatus(JsonObject &doc)
     {
-        // 1. Базовые флаги (hw_ok, calibrated, vcc, monitoring, logging)
         sys.serialize(doc);
-
-        // 2. Статус процесса калибровки (calibrating, calib_phase, calib_progress)
         currentState->serialize(doc);
-
-        // 3. Данные о базовом давлении
         doc["stored_base"] = calData.storedBasePressure;
         doc["base"] = calData.basePressure;
-
-        // 4. Телеметрия (alt, temp, stable, current_p)
         telemetry.serialize(doc, sys.calibrated, sys.monitoring);
     }
 

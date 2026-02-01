@@ -2,6 +2,7 @@
 #include "src/core/Storage.h"
 #include "src/core/Sensors.h"
 #include "src/core/Network.h"
+#include "src/core/FlightManager.h"
 
 // Переключение АЦП в режим измерения напряжения питания (VCC)
 ADC_MODE(ADC_VCC);
@@ -14,17 +15,21 @@ void setup()
 
     Storage::begin();
     Sensors::begin();
+    Flight::setup(); // Инициализация кнопки Холла
     Network::setup();
 
     pinMode(PIN_LED, OUTPUT);
-    pinMode(PIN_BUTTON, INPUT_PULLUP);
-
     digitalWrite(PIN_LED, HIGH);
+
     Serial.println("--- System Ready (Idle Mode) ---");
 }
 
 void loop()
 {
+    // В режиме полета (FLIGHT) веб-сервер не будет обрабатывать запросы,
+    // так как Wi-Fi физически отключен в FlightManager.
     Network::loop();
+
     Sensors::update();
+    Flight::update(); // Обработка логики полета и кнопки
 }
