@@ -5,16 +5,19 @@
 
 namespace Config
 {
+    // Алиас для типа пина для семантической ясности
+    using Pin = int;
+
     /**
      * Value Object: Конфигурация аппаратных пинов.
      * Позволяет динамически переназначать порты без перепрошивки.
      */
     struct PinConfig
     {
-        int hall = 2; // Датчик Холла
-        int led = 16; // Светодиод
-        int sda = 4;  // I2C SDA
-        int scl = 5;  // I2C SCL
+        Pin hall = 2; // Датчик Холла
+        Pin led = 16; // Светодиод
+        Pin sda = 4;  // I2C SDA
+        Pin scl = 5;  // I2C SCL
 
         void loadDefaults()
         {

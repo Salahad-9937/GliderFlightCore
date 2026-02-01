@@ -8,12 +8,7 @@
 
 namespace Flight
 {
-    enum FlightState
-    {
-        STATE_SETUP,
-        STATE_ARMED,
-        STATE_FLIGHT
-    };
+    using namespace Config;
 
     FlightState currentState = STATE_SETUP;
 
@@ -35,21 +30,18 @@ namespace Flight
 
         FlightState oldState = currentState;
         currentState = newState;
-        Sensors::sys.flightState = (int)newState;
+        Sensors::sys.flightState = newState;
 
         switch (newState)
         {
         case STATE_SETUP:
             Serial.println("--- System Mode: SETUP (Wi-Fi ON) ---");
-            // ИСПРАВЛЕНО: Включаем Wi-Fi только если вернулись из полета.
-            // При переходе ARMED -> SETUP Wi-Fi уже работает, трогать не надо.
             if (oldState == STATE_FLIGHT)
                 Network::setupWiFi();
             break;
 
         case STATE_ARMED:
             Serial.println("--- System Mode: ARMED (Ready to Launch) ---");
-            // Аналогично: включаем только при возврате из полета
             if (oldState == STATE_FLIGHT)
                 Network::setupWiFi();
             break;
@@ -89,6 +81,73 @@ namespace Flight
         }
     }
 
+    /**
+     * Вспомогательный метод: Обработка начала нажатия (Extract Method)
+     */
+    void processPress(unsigned long now)
+    {
+        pressStartTime = now;
+        isHolding = true;
+        readyForFlightRelease = false;
+    }
+
+    /**
+     * Вспомогательный метод: Логика удержания (Extract Method)
+     */
+    void handleHolding(unsigned long now)
+    {
+        unsigned long holdDuration = now - pressStartTime;
+        if (holdDuration >= LONG_PRESS_MS)
+        {
+            if (currentState == STATE_SETUP)
+            {
+                handleForwardTransition();
+                isHolding = false;
+            }
+            else if (currentState == STATE_ARMED && !readyForFlightRelease)
+            {
+                Serial.println("[Flight] Система готова к пуску (отпустите магнит)");
+                readyForFlightRelease = true;
+            }
+        }
+    }
+
+    /**
+     * Вспомогательный метод: Обработка отпускания кнопки (Extract Method)
+     */
+    void processRelease(unsigned long now)
+    {
+        unsigned long pressDuration = now - pressStartTime;
+        isHolding = false;
+
+        if (readyForFlightRelease)
+        {
+            if (currentState == STATE_ARMED)
+                transitionTo(STATE_FLIGHT);
+            readyForFlightRelease = false;
+        }
+        else if (pressDuration >= DEBOUNCE_MS && pressDuration < LONG_PRESS_MS)
+        {
+            clickCount++;
+            lastReleaseTime = now;
+        }
+    }
+
+    /**
+     * Вспомогательный метод: Обработка многократных кликов (Extract Method)
+     */
+    void processClickTimeout(unsigned long now)
+    {
+        if (clickCount > 0 && (now - lastReleaseTime >= DOUBLE_CLICK_MS))
+        {
+            if (clickCount == 2)
+            {
+                handleBackwardTransition();
+            }
+            clickCount = 0;
+        }
+    }
+
     void setup()
     {
         pinMode(pins.hall, INPUT_PULLUP);
@@ -104,58 +163,23 @@ namespace Flight
         // 1. Детекция нажатия
         if (currentHallState == LOW && lastHallState == HIGH)
         {
-            pressStartTime = now;
-            isHolding = true;
-            readyForFlightRelease = false;
+            processPress(now);
         }
 
         // 2. Логика удержания
         if (isHolding)
         {
-            unsigned long holdDuration = now - pressStartTime;
-            if (holdDuration >= LONG_PRESS_MS)
-            {
-                if (currentState == STATE_SETUP)
-                {
-                    handleForwardTransition();
-                    isHolding = false;
-                }
-                else if (currentState == STATE_ARMED && !readyForFlightRelease)
-                {
-                    Serial.println("[Flight] Система готова к пуску (отпустите магнит)");
-                    readyForFlightRelease = true;
-                }
-            }
+            handleHolding(now);
         }
 
         // 3. Детекция отпускания
         if (currentHallState == HIGH && lastHallState == LOW)
         {
-            unsigned long pressDuration = now - pressStartTime;
-            isHolding = false;
-
-            if (readyForFlightRelease)
-            {
-                if (currentState == STATE_ARMED)
-                    transitionTo(STATE_FLIGHT);
-                readyForFlightRelease = false;
-            }
-            else if (pressDuration >= DEBOUNCE_MS && pressDuration < LONG_PRESS_MS)
-            {
-                clickCount++;
-                lastReleaseTime = now;
-            }
+            processRelease(now);
         }
 
-        // 4. Обработка двойного клика
-        if (clickCount > 0 && (now - lastReleaseTime >= DOUBLE_CLICK_MS))
-        {
-            if (clickCount == 2)
-            {
-                handleBackwardTransition();
-            }
-            clickCount = 0;
-        }
+        // 4. Обработка таймаута кликов
+        processClickTimeout(now);
 
         lastHallState = currentHallState;
     }

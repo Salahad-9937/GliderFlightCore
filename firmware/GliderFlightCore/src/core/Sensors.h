@@ -2,6 +2,7 @@
 #define SENSORS_H
 
 #include <ArduinoJson.h>
+#include "../config/Config.h"
 
 namespace Sensors
 {
@@ -14,7 +15,7 @@ namespace Sensors
         bool calibrated = false;
         bool monitoring = false;
         bool logging = false;
-        int flightState = 0; // 0: SETUP, 1: ARMED, 2: FLIGHT
+        Config::FlightState flightState = Config::STATE_SETUP; // Строгая типизация вместо int
 
         void serialize(JsonObject &doc) const
         {
@@ -23,7 +24,7 @@ namespace Sensors
             doc["vcc"] = ESP.getVcc() / 1000.0;
             doc["monitoring"] = monitoring;
             doc["logging"] = logging;
-            doc["flight_mode"] = flightState; // Передаем режим в приложение
+            doc["flight_mode"] = (int)flightState; // Передаем режим в приложение как int для совместимости
         }
     };
 

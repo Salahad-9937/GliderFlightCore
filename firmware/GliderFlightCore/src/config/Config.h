@@ -5,6 +5,19 @@
 
 #define VERSION "v0.7-dynamic-pins"
 
+namespace Config
+{
+    /**
+     * Типизация состояний полета для устранения Primitive Obsession
+     */
+    enum FlightState
+    {
+        STATE_SETUP,
+        STATE_ARMED,
+        STATE_FLIGHT
+    };
+}
+
 const char *AP_SSID = "Glider-Timer";
 const char *AP_PASS = "";
 

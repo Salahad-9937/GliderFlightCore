@@ -60,6 +60,9 @@ namespace Sensors
     unsigned long logStartTime = 0;
     unsigned long last_log_time = 0;
 
+    /**
+     * Обновление адаптивного базиса (Extract Method)
+     */
     void updateAdaptiveBaseline(float rawAltitude)
     {
         float altChange = abs(rawAltitude - lastRawAltitude);
@@ -70,15 +73,11 @@ namespace Sensors
         lastRawAltitude = rawAltitude;
     }
 
-    void processTelemetryOutput(float rawAltitude, unsigned long now)
+    /**
+     * Вывод логов в Serial (Extract Method)
+     */
+    void logTelemetry(unsigned long now)
     {
-        telemetry.altitude = kalmanUpdate(&kAlt, rawAltitude);
-        if (abs(telemetry.altitude) < cfg.deadZone)
-            telemetry.altitude = 0.00;
-
-        telemetry.temperature = readTemperature();
-        telemetry.isStable = (stableReadings > STABLE_THRESHOLD);
-
         if (sys.logging)
         {
             float relTime = (now - logStartTime) / 1000.0;
@@ -95,14 +94,35 @@ namespace Sensors
         }
     }
 
+    /**
+     * Применение фильтрации и расчет финальных значений (Extract Method)
+     */
+    void processTelemetryOutput(float rawAltitude, unsigned long now)
+    {
+        telemetry.altitude = kalmanUpdate(&kAlt, rawAltitude);
+
+        // Применение "мертвой зоны"
+        if (abs(telemetry.altitude) < cfg.deadZone)
+            telemetry.altitude = 0.00;
+
+        telemetry.temperature = readTemperature();
+        telemetry.isStable = (stableReadings > STABLE_THRESHOLD);
+
+        logTelemetry(now);
+    }
+
+    /**
+     * Основной расчетный цикл
+     */
     void performCalculations(unsigned long now)
     {
         telemetry.pressure = sampler.getAverageAndReset();
         if (!sys.calibrated)
             return;
 
-        // Используем calData.adaptiveBaseline явно
+        // Расчет сырой высоты
         float rawAltitude = cfg.altFactor * (1.0 - pow(telemetry.pressure / calData.adaptiveBaseline, cfg.altExponent));
+
         updateAdaptiveBaseline(rawAltitude);
         processTelemetryOutput(rawAltitude, now);
     }
@@ -111,8 +131,10 @@ namespace Sensors
     {
         if (!sys.hardwareOK || !sys.monitoring)
             return;
+
         sampler.add(readPressure());
         unsigned long now = millis();
+
         if (now - last_log_time >= cfg.interval)
         {
             last_log_time = now;
