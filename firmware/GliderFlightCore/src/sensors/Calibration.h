@@ -9,26 +9,31 @@
 
 namespace Sensors
 {
-    // Состояния процесса калибровки
     enum CalibState
     {
         CALIB_IDLE,
-        CALIB_WARMUP,    // Термостабилизация
-        CALIB_MEASURING, // Сбор данных (полная калибровка)
-        CALIB_ZEROING    // Быстрое обнуление
+        CALIB_WARMUP,
+        CALIB_MEASURING,
+        CALIB_ZEROING
     };
 
-    // Переменные состояния
-    CalibState calibState = CALIB_IDLE;
-    unsigned long calibStartTime = 0;
-    unsigned long lastSampleTime = 0;
+    /**
+     * Value Object: Сессия калибровки (устранение Primitive Obsession)
+     */
+    struct CalibrationSession
+    {
+        unsigned long startTime = 0;
+        int samplesCollected = 0;
+        double pressureSum = 0;
+        const int targetFull = 2000;
+        const int targetZero = 500;
+        const int warmupMs = 10000;
+    };
 
-    // Переменные накопления данных
-    int samplesCollected = 0;
-    const int TARGET_SAMPLES_FULL = 2000;
-    const int TARGET_SAMPLES_ZERO = 500;
-    const int WARMUP_DURATION = 10000;
-    double pressureSum = 0;
+    // Состояние
+    CalibState calibState = CALIB_IDLE;
+    CalibrationSession session;
+    unsigned long lastSampleTime = 0;
 
     // Результаты
     double basePressure = 0;
@@ -36,7 +41,6 @@ namespace Sensors
     double storedBasePressure = 0;
     bool isCalibrated = false;
 
-    // Внешние ссылки на фильтр (из AltitudeCalculator)
     extern KalmanState kAlt;
     extern int stableReadings;
 
@@ -50,13 +54,13 @@ namespace Sensors
             readPressure();
             readTemperature();
         }
-        if (now - calibStartTime >= WARMUP_DURATION)
+        if (now - session.startTime >= session.warmupMs)
         {
             Serial.println("[Sensors] Термостабилизация завершена -> Сбор данных");
             calibState = CALIB_MEASURING;
             lastSampleTime = now;
-            pressureSum = 0;
-            samplesCollected = 0;
+            session.pressureSum = 0;
+            session.samplesCollected = 0;
         }
     }
 
@@ -65,12 +69,12 @@ namespace Sensors
         if (now - lastSampleTime >= 5)
         {
             lastSampleTime = now;
-            pressureSum += readPressure();
-            samplesCollected++;
+            session.pressureSum += readPressure();
+            session.samplesCollected++;
 
-            if (samplesCollected >= TARGET_SAMPLES_FULL)
+            if (session.samplesCollected >= session.targetFull)
             {
-                basePressure = pressureSum / (double)TARGET_SAMPLES_FULL;
+                basePressure = session.pressureSum / (double)session.targetFull;
                 adaptiveBaseline = basePressure;
                 kAlt.x = 0;
                 isCalibrated = true;
@@ -84,12 +88,12 @@ namespace Sensors
 
     void handleZeroingPhase()
     {
-        pressureSum += readPressure();
-        samplesCollected++;
+        session.pressureSum += readPressure();
+        session.samplesCollected++;
 
-        if (samplesCollected >= TARGET_SAMPLES_ZERO)
+        if (session.samplesCollected >= session.targetZero)
         {
-            adaptiveBaseline = pressureSum / (double)TARGET_SAMPLES_ZERO;
+            adaptiveBaseline = session.pressureSum / (double)session.targetZero;
             kAlt.x = 0;
             stableReadings = 0;
             isCalibrated = true;
@@ -108,16 +112,16 @@ namespace Sensors
             return 0;
         if (calibState == CALIB_WARMUP)
         {
-            unsigned long elapsed = millis() - calibStartTime;
-            return constrain((elapsed * 100) / WARMUP_DURATION, 0, 99);
+            unsigned long elapsed = millis() - session.startTime;
+            return constrain((elapsed * 100) / session.warmupMs, 0, 99);
         }
         if (calibState == CALIB_MEASURING)
         {
-            return constrain((samplesCollected * 100) / TARGET_SAMPLES_FULL, 0, 99);
+            return constrain((session.samplesCollected * 100) / session.targetFull, 0, 99);
         }
         if (calibState == CALIB_ZEROING)
         {
-            return constrain((samplesCollected * 100) / TARGET_SAMPLES_ZERO, 0, 99);
+            return constrain((session.samplesCollected * 100) / session.targetZero, 0, 99);
         }
         return 100;
     }
@@ -143,11 +147,11 @@ namespace Sensors
             return;
         Serial.println("[Sensors] Запуск неблокирующей калибровки...");
         calibState = CALIB_WARMUP;
-        calibStartTime = millis();
+        session.startTime = millis();
         lastSampleTime = millis();
         isCalibrated = false;
-        pressureSum = 0;
-        samplesCollected = 0;
+        session.pressureSum = 0;
+        session.samplesCollected = 0;
     }
 
     void startZeroing()
@@ -156,10 +160,10 @@ namespace Sensors
             return;
         Serial.println("[Sensors] Запуск неблокирующего обнуления...");
         calibState = CALIB_ZEROING;
-        calibStartTime = millis();
+        session.startTime = millis();
         lastSampleTime = millis();
-        pressureSum = 0;
-        samplesCollected = 0;
+        session.pressureSum = 0;
+        session.samplesCollected = 0;
     }
 
     void cancel()
@@ -168,8 +172,8 @@ namespace Sensors
             return;
         Serial.println("[Sensors] Операция прервана пользователем!");
         calibState = CALIB_IDLE;
-        pressureSum = 0;
-        samplesCollected = 0;
+        session.pressureSum = 0;
+        session.samplesCollected = 0;
     }
 
     void updateCalibrationLogic()

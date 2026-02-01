@@ -20,18 +20,16 @@ namespace Network
     void handleBaroControl();
     void handleLogControl();
     void handleProgramUpload();
-    void handleSystem(); // Новый обработчик
+    void handleSystem();
 
     /**
-     * Настройка Wi-Fi и маршрутов сервера
+     * Регистрация всех API маршрутов (Extract Method)
      */
-    void setup()
+    void registerRoutes()
     {
-        setupWiFi();
-
         Serial.println("[WebServer] Регистрация эндпоинтов...");
         server.on("/status", HTTP_GET, handleStatus);
-        server.on("/system", HTTP_GET, handleSystem); // Регистрация /system
+        server.on("/system", HTTP_GET, handleSystem);
         server.on("/calibrate", HTTP_GET, handleCalibrate);
         server.on("/cancel", HTTP_GET, handleCancel);
         server.on("/calibrate/save", HTTP_GET, handleSaveCalib);
@@ -40,7 +38,15 @@ namespace Network
         server.on("/log", HTTP_GET, handleLogControl);
         server.on("/program", HTTP_POST, handleProgramUpload);
         server.onNotFound(handleNotFound);
+    }
 
+    /**
+     * Настройка Wi-Fi и маршрутов сервера
+     */
+    void setup()
+    {
+        setupWiFi();
+        registerRoutes();
         startWebServer();
     }
 
@@ -49,5 +55,4 @@ namespace Network
         processWebServer();
     }
 }
-
 #endif

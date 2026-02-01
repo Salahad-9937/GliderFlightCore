@@ -8,8 +8,6 @@
 namespace Network
 {
 
-    // --- Модули сборки JSON (Extract Method) ---
-
     void fillHardwareStatus(JsonObject &doc)
     {
         doc["hw_ok"] = Sensors::isHardwareOK;
@@ -32,14 +30,14 @@ namespace Network
 
         if (Sensors::isMonitoring)
         {
-            doc["current_p"] = Sensors::livePressure;
+            doc["current_p"] = Sensors::telemetry.pressure;
         }
 
         if (Sensors::isCalibrated && Sensors::isMonitoring)
         {
-            doc["alt"] = Sensors::currentAltitude;
-            doc["temp"] = Sensors::currentTemp;
-            doc["stable"] = Sensors::isStable;
+            doc["alt"] = Sensors::telemetry.altitude;
+            doc["temp"] = Sensors::telemetry.temperature;
+            doc["stable"] = Sensors::telemetry.isStable;
             doc["base"] = Sensors::basePressure;
         }
     }

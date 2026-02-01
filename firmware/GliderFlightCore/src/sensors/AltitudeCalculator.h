@@ -9,20 +9,38 @@
 
 namespace Sensors
 {
-    // Состояние фильтра Калмана
+    /**
+     * Value Object: Конфигурация алгоритма (устранение Magic Numbers)
+     */
+    struct AltimeterConfig
+    {
+        const float seaLevelPressure = 101325.0;
+        const float altFactor = 44330.0;
+        const float altExponent = 0.190295;
+        const float stabilityThreshold = 0.25;
+        const float deadZone = 0.12;
+    };
+
+    /**
+     * Value Object: Данные телеметрии (устранение Primitive Obsession)
+     */
+    struct TelemetryData
+    {
+        float altitude = 0;
+        float temperature = 0;
+        bool isStable = false;
+        double pressure = 0;
+    };
+
+    // Состояние
+    const AltimeterConfig cfg;
+    TelemetryData telemetry;
     KalmanState kAlt = {0.05, 0.3, 0, 1, 0};
 
-    // Переменные алгоритма
     double pressureAccumulator = 0;
     uint32_t sampleCount = 0;
     float lastRawAltitude = 0;
     int stableReadings = 0;
-
-    // Выходные данные
-    float currentAltitude = 0;
-    float currentTemp = 0;
-    bool isStable = false;
-    double livePressure = 0;
 
     // Управление
     bool isMonitoring = false;
@@ -35,7 +53,7 @@ namespace Sensors
     void updateAdaptiveBaseline(float rawAltitude)
     {
         float altChange = abs(rawAltitude - lastRawAltitude);
-        if (altChange < 0.25)
+        if (altChange < cfg.stabilityThreshold)
         {
             stableReadings++;
         }
@@ -45,21 +63,21 @@ namespace Sensors
         }
 
         float baselineAlpha = (stableReadings > STABLE_THRESHOLD) ? 0.05 : 0.001;
-        adaptiveBaseline = adaptiveBaseline * (1.0 - baselineAlpha) + livePressure * baselineAlpha;
+        adaptiveBaseline = adaptiveBaseline * (1.0 - baselineAlpha) + telemetry.pressure * baselineAlpha;
         lastRawAltitude = rawAltitude;
     }
 
     void processTelemetryOutput(float rawAltitude, unsigned long now)
     {
-        currentAltitude = kalmanUpdate(&kAlt, rawAltitude);
+        telemetry.altitude = kalmanUpdate(&kAlt, rawAltitude);
 
-        if (abs(currentAltitude) < 0.12)
+        if (abs(telemetry.altitude) < cfg.deadZone)
         {
-            currentAltitude = 0.00;
+            telemetry.altitude = 0.00;
         }
 
-        currentTemp = readTemperature();
-        isStable = (stableReadings > STABLE_THRESHOLD);
+        telemetry.temperature = readTemperature();
+        telemetry.isStable = (stableReadings > STABLE_THRESHOLD);
 
         if (isLogging)
         {
@@ -68,12 +86,12 @@ namespace Sensors
             Serial.print(relTime, 1);
             Serial.print("s] ");
             Serial.print("Alt: ");
-            Serial.print(currentAltitude, 2);
+            Serial.print(telemetry.altitude, 2);
             Serial.print("m | ");
             Serial.print("P: ");
-            Serial.print(livePressure, 1);
+            Serial.print(telemetry.pressure, 1);
             Serial.print("Pa | ");
-            Serial.println(isStable ? "STABLE" : "MOVING");
+            Serial.println(telemetry.isStable ? "STABLE" : "MOVING");
         }
     }
 
@@ -81,7 +99,7 @@ namespace Sensors
     {
         if (sampleCount > 0)
         {
-            livePressure = pressureAccumulator / (double)sampleCount;
+            telemetry.pressure = pressureAccumulator / (double)sampleCount;
         }
 
         if (!isCalibrated)
@@ -91,7 +109,8 @@ namespace Sensors
             return;
         }
 
-        float rawAltitude = 44330.0 * (1.0 - pow(livePressure / adaptiveBaseline, 0.190295));
+        // Барометрическая формула с использованием конфига
+        float rawAltitude = cfg.altFactor * (1.0 - pow(telemetry.pressure / adaptiveBaseline, cfg.altExponent));
 
         updateAdaptiveBaseline(rawAltitude);
         processTelemetryOutput(rawAltitude, now);

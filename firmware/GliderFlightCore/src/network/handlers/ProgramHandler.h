@@ -7,6 +7,25 @@
 
 namespace Network
 {
+
+    /**
+     * Валидация и парсинг JSON программы (Extract Method)
+     */
+    bool processProgramJson(String body)
+    {
+        StaticJsonDocument<1024> tempDoc;
+        DeserializationError error = deserializeJson(tempDoc, body);
+
+        if (error)
+        {
+            server.send(400, "text/plain", "Invalid JSON");
+            Serial.print("[HTTP] Ошибка парсинга программы: ");
+            Serial.println(error.c_str());
+            return false;
+        }
+        return true;
+    }
+
     /**
      * Загрузка полетной программы
      */
@@ -21,15 +40,10 @@ namespace Network
         }
 
         String body = server.arg("plain");
-        StaticJsonDocument<1024> tempDoc;
-        DeserializationError error = deserializeJson(tempDoc, body);
 
-        if (error)
+        if (!processProgramJson(body))
         {
-            server.send(400, "text/plain", "Invalid JSON");
-            Serial.print("[HTTP] Ошибка парсинга программы: ");
-            Serial.println(error.c_str());
-            return;
+            return; // Ошибка уже отправлена в processProgramJson
         }
 
         if (Storage::saveProgram(body))
@@ -43,5 +57,4 @@ namespace Network
         }
     }
 }
-
 #endif
