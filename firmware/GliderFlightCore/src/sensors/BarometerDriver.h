@@ -3,6 +3,7 @@
 
 #include <Wire.h>
 #include <Adafruit_BMP085.h>
+#include "../config/Config.h"
 
 namespace Sensors
 {
@@ -11,9 +12,15 @@ namespace Sensors
 
     Adafruit_BMP085 bmp;
 
+    /**
+     * Инициализация шины I2C с использованием динамических пинов
+     */
     void initBarometer()
     {
-        Wire.begin();
+        // Применяем пины из конфигурации
+        Serial.printf("[Sensors] Инициализация I2C (SDA:%d, SCL:%d)...\n", pins.sda, pins.scl);
+        Wire.begin(pins.sda, pins.scl);
+
         if (!bmp.begin(BMP085_ULTRAHIGHRES))
         {
             sys.hardwareOK = false;

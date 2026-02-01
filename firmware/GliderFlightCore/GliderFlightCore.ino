@@ -4,7 +4,9 @@
 #include "src/core/Network.h"
 #include "src/core/FlightManager.h"
 
-// Переключение АЦП в режим измерения напряжения питания (VCC)
+// Определение глобального объекта пинов
+Config::PinConfig pins;
+
 ADC_MODE(ADC_VCC);
 
 void setup()
@@ -13,23 +15,25 @@ void setup()
     Serial.begin(115200);
     Serial.println("\n--- GliderFlightCore " VERSION " ---");
 
+    // 1. Сначала ФС и загрузка пинов
     Storage::begin();
-    Sensors::begin();
-    Flight::setup(); // Инициализация кнопки Холла
-    Network::setup();
+    Storage::loadPins(pins);
 
-    pinMode(PIN_LED, OUTPUT);
-    digitalWrite(PIN_LED, HIGH);
+    // 2. Инициализация базовой периферии
+    pinMode(pins.led, OUTPUT);
+    digitalWrite(pins.led, HIGH);
+
+    // 3. Инициализация подсистем (теперь они видят загруженные пины)
+    Sensors::begin();
+    Flight::setup();
+    Network::setup();
 
     Serial.println("--- System Ready (Idle Mode) ---");
 }
 
 void loop()
 {
-    // В режиме полета (FLIGHT) веб-сервер не будет обрабатывать запросы,
-    // так как Wi-Fi физически отключен в FlightManager.
     Network::loop();
-
     Sensors::update();
-    Flight::update(); // Обработка логики полета и кнопки
+    Flight::update();
 }

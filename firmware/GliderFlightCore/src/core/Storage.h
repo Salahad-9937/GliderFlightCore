@@ -2,6 +2,7 @@
 #define STORAGE_H
 
 #include <LittleFS.h>
+#include "../config/Config.h"
 
 namespace Storage
 {
@@ -20,37 +21,72 @@ namespace Storage
     }
 
     /**
-     * Сохранение полетной программы
+     * Вспомогательный метод для записи файлов с полным логированием (DRY)
      */
-    bool saveProgram(String json)
+    bool writeFile(const char *path, const String &data, const char *logTag)
     {
-        File file = LittleFS.open("/program.json", "w");
+        File file = LittleFS.open(path, "w");
         if (!file)
         {
-            Serial.println("[FS] Failed to open /program.json for writing!");
+            Serial.printf("[FS] Failed to open %s for writing!\n", path);
             return false;
         }
-        size_t bytesWritten = file.print(json);
+        size_t bytesWritten = file.print(data);
         file.close();
 
         if (bytesWritten > 0)
         {
-            Serial.print("[FS] Program saved. Bytes written: ");
-            Serial.println(bytesWritten);
+            if (logTag)
+            {
+                Serial.printf("[FS] %s saved. Bytes written: %d\n", logTag, bytesWritten);
+            }
             return true;
         }
         else
         {
-            Serial.println("[FS] Error: Written 0 bytes!");
+            Serial.printf("[FS] Error: Written 0 bytes to %s!\n", path);
             return false;
         }
     }
 
-    /**
-     * Сохранение данных калибровки
-     */
+    // --- Работа с пинами ---
+
+    void loadPins(Config::PinConfig &p)
+    {
+        if (!LittleFS.exists(PINS_FILE))
+        {
+            Serial.println("[FS] Pins config not found. Using defaults.");
+            p.loadDefaults();
+            return;
+        }
+
+        File file = LittleFS.open(PINS_FILE, "r");
+        if (!file)
+            return;
+        String json = file.readString();
+        file.close();
+
+        if (p.deserialize(json))
+        {
+            Serial.println("[FS] Pins config loaded from LittleFS.");
+        }
+    }
+
+    bool savePins(const Config::PinConfig &p)
+    {
+        return writeFile(PINS_FILE, p.serialize(), "Pins config");
+    }
+
+    // --- Работа с программой и калибровкой ---
+
+    bool saveProgram(String json)
+    {
+        return writeFile("/program.json", json, "Program");
+    }
+
     bool saveCalibration(String json)
     {
+        // Для калибровки используем оригинальный краткий лог из ТЗ
         File file = LittleFS.open(CALIB_FILE, "w");
         if (!file)
         {
@@ -62,9 +98,6 @@ namespace Storage
         return bytes > 0;
     }
 
-    /**
-     * Загрузка данных калибровки
-     */
     String loadCalibration()
     {
         if (!LittleFS.exists(CALIB_FILE))

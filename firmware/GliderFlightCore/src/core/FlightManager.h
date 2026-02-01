@@ -10,19 +10,17 @@ namespace Flight
 {
     enum FlightState
     {
-        STATE_SETUP, // 0: Настройка
-        STATE_ARMED, // 1: Взведен
-        STATE_FLIGHT // 2: Полет
+        STATE_SETUP,
+        STATE_ARMED,
+        STATE_FLIGHT
     };
 
     FlightState currentState = STATE_SETUP;
 
-    // Состояние датчика
     bool lastHallState = HIGH;
     unsigned long pressStartTime = 0;
     unsigned long lastReleaseTime = 0;
 
-    // Флаги логики
     bool isHolding = false;
     bool readyForFlightRelease = false;
     int clickCount = 0;
@@ -61,7 +59,7 @@ namespace Flight
     }
 
     /**
-     * Переход вперед (через Long Press)
+     * Переход вперед (Long Press)
      */
     void handleForwardTransition()
     {
@@ -72,7 +70,7 @@ namespace Flight
     }
 
     /**
-     * Переход назад (через Double Click)
+     * Переход назад (Double Click) - Восстановлены оригинальные логи
      */
     void handleBackwardTransition()
     {
@@ -90,17 +88,17 @@ namespace Flight
 
     void setup()
     {
-        pinMode(PIN_HALL, INPUT_PULLUP);
-        lastHallState = digitalRead(PIN_HALL);
-        Serial.println("[Flight] Менеджер полета (Advanced Hall Logic) готов.");
+        pinMode(pins.hall, INPUT_PULLUP);
+        lastHallState = digitalRead(pins.hall);
+        Serial.printf("[Flight] Hall sensor initialized on GPIO %d\n", pins.hall);
     }
 
     void update()
     {
-        bool currentHallState = digitalRead(PIN_HALL);
+        bool currentHallState = digitalRead(pins.hall);
         unsigned long now = millis();
 
-        // 1. Детекция нажатия (Магнит поднесен)
+        // 1. Детекция нажатия
         if (currentHallState == LOW && lastHallState == HIGH)
         {
             pressStartTime = now;
@@ -108,31 +106,26 @@ namespace Flight
             readyForFlightRelease = false;
         }
 
-        // 2. Логика во время удержания
+        // 2. Логика удержания
         if (isHolding)
         {
             unsigned long holdDuration = now - pressStartTime;
-
             if (holdDuration >= LONG_PRESS_MS)
             {
                 if (currentState == STATE_SETUP)
                 {
                     handleForwardTransition();
-                    isHolding = false; // Сбрасываем, чтобы не срабатывало по кругу
+                    isHolding = false;
                 }
-                else if (currentState == STATE_ARMED)
+                else if (currentState == STATE_ARMED && !readyForFlightRelease)
                 {
-                    // Для полета только взводим флаг, ждем отпускания
-                    if (!readyForFlightRelease)
-                    {
-                        Serial.println("[Flight] Система готова к пуску (отпустите магнит)");
-                        readyForFlightRelease = true;
-                    }
+                    Serial.println("[Flight] Система готова к пуску (отпустите магнит)");
+                    readyForFlightRelease = true;
                 }
             }
         }
 
-        // 3. Детекция отпускания (Магнит удален)
+        // 3. Детекция отпускания
         if (currentHallState == HIGH && lastHallState == LOW)
         {
             unsigned long pressDuration = now - pressStartTime;
@@ -140,22 +133,18 @@ namespace Flight
 
             if (readyForFlightRelease)
             {
-                // Специфический переход в полет по отпусканию
                 if (currentState == STATE_ARMED)
-                {
                     transitionTo(STATE_FLIGHT);
-                }
                 readyForFlightRelease = false;
             }
             else if (pressDuration >= DEBOUNCE_MS && pressDuration < LONG_PRESS_MS)
             {
-                // Считаем клики для двойного нажатия
                 clickCount++;
                 lastReleaseTime = now;
             }
         }
 
-        // 4. Обработка двойного клика по таймауту
+        // 4. Обработка двойного клика
         if (clickCount > 0 && (now - lastReleaseTime >= DOUBLE_CLICK_MS))
         {
             if (clickCount == 2)
@@ -168,5 +157,4 @@ namespace Flight
         lastHallState = currentHallState;
     }
 }
-
 #endif
