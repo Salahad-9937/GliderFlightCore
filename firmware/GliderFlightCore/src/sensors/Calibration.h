@@ -9,6 +9,10 @@
 
 namespace Sensors
 {
+    // Предварительное объявление для доступа к sys
+    struct SystemStatus;
+    extern SystemStatus sys;
+
     enum CalibState
     {
         CALIB_IDLE,
@@ -17,9 +21,6 @@ namespace Sensors
         CALIB_ZEROING
     };
 
-    /**
-     * Value Object: Сессия калибровки (устранение Primitive Obsession)
-     */
     struct CalibrationSession
     {
         unsigned long startTime = 0;
@@ -30,21 +31,18 @@ namespace Sensors
         const int warmupMs = 10000;
     };
 
-    // Состояние
     CalibState calibState = CALIB_IDLE;
     CalibrationSession session;
     unsigned long lastSampleTime = 0;
 
-    // Результаты
     double basePressure = 0;
     double adaptiveBaseline = 0;
     double storedBasePressure = 0;
-    bool isCalibrated = false;
 
     extern KalmanState kAlt;
     extern int stableReadings;
 
-    // --- Вспомогательные методы (Extract Method) ---
+    // --- Вспомогательные методы ---
 
     void handleWarmupPhase(unsigned long now)
     {
@@ -77,7 +75,7 @@ namespace Sensors
                 basePressure = session.pressureSum / (double)session.targetFull;
                 adaptiveBaseline = basePressure;
                 kAlt.x = 0;
-                isCalibrated = true;
+                sys.calibrated = true;
                 calibState = CALIB_IDLE;
 
                 Serial.print("[Sensors] Калибровка завершена. База: ");
@@ -96,7 +94,7 @@ namespace Sensors
             adaptiveBaseline = session.pressureSum / (double)session.targetZero;
             kAlt.x = 0;
             stableReadings = 0;
-            isCalibrated = true;
+            sys.calibrated = true;
             calibState = CALIB_IDLE;
 
             Serial.print("[Sensors] Ноль установлен: ");
@@ -143,20 +141,20 @@ namespace Sensors
 
     void startCalibration()
     {
-        if (!isHardwareOK)
+        if (!sys.hardwareOK)
             return;
         Serial.println("[Sensors] Запуск неблокирующей калибровки...");
         calibState = CALIB_WARMUP;
         session.startTime = millis();
         lastSampleTime = millis();
-        isCalibrated = false;
+        sys.calibrated = false;
         session.pressureSum = 0;
         session.samplesCollected = 0;
     }
 
     void startZeroing()
     {
-        if (!isHardwareOK)
+        if (!sys.hardwareOK)
             return;
         Serial.println("[Sensors] Запуск неблокирующего обнуления...");
         calibState = CALIB_ZEROING;
@@ -192,7 +190,7 @@ namespace Sensors
 
     bool saveToFS()
     {
-        if (!isCalibrated)
+        if (!sys.calibrated)
             return false;
         StaticJsonDocument<128> doc;
         doc["basePressure"] = basePressure;
@@ -214,8 +212,7 @@ namespace Sensors
         if (data == "")
             return;
         StaticJsonDocument<128> doc;
-        DeserializationError error = deserializeJson(doc, data);
-        if (!error)
+        if (!deserializeJson(doc, data))
         {
             double val = doc["basePressure"];
             if (val > 0)
@@ -224,7 +221,7 @@ namespace Sensors
                 basePressure = val;
                 adaptiveBaseline = val;
                 kAlt.x = 0;
-                isCalibrated = true;
+                sys.calibrated = true;
                 Serial.print("[Sensors] Данные успешно загружены из ФС: ");
                 Serial.println(storedBasePressure);
             }

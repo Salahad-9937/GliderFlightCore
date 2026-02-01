@@ -6,13 +6,10 @@
 
 namespace Network
 {
-    /**
-     * Запуск процесса калибровки барометра
-     */
     void handleCalibrate()
     {
         Serial.println("[HTTP] Команда на калибровку /calibrate");
-        if (!Sensors::isHardwareOK)
+        if (!Sensors::sys.hardwareOK)
         {
             server.send(503, "text/plain", "Hardware Error: Sensor not found");
             Serial.println("[HTTP] Ошибка: датчик не найден");
@@ -29,9 +26,6 @@ namespace Network
         server.send(202, "text/plain", "Calibration process started");
     }
 
-    /**
-     * Отмена текущего процесса (Калибровки или Обнуления)
-     */
     void handleCancel()
     {
         Serial.println("[HTTP] Команда /cancel");
@@ -39,9 +33,6 @@ namespace Network
         server.send(200, "text/plain", "Operation cancelled");
     }
 
-    /**
-     * Сохранение текущей калибровки
-     */
     void handleSaveCalib()
     {
         Serial.println("[HTTP] Запрос сохранения калибровки /calibrate/save");
@@ -55,5 +46,4 @@ namespace Network
         }
     }
 }
-
 #endif

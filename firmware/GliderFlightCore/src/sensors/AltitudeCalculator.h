@@ -9,9 +9,10 @@
 
 namespace Sensors
 {
-    /**
-     * Value Object: Конфигурация алгоритма (устранение Magic Numbers)
-     */
+    // Предварительное объявление для доступа к sys
+    struct SystemStatus;
+    extern SystemStatus sys;
+
     struct AltimeterConfig
     {
         const float seaLevelPressure = 101325.0;
@@ -19,11 +20,9 @@ namespace Sensors
         const float altExponent = 0.190295;
         const float stabilityThreshold = 0.25;
         const float deadZone = 0.12;
+        const unsigned long interval = BARO_INTERVAL;
     };
 
-    /**
-     * Value Object: Данные телеметрии (устранение Primitive Obsession)
-     */
     struct TelemetryData
     {
         float altitude = 0;
@@ -32,7 +31,6 @@ namespace Sensors
         double pressure = 0;
     };
 
-    // Состояние
     const AltimeterConfig cfg;
     TelemetryData telemetry;
     KalmanState kAlt = {0.05, 0.3, 0, 1, 0};
@@ -42,13 +40,10 @@ namespace Sensors
     float lastRawAltitude = 0;
     int stableReadings = 0;
 
-    // Управление
-    bool isMonitoring = false;
-    bool isLogging = false;
     unsigned long logStartTime = 0;
     unsigned long last_log_time = 0;
 
-    // --- Вспомогательные методы (Extract Method) ---
+    // --- Вспомогательные методы ---
 
     void updateAdaptiveBaseline(float rawAltitude)
     {
@@ -79,7 +74,7 @@ namespace Sensors
         telemetry.temperature = readTemperature();
         telemetry.isStable = (stableReadings > STABLE_THRESHOLD);
 
-        if (isLogging)
+        if (sys.logging)
         {
             float relTime = (now - logStartTime) / 1000.0;
             Serial.print("[");
@@ -102,14 +97,13 @@ namespace Sensors
             telemetry.pressure = pressureAccumulator / (double)sampleCount;
         }
 
-        if (!isCalibrated)
+        if (!sys.calibrated)
         {
             pressureAccumulator = 0;
             sampleCount = 0;
             return;
         }
 
-        // Барометрическая формула с использованием конфига
         float rawAltitude = cfg.altFactor * (1.0 - pow(telemetry.pressure / adaptiveBaseline, cfg.altExponent));
 
         updateAdaptiveBaseline(rawAltitude);
@@ -119,18 +113,16 @@ namespace Sensors
         sampleCount = 0;
     }
 
-    // --- Публичный интерфейс ---
-
     void updateAltitude()
     {
-        if (!isHardwareOK || !isMonitoring)
+        if (!sys.hardwareOK || !sys.monitoring)
             return;
 
         pressureAccumulator += readPressure();
         sampleCount++;
 
         unsigned long now = millis();
-        if (now - last_log_time >= BARO_INTERVAL)
+        if (now - last_log_time >= cfg.interval)
         {
             last_log_time = now;
             performCalculations(now);

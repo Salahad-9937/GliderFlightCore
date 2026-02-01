@@ -10,13 +10,13 @@ namespace Network
 
     void fillHardwareStatus(JsonObject &doc)
     {
-        doc["hw_ok"] = Sensors::isHardwareOK;
+        doc["hw_ok"] = Sensors::sys.hardwareOK;
         doc["vcc"] = ESP.getVcc() / 1000.0;
     }
 
     void fillCalibrationStatus(JsonObject &doc)
     {
-        doc["calibrated"] = Sensors::isCalibrated;
+        doc["calibrated"] = Sensors::sys.calibrated;
         doc["calibrating"] = (Sensors::calibState != Sensors::CALIB_IDLE);
         doc["calib_phase"] = Sensors::getCalibrationPhase();
         doc["calib_progress"] = Sensors::getCalibrationProgress();
@@ -25,15 +25,15 @@ namespace Network
 
     void fillTelemetryStatus(JsonObject &doc)
     {
-        doc["monitoring"] = Sensors::isMonitoring;
-        doc["logging"] = Sensors::isLogging;
+        doc["monitoring"] = Sensors::sys.monitoring;
+        doc["logging"] = Sensors::sys.logging;
 
-        if (Sensors::isMonitoring)
+        if (Sensors::sys.monitoring)
         {
             doc["current_p"] = Sensors::telemetry.pressure;
         }
 
-        if (Sensors::isCalibrated && Sensors::isMonitoring)
+        if (Sensors::sys.calibrated && Sensors::sys.monitoring)
         {
             doc["alt"] = Sensors::telemetry.altitude;
             doc["temp"] = Sensors::telemetry.temperature;
@@ -42,9 +42,6 @@ namespace Network
         }
     }
 
-    /**
-     * Возвращает полный статус устройства (Телеметрия)
-     */
     void handleStatus()
     {
         Serial.println("[HTTP] Запрос статуса /status");

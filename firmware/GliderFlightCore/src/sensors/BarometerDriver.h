@@ -6,11 +6,12 @@
 
 namespace Sensors
 {
-    // Экземпляр драйвера датчика
-    Adafruit_BMP085 bmp;
+    // Используем extern, чтобы компилятор знал, что sys существует где-то еще
+    // (хотя при включении через Sensors.h это уже будет известно)
+    struct SystemStatus;
+    extern SystemStatus sys;
 
-    // Флаг состояния оборудования
-    bool isHardwareOK = false;
+    Adafruit_BMP085 bmp;
 
     /**
      * Инициализация шины I2C и проверка наличия датчика
@@ -20,12 +21,12 @@ namespace Sensors
         Wire.begin();
         if (!bmp.begin(BMP085_ULTRAHIGHRES))
         {
-            isHardwareOK = false;
+            sys.hardwareOK = false;
             Serial.println("[Sensors] ОШИБКА: Датчик BMP180 не найден на шине I2C!");
         }
         else
         {
-            isHardwareOK = true;
+            sys.hardwareOK = true;
             Serial.println("[Sensors] Датчик BMP180 успешно инициализирован.");
         }
     }
@@ -46,5 +47,4 @@ namespace Sensors
         return bmp.readTemperature();
     }
 }
-
 #endif

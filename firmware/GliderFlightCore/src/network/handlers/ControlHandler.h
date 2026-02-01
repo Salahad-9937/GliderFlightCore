@@ -6,13 +6,10 @@
 
 namespace Network
 {
-    /**
-     * Быстрое обнуление высоты (Асинхронное)
-     */
     void handleZero()
     {
         Serial.println("[HTTP] Команда на обнуление /zero");
-        if (!Sensors::isHardwareOK)
+        if (!Sensors::sys.hardwareOK)
         {
             server.send(503, "text/plain", "Hardware Error");
             return;
@@ -25,20 +22,15 @@ namespace Network
         }
 
         Sensors::startZeroing();
-        // 202 Accepted - запрос принят, выполняется в фоне
         server.send(202, "text/plain", "Zeroing started");
     }
 
-    /**
-     * Включение/выключение мониторинга барометра
-     * Использование: /baro?enable=1 или /baro?enable=0
-     */
     void handleBaroControl()
     {
         if (server.hasArg("enable"))
         {
             bool enable = (server.arg("enable") == "1");
-            Sensors::isMonitoring = enable;
+            Sensors::sys.monitoring = enable;
             Serial.print("[HTTP] Мониторинг барометра: ");
             Serial.println(enable ? "ВКЛ" : "ВЫКЛ");
             server.send(200, "text/plain", enable ? "Monitoring Enabled" : "Monitoring Disabled");
@@ -49,16 +41,12 @@ namespace Network
         }
     }
 
-    /**
-     * Управление выводом логов в Serial терминал
-     * Использование: /log?enable=1 или /log?enable=0
-     */
     void handleLogControl()
     {
         if (server.hasArg("enable"))
         {
             bool enable = (server.arg("enable") == "1");
-            Sensors::isLogging = enable;
+            Sensors::sys.logging = enable;
             if (enable)
                 Sensors::logStartTime = millis();
             Serial.print("[HTTP] Логирование в Serial: ");
@@ -71,5 +59,4 @@ namespace Network
         }
     }
 }
-
 #endif
