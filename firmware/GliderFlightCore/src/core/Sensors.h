@@ -6,37 +6,41 @@
 #include "../sensors/Calibration.h"
 #include "../sensors/AltitudeCalculator.h"
 
-namespace Sensors {
+namespace Sensors
+{
     /**
      * Инициализация всех подсистем датчиков
      */
-    void begin() {
+    void begin()
+    {
         initBarometer();
-        if (isHardwareOK) {
-            loadFromFS(); 
+        if (isHardwareOK)
+        {
+            loadFromFS();
         }
     }
 
     /**
      * Обертка для отмены калибровки
      */
-    void cancelCalibration() {
+    void cancelCalibration()
+    {
         cancel();
     }
 
     /**
      * Главный цикл обновления сенсоров
      */
-    void update() {
+    void update()
+    {
         // 1. Обновление логики калибровки (машина состояний)
         updateCalibrationLogic();
-        
-        // 2. Расчет высоты
-        // Не запускаем расчет, если идет активный сбор данных
-        if (calibState != CALIB_MEASURING && calibState != CALIB_ZEROING) {
-             updateAltitude(); 
+
+        // 2. Расчет высоты (только если не заняты калибровкой)
+        if (calibState != CALIB_MEASURING && calibState != CALIB_ZEROING)
+        {
+            updateAltitude();
         }
     }
 }
-
 #endif
