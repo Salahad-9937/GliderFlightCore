@@ -4,68 +4,18 @@
 #include <ArduinoJson.h>
 #include "../config/Config.h"
 
-namespace Sensors
-{
-    /**
-     * Инкапсуляция логики определения стабильности.
-     * Вынесено сюда для доступа из Calibration и AltitudeCalculator.
-     */
-    class StabilityMonitor
-    {
-    private:
-        float _lastRawAltitude = 0;
-        int _stableReadings = 0;
-        const float _threshold;
+// Подключаем калибровку первой, так как теперь там лежат определения типов
+#include "../sensors/Calibration.h"
 
-    public:
-        StabilityMonitor(float threshold) : _threshold(threshold) {}
-
-        float process(float rawAltitude)
-        {
-            float altChange = abs(rawAltitude - _lastRawAltitude);
-            _stableReadings = (altChange < _threshold) ? _stableReadings + 1 : 0;
-            _lastRawAltitude = rawAltitude;
-
-            return (_stableReadings > STABLE_THRESHOLD) ? 0.05 : 0.001;
-        }
-
-        bool isStable() const { return _stableReadings > STABLE_THRESHOLD; }
-        void reset() { _stableReadings = 0; }
-    };
-
-    struct SystemStatus
-    {
-        bool hardwareOK = false;
-        bool calibrated = false;
-        bool monitoring = false;
-        bool logging = false;
-        Config::FlightState flightState = Config::STATE_SETUP;
-
-        void serialize(JsonObject &doc) const
-        {
-            doc["hw_ok"] = hardwareOK;
-            doc["calibrated"] = calibrated;
-            doc["vcc"] = ESP.getVcc() / 1000.0;
-            doc["monitoring"] = monitoring;
-            doc["logging"] = logging;
-            doc["flight_mode"] = (int)flightState;
-        }
-    };
-
-    struct CalibrationData;
-    extern SystemStatus sys;
-    extern CalibrationData calData;
-    extern StabilityMonitor stability;
-}
-
+// Остальные драйверы и математика
 #include "../sensors/BarometerDriver.h"
 #include "../sensors/KalmanFilter.h"
 #include "../sensors/CalibrationData.h"
-#include "../sensors/Calibration.h"
 #include "../sensors/AltitudeCalculator.h"
 
 namespace Sensors
 {
+    // Экземпляры объектов (определены здесь, объявлены как extern в CalibrationState.h)
     SystemStatus sys;
     CalibrationData calData;
 
