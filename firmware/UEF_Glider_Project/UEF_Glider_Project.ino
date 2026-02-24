@@ -1,133 +1,84 @@
 /**
- * UEF 2.0: ТЕСТ ХРАНИЛИЩА
+ * UEF 2.0: ЭТАП 1 - ТЕСТ ВВОДА И ИНДИКАЦИИ
  */
 
 #include <Arduino.h>
-#include <LittleFS.h>
-
 #include "src/core2/Config.h"
 #include "src/core2/base/Registry.h"
 #include "src/core2/base/BufferedLogger.h"
+#include "src/core2/messaging/EventBus.h"
 #include "src/platforms/esp8266/Esp8266Platform.h"
-#include "src/drivers/storage/FlashStorage.h"
+#include "src/presentation/input/HallSensorHandler.h"
 
 using namespace core2;
+using namespace application::events;
 
-struct FlightConfig
-{
-    uint32_t flightId;
-    float basePressure;
-    uint8_t servoTrim;
-    char pilotName[16];
-};
-
+// Глобальные компоненты инфраструктуры
 platform::SerialSink serialSink;
 BufferedLogger asyncLogger;
-drivers::FlashStorage storage;
+EventBus<> globalBus;
 
-void forceFlush()
+// HAL объекты
+platform::DigitalInput hallPin(config::DEFAULT_HW_MAP.pinHall);
+platform::DigitalOutput ledPin(config::DEFAULT_HW_MAP.pinLed1);
+
+// Презентационный слой
+presentation::input::HallSensorHandler hallHandler(hallPin, globalBus);
+
+/**
+ * Слушатель событий Холла для теста.
+ */
+class TestInputListener : public TypedEventListener<HallEvent>
 {
-    asyncLogger.flush(serialSink, 1024);
-}
+public:
+    void onTypedEvent(const HallEvent &e) override
+    {
+        char buf[64];
+        switch (e.gesture)
+        {
+        case HallGesture::CLICK:
+            Registry::getLogger().info("INPUT: Одиночный клик\n");
+            ledPin.write(true); // Включаем LED на клик
+            break;
+        case HallGesture::DOUBLE_CLICK:
+            Registry::getLogger().info("INPUT: Двойной клик\n");
+            ledPin.write(false); // Выключаем LED на двойной клик
+            break;
+        case HallGesture::LONG_PRESS_START:
+            Registry::getLogger().info("INPUT: Удержание (Long Press)\n");
+            break;
+        case HallGesture::RELEASE:
+            snprintf(buf, sizeof(buf), "INPUT: Отпущено (Длительность: %u мс)\n", e.duration);
+            Registry::getLogger().info(buf);
+            break;
+        }
+    }
+};
+
+TestInputListener inputObserver;
 
 void setup()
 {
     Serial.begin(config::DEFAULT_HW_MAP.baudRate);
-    delay(2000);
+    delay(1000);
 
+    // Инициализация ядра
     Registry::injectLogger(&asyncLogger);
 
-    asyncLogger.info("\n=======================================\n");
-    asyncLogger.info("   UEF 2.0: STORAGE TEST       \n");
-    asyncLogger.info("=======================================\n");
-    forceFlush();
+    // Подписка на события
+    globalBus.subscribe(&inputObserver);
 
-    asyncLogger.info("[1/6] Монтирование LittleFS... ");
-    if (LittleFS.begin())
-    {
-        asyncLogger.info("FS Mount: OK\n");
-    }
-    else
-    {
-        asyncLogger.error("FS Mount: FAIL\n");
-        asyncLogger.error("!!! Проверьте настройки Flash Size в IDE !!!\n");
-        forceFlush();
-        return;
-    }
-    forceFlush();
-
-    uint16_t fileKey = 1001;
-    FlightConfig original = {0xDEADBEEF, 101325.0f, 90, "TEST_PILOT"};
-    FlightConfig restored = {0, 0.0f, 0, ""};
-    char buf[128];
-
-    asyncLogger.info("[2/6] Сохранение структуры (STORE)... ");
-    if (storage.store(fileKey, &original, sizeof(original)).isOk())
-    {
-        asyncLogger.info("OK\n");
-    }
-    else
-    {
-        asyncLogger.error("WRITE ERROR\n");
-        return;
-    }
-    forceFlush();
-
-    asyncLogger.info("[3/6] Чтение данных обратно (LOAD)... ");
-    if (storage.load(fileKey, &restored, sizeof(restored)).isOk())
-    {
-        asyncLogger.info("OK\n");
-    }
-    else
-    {
-        asyncLogger.error("READ ERROR\n");
-        return;
-    }
-    forceFlush();
-
-    asyncLogger.info("[4/6] Проверка содержимого:\n");
-    snprintf(buf, sizeof(buf), "   - Flight ID: 0x%X (Expect: 0x%X)\n", restored.flightId, original.flightId);
-    asyncLogger.info(buf);
-    
-    // Сверка памяти
-    if (memcmp(&original, &restored, sizeof(FlightConfig)) == 0)
-    {
-        asyncLogger.info("   -> Binary Match: YES\n");
-    }
-    else
-    {
-        asyncLogger.error("   -> Binary Match: NO\n");
-    }
-    forceFlush();
-
-    // --- ТЕСТ APPEND ---
-    asyncLogger.info("[5/6] Тест дозаписи (APPEND)... \n");
-    uint16_t logKey = 2002;
-    const char* part1 = "Hello";
-    const char* part2 = " World";
-    char resultBuf[12] = {0}; // 5 + 6 + 1 null
-
-    storage.store(logKey, part1, 5); // Пишем "Hello"
-    storage.append(logKey, part2, 6); // Дописываем " World"
-    
-    asyncLogger.info("   -> Data written. Reading back... ");
-    
-    if (storage.load(logKey, resultBuf, 11).isOk()) {
-        asyncLogger.info("OK\n");
-        snprintf(buf, sizeof(buf), "   -> Result: '%s'\n", resultBuf);
-        asyncLogger.info(buf);
-        
-        if (strcmp(resultBuf, "Hello World") == 0) {
-             asyncLogger.info("[6/6] Append Verification: SUCCESS\n");
-        } else {
-             asyncLogger.info("[6/6] Append Verification: FAIL\n");
-        }
-    } else {
-        asyncLogger.error("READ ERROR\n");
-    }
-
-    asyncLogger.info("=======================================\n");
-    forceFlush();
+    asyncLogger.info("--- UEF 2.0 Stage 1: Input Test ---\n");
+    asyncLogger.info("Используйте магнит для проверки датчика Холла.\n");
 }
 
-void loop() {}
+void loop()
+{
+    uint32_t now = millis();
+
+    // Обновление логики ввода
+    hallHandler.update(now);
+
+    // Сброс логов в Serial (неблокирующий)
+    asyncLogger.flush(serialSink, 128);
+}
