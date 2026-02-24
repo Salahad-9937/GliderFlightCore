@@ -4,6 +4,7 @@
 #include "../../core2/hal/IGpio.h"
 #include "../../core2/base/Registry.h"
 #include "../../core2/messaging/EventBus.h"
+#include "../../core2/engine/Scheduler.h"
 #include "../../application/events/InputEvents.h"
 
 namespace presentation::input
@@ -14,8 +15,9 @@ namespace presentation::input
     /**
      * Обработчик физического уровня датчика Холла.
      * Реализует распознавание жестов: клик, двойной клик, удержание.
+     * Наследует ITask для безопасной интеграции в планировщик.
      */
-    class HallSensorHandler
+    class HallSensorHandler : public ITask
     {
     public:
         static constexpr uint32_t DEBOUNCE_MS = 50;
@@ -26,7 +28,15 @@ namespace presentation::input
             : _input(&input), _eventBus(&eventBus) {}
 
         /**
-         * Основной цикл обработки. Вызывается планировщиком.
+         * Реализация интерфейса ITask.
+         */
+        void execute(uint32_t now) override
+        {
+            update(now);
+        }
+
+        /**
+         * Основной цикл обработки.
          */
         auto update(uint32_t now) -> void
         {
