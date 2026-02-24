@@ -7,7 +7,6 @@ namespace domain::telemetry
 {
     /**
      * Реализация алгоритма компенсации согласно спецификации Bosch BMP180.
-     * Вынесено в домен для обеспечения чистоты драйвера.
      */
     class Bmp180Math
     {
@@ -16,7 +15,7 @@ namespace domain::telemetry
         {
             int32_t x1 = (ut - (int32_t)cal.ac6) * (int32_t)cal.ac5 >> 15;
             int32_t x2 = ((int32_t)cal.mc << 11) / (x1 + cal.md);
-            return x1 + x2; // Это B5 в терминах даташита
+            return x1 + x2;
         }
 
         static auto compensatePressure(int32_t up, int32_t b5, const drivers::Bmp180Calibration &cal, uint8_t oss) -> uint32_t
@@ -25,7 +24,8 @@ namespace domain::telemetry
             int32_t x1 = (cal.b2 * (b6 * b6 >> 12)) >> 11;
             int32_t x2 = cal.ac2 * b6 >> 11;
             int32_t x3 = x1 + x2;
-            int32_t b3 = (((int32_t)cal.ac1 * 4 + x3) << oss + 2) / 4;
+            // Исправлено: добавлены скобки вокруг (oss + 2) для явного приоритета
+            int32_t b3 = (((int32_t)cal.ac1 * 4 + x3) << (oss + 2)) / 4;
 
             x1 = cal.ac3 * b6 >> 13;
             x2 = (cal.b1 * (b6 * b6 >> 12)) >> 16;
