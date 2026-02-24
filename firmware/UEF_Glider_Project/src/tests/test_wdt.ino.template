@@ -1,0 +1,93 @@
+/**
+ * UEF 2.0: ТЕСТ АППАРАТНОГО WATCHDOG
+ */
+
+#include <Arduino.h>
+
+#include "src/core2/Config.h"
+#include "src/core2/base/Registry.h"
+#include "src/core2/base/BufferedLogger.h"
+#include "src/core2/engine/Scheduler.h"
+#include "src/platforms/esp8266/Esp8266Platform.h"
+
+using namespace core2;
+
+const uint32_t WDT_TIMEOUT = 4000;
+const uint32_t HANG_DELAY = 15000;
+
+platform::SerialSink serialSink;
+BufferedLogger asyncLogger;
+platform::Esp8266Watchdog wdt;
+Scheduler<> scheduler;
+
+class LogFlushTask : public ITask
+{
+public:
+    void execute(uint32_t) override
+    {
+        asyncLogger.flush(serialSink, 64);
+    }
+};
+
+void forceFlush()
+{
+    asyncLogger.flush(serialSink, 1024);
+}
+
+class WatchdogTask : public ITask
+{
+private:
+    char _logBuf[128];
+
+public:
+    void execute(uint32_t now) override
+    {
+        if (now > HANG_DELAY)
+        {
+            asyncLogger.error("\n!!! КРИТИЧЕСКАЯ ОШИБКА: СИСТЕМА ЗАВИСЛА !!!\n");
+            asyncLogger.error("Блокируем CPU и прерывания. Ждем Hardware Reset...\n");
+            forceFlush();
+            noInterrupts();
+            while (true)
+            {
+            }
+        }
+
+        wdt.kick();
+        snprintf(_logBuf, sizeof(_logBuf), "[WDT] Kick OK | Uptime: %u ms\n", now);
+        asyncLogger.info(_logBuf);
+    }
+};
+
+LogFlushTask logTask;
+WatchdogTask wdtTask;
+
+void setup()
+{
+    Serial.begin(config::DEFAULT_HW_MAP.baudRate);
+    delay(1000);
+
+    Registry::injectLogger(&asyncLogger);
+
+    asyncLogger.info("\n=======================================\n");
+    asyncLogger.info("   UEF 2.0: WDT TRUE HARD HANG TEST    \n");
+    asyncLogger.info("=======================================\n");
+    forceFlush();
+
+    if (wdt.begin(WDT_TIMEOUT).isOk())
+    {
+        asyncLogger.info("[SYSTEM] Watchdog инициализирован.\n");
+    }
+    forceFlush();
+
+    scheduler.addTask(&logTask, 10);
+    scheduler.addTask(&wdtTask, 1000);
+
+    asyncLogger.info("[SYSTEM] Нормальная работа 15 сек...\n");
+    forceFlush();
+}
+
+void loop()
+{
+    scheduler.run(millis());
+}

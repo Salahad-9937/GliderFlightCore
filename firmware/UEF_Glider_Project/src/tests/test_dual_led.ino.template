@@ -1,0 +1,102 @@
+/**
+ * UEF 2.0: ТЕСТ ДВУХЦВЕТНОГО СВЕТОДИОДА (DualLed)
+ */
+
+#include <Arduino.h>
+
+#include "src/core2/Config.h"
+#include "src/core2/base/Registry.h"
+#include "src/core2/base/BufferedLogger.h"
+#include "src/core2/engine/Scheduler.h"
+#include "src/platforms/esp8266/Esp8266Platform.h"
+#include "src/drivers/led/DualLed.h"
+
+using namespace core2;
+
+// Инфраструктура
+platform::SerialSink serialSink;
+BufferedLogger asyncLogger;
+Scheduler<> scheduler;
+
+platform::DigitalOutput out1(config::DEFAULT_HW_MAP.pinLed1);
+platform::DigitalOutput out2(config::DEFAULT_HW_MAP.pinLed2);
+
+drivers::LedChannel ch1(out1);
+drivers::LedChannel ch2(out2);
+drivers::DualLed dualLed(ch1, ch2);
+
+class LogFlushTask : public ITask
+{
+public:
+    void execute(uint32_t) override { asyncLogger.flush(serialSink, 64); }
+};
+
+class LedCycleTask : public ITask
+{
+private:
+    enum State
+    {
+        RED,
+        GREEN,
+        BOTH,
+        OFF
+    };
+    State _state = RED;
+
+public:
+    void execute(uint32_t now) override
+    {
+        const char *label = "";
+
+        switch (_state)
+        {
+        case RED:
+            dualLed.set(true, false);
+            label = "COLOR 1 (RED)";
+            _state = GREEN;
+            break;
+        case GREEN:
+            dualLed.set(false, true);
+            label = "COLOR 2 (GREEN)";
+            _state = BOTH;
+            break;
+        case BOTH:
+            dualLed.set(true, true);
+            label = "BOTH (MIXED)";
+            _state = OFF;
+            break;
+        case OFF:
+            dualLed.off();
+            label = "ALL OFF";
+            _state = RED;
+            break;
+        }
+
+        char buf[64];
+        snprintf(buf, sizeof(buf), "[LED] Mode: %s | Time: %u ms\n", label, now);
+        asyncLogger.info(buf);
+    }
+};
+
+LogFlushTask logTask;
+LedCycleTask ledTask;
+
+void setup()
+{
+    Serial.begin(config::DEFAULT_HW_MAP.baudRate);
+    delay(1000);
+
+    Registry::injectLogger(&asyncLogger);
+
+    asyncLogger.info("\n=======================================\n");
+    asyncLogger.info("   UEF 2.0: DUAL LED CYCLE TEST        \n");
+    asyncLogger.info("=======================================\n");
+
+    scheduler.addTask(&logTask, 10);
+    scheduler.addTask(&ledTask, 1000);
+}
+
+void loop()
+{
+    scheduler.run(millis());
+}

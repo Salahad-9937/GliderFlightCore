@@ -1,0 +1,94 @@
+/**
+ * UEF 2.0: ТЕСТ ДАТЧИКА ХОЛЛА
+ */
+
+#include <Arduino.h>
+
+#include "src/core2/Config.h"
+#include "src/core2/base/Registry.h"
+#include "src/core2/base/BufferedLogger.h"
+#include "src/core2/engine/Scheduler.h"
+#include "src/platforms/esp8266/Esp8266Platform.h"
+#include "src/drivers/input/HallSensor.h"
+
+using namespace core2;
+
+platform::DigitalInput hallInput(config::DEFAULT_HW_MAP.pinHall);
+platform::SerialSink serialSink;
+BufferedLogger asyncLogger;
+drivers::HallSensor hall(hallInput);
+Scheduler<> scheduler;
+
+class LogFlushTask : public ITask
+{
+public:
+    void execute(uint32_t) override
+    {
+        asyncLogger.flush(serialSink, 64);
+    }
+};
+
+class HallMonitorTask : public ITask
+{
+private:
+    bool _lastState = false;
+    bool _firstRun = true;
+    char _logBuf[64];
+
+public:
+    void execute(uint32_t now) override
+    {
+        auto res = hall.readRaw();
+        if (res.isOk())
+        {
+            bool currentState = res.value();
+            if (currentState != _lastState || _firstRun)
+            {
+                const char *statusStr = (currentState == LOW) ? "MAGNET DETECTED" : "FIELD LOST";
+                snprintf(_logBuf, sizeof(_logBuf), "[HALL] State: %s | Time: %u ms\n", statusStr, now);
+                asyncLogger.info(_logBuf);
+                _lastState = currentState;
+                _firstRun = false;
+            }
+        }
+    }
+};
+
+LogFlushTask logTask;
+HallMonitorTask hallTask;
+
+void forceFlush()
+{
+    asyncLogger.flush(serialSink, 1024);
+}
+
+void setup()
+{
+    Serial.begin(config::DEFAULT_HW_MAP.baudRate);
+    delay(1000);
+
+    Registry::injectLogger(&asyncLogger);
+
+    asyncLogger.info("\n=======================================\n");
+    asyncLogger.info("   UEF 2.0: HALL SENSOR TEST (HAL)     \n");
+    asyncLogger.info("=======================================\n");
+    forceFlush();
+
+    if (hall.begin().isOk())
+    {
+        asyncLogger.info("Sensor Init: OK\n");
+    }
+    else
+    {
+        asyncLogger.error("Sensor Init: FAIL\n");
+    }
+    forceFlush();
+
+    scheduler.addTask(&logTask, 5);
+    scheduler.addTask(&hallTask, 50);
+}
+
+void loop()
+{
+    scheduler.run(millis());
+}

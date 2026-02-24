@@ -1,0 +1,111 @@
+/**
+ * UEF 2.0: ТЕСТ СЕРВОПРИВОДА
+ */
+
+#include <Arduino.h>
+
+#include "src/core2/Config.h"
+#include "src/core2/base/Registry.h"
+#include "src/core2/base/BufferedLogger.h"
+#include "src/core2/engine/Scheduler.h"
+#include "src/platforms/esp8266/Esp8266Platform.h"
+#include "src/drivers/actuators/ServoActuator.h"
+
+using namespace core2;
+
+platform::SerialSink serialSink;
+BufferedLogger asyncLogger;
+
+platform::ServoActuator servoHal(config::DEFAULT_HW_MAP.pinServo);
+drivers::ServoActuator servo(servoHal);
+
+Scheduler<> scheduler;
+
+class LogFlushTask : public ITask
+{
+public:
+    void execute(uint32_t) override
+    {
+        asyncLogger.flush(serialSink, 64);
+    }
+};
+
+class ServoSweepTask : public ITask
+{
+private:
+    enum State
+    {
+        POS_ZERO,
+        POS_CENTER,
+        POS_MAX
+    };
+    State _state = POS_ZERO;
+    char _logBuf[64];
+
+public:
+    void execute(uint32_t now) override
+    {
+        int16_t targetAngle = 0;
+        const char *label = "";
+
+        switch (_state)
+        {
+        case POS_ZERO:
+            targetAngle = 0;
+            label = "0 deg";
+            _state = POS_CENTER;
+            break;
+
+        case POS_CENTER:
+            targetAngle = 90;
+            label = "90 deg";
+            _state = POS_MAX;
+            break;
+
+        case POS_MAX:
+            targetAngle = 180;
+            label = "180 deg";
+            _state = POS_ZERO;
+            break;
+        }
+
+        servo.setPosition(targetAngle);
+
+        snprintf(_logBuf, sizeof(_logBuf),
+                 "[ACTUATOR] Move to: %s (%d) | Time: %u ms\n",
+                 label, targetAngle, now);
+        asyncLogger.info(_logBuf);
+    }
+};
+
+LogFlushTask logTask;
+ServoSweepTask servoTask;
+
+void forceFlush()
+{
+    asyncLogger.flush(serialSink, 1024);
+}
+
+void setup()
+{
+    Serial.begin(config::DEFAULT_HW_MAP.baudRate);
+    delay(1000);
+
+    Registry::injectLogger(&asyncLogger);
+
+    asyncLogger.info("\n=======================================\n");
+    asyncLogger.info("   UEF 2.0: SERVO SWEEP TEST (HAL)     \n");
+    asyncLogger.info("=======================================\n");
+    forceFlush();
+
+    scheduler.addTask(&logTask, 10);
+    scheduler.addTask(&servoTask, 1500);
+
+    asyncLogger.info("Scheduler started.\n");
+    forceFlush();
+}
+
+void loop()
+{
+    scheduler.run(millis());
+}

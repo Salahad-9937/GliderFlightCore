@@ -1,0 +1,98 @@
+/**
+ * UEF 2.0: ТЕСТ WI-FI
+ */
+
+#include <Arduino.h>
+#include <ESP8266WiFi.h>
+
+#include "src/core2/Config.h"
+#include "src/core2/base/Registry.h"
+#include "src/core2/base/BufferedLogger.h"
+#include "src/core2/engine/Scheduler.h"
+#include "src/platforms/esp8266/Esp8266Platform.h"
+
+using namespace core2;
+
+const char *TEST_SSID = "UEF-GLIDER-TEST";
+const uint32_t TOGGLE_INTERVAL = 30000;
+
+platform::SerialSink serialSink;
+BufferedLogger asyncLogger;
+platform::Esp8266Network hwNet;
+Scheduler<> scheduler;
+
+class LogFlushTask : public ITask
+{
+public:
+    void execute(uint32_t) override
+    {
+        asyncLogger.flush(serialSink, 64);
+    }
+};
+
+class NetworkVisibilityTask : public ITask
+{
+private:
+    bool _shouldBeOn = true;
+    char _logBuf[128];
+
+public:
+    void execute(uint32_t now) override
+    {
+        if (_shouldBeOn)
+        {
+            hwNet.setPower(true);
+            WiFi.mode(WIFI_AP);
+            bool ok = WiFi.softAP(TEST_SSID, "12345678");
+
+            snprintf(_logBuf, sizeof(_logBuf),
+                     "[NET] MODE: SETUP (Wi-Fi ON) | SSID: %s | Status: %s\n",
+                     TEST_SSID, ok ? "VISIBLE" : "ERROR");
+        }
+        else
+        {
+            hwNet.setPower(false);
+
+            snprintf(_logBuf, sizeof(_logBuf),
+                     "[NET] MODE: FLIGHT (Wi-Fi OFF) | Radio: POWERED DOWN\n");
+        }
+        asyncLogger.info(_logBuf);
+        _shouldBeOn = !_shouldBeOn;
+    }
+};
+
+LogFlushTask logTask;
+NetworkVisibilityTask netTask;
+
+void forceFlush()
+{
+    asyncLogger.flush(serialSink, 1024);
+}
+
+void setup()
+{
+    Serial.begin(config::DEFAULT_HW_MAP.baudRate);
+    delay(1000);
+
+    Registry::injectLogger(&asyncLogger);
+
+    asyncLogger.info("\n=======================================\n");
+    asyncLogger.info("   UEF 2.0: WI-FI TEST      \n");
+    asyncLogger.info("=======================================\n");
+    asyncLogger.info("Инструкция:\n");
+    asyncLogger.info("1. Откройте поиск Wi-Fi на телефоне.\n");
+    asyncLogger.info("2. Каждые 30 сек сеть будет появляться/исчезать.\n");
+    asyncLogger.info("2. SSID:      UEF-GLIDER-TEST\n");
+    asyncLogger.info("2. Password:  12345678\n");
+    forceFlush();
+
+    scheduler.addTask(&logTask, 10);
+    scheduler.addTask(&netTask, TOGGLE_INTERVAL);
+
+    netTask.execute(0);
+}
+
+void loop()
+{
+    scheduler.run(millis());
+}

@@ -1,0 +1,79 @@
+/**
+ * UEF 2.0: ТЕСТ МОНИТОРИНГА СИСТЕМЫ
+ */
+
+#include <Arduino.h>
+#include <LittleFS.h>
+
+#include "src/core2/Config.h"
+#include "src/core2/base/Registry.h"
+#include "src/core2/base/BufferedLogger.h"
+#include "src/core2/engine/Scheduler.h"
+#include "src/platforms/esp8266/Esp8266Platform.h"
+#include "src/drivers/system/SystemMonitor.h"
+
+using namespace core2;
+
+platform::SerialSink serialSink;
+BufferedLogger asyncLogger;
+Scheduler<> scheduler;
+
+platform::Esp8266SystemInfo hwSys;
+platform::Esp8266Timer hwTimer; // Используем системный таймер из платформы
+
+drivers::SystemMonitor monitor(hwSys, hwTimer);
+
+class LogFlushTask : public ITask
+{
+public:
+    void execute(uint32_t) override { asyncLogger.flush(serialSink, 64); }
+};
+
+class SystemHealthTask : public ITask
+{
+private:
+    char _logBuf[160];
+    const uint32_t TOTAL_SRAM = 81920; // 80KB физический предел ESP8266
+
+public:
+    void execute(uint32_t) override
+    {
+        auto res = monitor.getReport();
+        if (res.isOk())
+        {
+            auto r = res.value();
+
+            uint32_t usedRam = TOTAL_SRAM - r.freeHeap;
+
+            snprintf(_logBuf, sizeof(_logBuf),
+                     "[HEALTH] Up: %u s | RAM Used: %u b | Free: %u b | FS: %u/%u b (%u%%)\n",
+                     r.uptimeSec, usedRam, r.freeHeap, r.fsUsedBytes, r.fsTotalBytes, r.fsLoadPercent);
+
+            asyncLogger.info(_logBuf);
+        }
+    }
+};
+
+LogFlushTask logTask;
+SystemHealthTask healthTask;
+
+void setup()
+{
+    Serial.begin(config::DEFAULT_HW_MAP.baudRate);
+    delay(1000);
+    Registry::injectLogger(&asyncLogger);
+
+    if (!LittleFS.begin())
+    {
+        Serial.println("FS Error");
+    }
+
+    scheduler.addTask(&logTask, 10);
+    scheduler.addTask(&healthTask, 5000);
+    asyncLogger.info("--- System Monitor Test Started ---\n");
+}
+
+void loop()
+{
+    scheduler.run(millis());
+}

@@ -1,0 +1,141 @@
+/**
+ * UEF 2.0: ТЕСТ БАРОМЕТРА (BMP180)
+ */
+
+#include <Arduino.h>
+#include <Wire.h>
+
+#include "src/core2/Config.h"
+#include "src/core2/base/Registry.h"
+#include "src/core2/base/BufferedLogger.h"
+#include "src/core2/engine/Scheduler.h"
+#include "src/platforms/esp8266/Esp8266Platform.h"
+#include "src/drivers/sensors/Bmp180.h"
+
+using namespace core2;
+
+platform::ArduinoI2c hwI2c;
+platform::SerialSink serialSink;
+BufferedLogger asyncLogger;
+drivers::Bmp180 barometer(hwI2c);
+Scheduler<> scheduler;
+
+class LogFlushTask : public ITask
+{
+public:
+    void execute(uint32_t) override
+    {
+        asyncLogger.flush(serialSink, 64);
+    }
+};
+
+class BaroMonitorTask : public ITask
+{
+private:
+    enum State
+    {
+        INITIALIZING,
+        START_TEMP,
+        READ_TEMP,
+        START_PRESS,
+        READ_PRESS
+    };
+    State _state = INITIALIZING;
+
+    uint32_t _rawTemp = 0;
+    uint32_t _rawPress = 0;
+    char _logBuf[128];
+
+public:
+    void execute(uint32_t now) override
+    {
+        switch (_state)
+        {
+        case INITIALIZING:
+            if (barometer.begin().isOk())
+            {
+                asyncLogger.info("[SYSTEM] BMP180 найден и готов.\n");
+                _state = START_TEMP;
+            }
+            else
+            {
+                asyncLogger.error("[ERROR] Датчик не найден! Переповтор...\n");
+            }
+            break;
+
+        case START_TEMP:
+            if (barometer.startRawTemperature().isOk())
+            {
+                _state = READ_TEMP;
+            }
+            break;
+
+        case READ_TEMP:
+        {
+            auto res = barometer.readRawResult();
+            if (res.isOk())
+            {
+                _rawTemp = res.value();
+                _state = START_PRESS;
+            }
+        }
+        break;
+
+        case START_PRESS:
+            if (barometer.startRawPressure(0).isOk())
+            {
+                _state = READ_PRESS;
+            }
+            break;
+
+        case READ_PRESS:
+        {
+            auto res = barometer.readRawResult();
+            if (res.isOk())
+            {
+                _rawPress = res.value();
+
+                snprintf(_logBuf, sizeof(_logBuf),
+                         "[TELEMETRY] T_raw: %u | P_raw: %u | Time: %u ms\n",
+                         _rawTemp, _rawPress, now);
+                asyncLogger.info(_logBuf);
+
+                _state = START_TEMP;
+            }
+        }
+        break;
+        }
+    }
+};
+
+LogFlushTask logTask;
+BaroMonitorTask baroTask;
+
+void forceFlush() {
+    asyncLogger.flush(serialSink, 1024);
+}
+
+void setup()
+{
+    Serial.begin(config::DEFAULT_HW_MAP.baudRate);
+    delay(1000);
+
+    hwI2c.init(config::DEFAULT_HW_MAP.pinI2cSda, config::DEFAULT_HW_MAP.pinI2cScl);
+
+    Registry::injectLogger(&asyncLogger);
+
+    asyncLogger.info("\n=======================================\n");
+    asyncLogger.info("   UEF 2.0: BARO TEST (HAL)     \n");
+    asyncLogger.info("=======================================\n");
+    forceFlush();
+
+    scheduler.addTask(&logTask, 5);
+    scheduler.addTask(&baroTask, 100);
+
+    Serial.println(F("--- UEF 2.0 Baro Test Started ---"));
+}
+
+void loop()
+{
+    scheduler.run(millis());
+}

@@ -1,0 +1,96 @@
+/**
+ * UEF 2.0: ТЕСТ МОНИТОРИНГА ПИТАНИЯ (VCC)
+ */
+
+#include <Arduino.h>
+
+#include "src/core2/Config.h"
+#include "src/core2/base/Registry.h"
+#include "src/core2/base/BufferedLogger.h"
+#include "src/core2/engine/Scheduler.h"
+#include "src/platforms/esp8266/Esp8266Platform.h"
+#include "src/drivers/power/VccMonitor.h"
+
+using namespace core2;
+
+ADC_MODE(ADC_VCC);
+
+const float VOLTAGE_THRESHOLD = 3.0f;
+
+platform::SerialSink serialSink;
+BufferedLogger asyncLogger;
+platform::Esp8266Adc hwAdc;
+drivers::VccMonitor vcc(hwAdc);
+Scheduler<> scheduler;
+
+class LogFlushTask : public ITask
+{
+public:
+    void execute(uint32_t) override
+    {
+        asyncLogger.flush(serialSink, 64);
+    }
+};
+
+class VccMonitorTask : public ITask
+{
+private:
+    char _logBuf[64];
+
+public:
+    void execute(uint32_t now) override
+    {
+        auto res = vcc.readVoltage();
+        if (res.isOk())
+        {
+            float voltage = res.value();
+
+            snprintf(_logBuf, sizeof(_logBuf),
+                     "[POWER] VCC: %.3f V | Time: %u ms\n",
+                     voltage, now);
+
+            asyncLogger.info(_logBuf);
+
+            if (voltage < VOLTAGE_THRESHOLD)
+            {
+                asyncLogger.error("[WARN] LOW VOLTAGE!\n");
+            }
+        }
+        else
+        {
+            asyncLogger.error("[POWER] Failed to read VCC via HAL!\n");
+        }
+    }
+};
+
+LogFlushTask logTask;
+VccMonitorTask vccTask;
+
+void forceFlush()
+{
+    asyncLogger.flush(serialSink, 1024);
+}
+
+void setup()
+{
+    Serial.begin(config::DEFAULT_HW_MAP.baudRate);
+    delay(1000);
+
+    Registry::injectLogger(&asyncLogger);
+
+    asyncLogger.info("\n=======================================\n");
+    asyncLogger.info("   UEF 2.0: VCC MONITOR TEST     \n");
+    asyncLogger.info("=======================================\n");
+    forceFlush();
+
+    scheduler.addTask(&logTask, 10);
+    scheduler.addTask(&vccTask, 2000);
+
+    asyncLogger.info("[SYSTEM] Monitoring started via IAdc interface.\n");
+    forceFlush();
+}
+
+void loop()
+{
+    scheduler.run(millis());
+}
