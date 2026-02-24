@@ -18,9 +18,11 @@ namespace domain::telemetry
          */
         static auto calculate(float currentPressure, float basePressure) -> float
         {
-            if (basePressure <= 0)
-                return 0.0f;
-            return 44330.0f * (1.0f - powf(currentPressure / basePressure, 0.190295f));
+            if (basePressure <= 0.0F)
+            {
+                return 0.0F;
+            }
+            return 44330.0F * (1.0F - powf(currentPressure / basePressure, 0.190295F));
         }
     };
 }

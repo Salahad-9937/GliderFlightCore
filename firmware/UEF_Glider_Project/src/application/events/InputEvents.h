@@ -26,7 +26,8 @@ namespace application::events
         HallGesture gesture;
         uint32_t duration; // Длительность удержания в мс
 
-        explicit HallEvent(HallGesture g, uint32_t d = 0) : gesture(g), duration(d) {}
+        explicit HallEvent(HallGesture gestureType, uint32_t durationMs = 0)
+            : gesture(gestureType), duration(durationMs) {}
     };
 }
 
