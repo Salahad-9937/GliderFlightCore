@@ -1,2 +1,3 @@
 .vscode/
-iot_api_tester/
+logs/
+**/scripts/
