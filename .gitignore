@@ -1,3 +1,11 @@
-.vscode/
 logs/
 **/scripts/
+firmware/UEF_Glider_Project/ls.txt
+
+# VSCode
+.vscode/
+firmware/UEF_Glider_Project/.clang-tidy
+firmware/UEF_Glider_Project/compile_commands.esp8266.json
+firmware/UEF_Glider_Project/compile_commands.linux.json
+firmware/UEF_Glider_Project/uef-core.code-workspace
+
