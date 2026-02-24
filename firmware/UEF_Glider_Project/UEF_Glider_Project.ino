@@ -1,84 +1,81 @@
 /**
- * UEF 2.0: ЭТАП 1 - ТЕСТ ВВОДА И ИНДИКАЦИИ
+ * UEF 2.0: ЭТАП 2 - ТЕСТ ТЕЛЕМЕТРИИ
  */
 
 #include <Arduino.h>
 #include "src/core2/Config.h"
 #include "src/core2/base/Registry.h"
 #include "src/core2/base/BufferedLogger.h"
-#include "src/core2/messaging/EventBus.h"
+#include "src/core2/engine/Scheduler.h"
 #include "src/platforms/esp8266/Esp8266Platform.h"
-#include "src/presentation/input/HallSensorHandler.h"
+#include "src/drivers/sensors/Bmp180.h"
+#include "src/application/telemetry/TelemetryService.h"
 
 using namespace core2;
-using namespace application::events;
 
-// Глобальные компоненты инфраструктуры
+// Инфраструктура
 platform::SerialSink serialSink;
 BufferedLogger asyncLogger;
-EventBus<> globalBus;
+platform::ArduinoI2c i2cBus;
+Scheduler<4> scheduler;
 
-// HAL объекты
-platform::DigitalInput hallPin(config::DEFAULT_HW_MAP.pinHall);
-platform::DigitalOutput ledPin(config::DEFAULT_HW_MAP.pinLed1);
-
-// Презентационный слой
-presentation::input::HallSensorHandler hallHandler(hallPin, globalBus);
+// Драйверы и Сервисы
+drivers::Bmp180 bmp(i2cBus);
+application::telemetry::TelemetryService telemetry(bmp);
 
 /**
- * Слушатель событий Холла для теста.
+ * Задача для вывода данных в лог.
  */
-class TestInputListener : public TypedEventListener<HallEvent>
+class LogTask : public ITask
 {
 public:
-    void onTypedEvent(const HallEvent &e) override
+    void execute(uint32_t now) override
     {
-        char buf[64];
-        switch (e.gesture)
-        {
-        case HallGesture::CLICK:
-            Registry::getLogger().info("INPUT: Одиночный клик\n");
-            ledPin.write(true); // Включаем LED на клик
-            break;
-        case HallGesture::DOUBLE_CLICK:
-            Registry::getLogger().info("INPUT: Двойной клик\n");
-            ledPin.write(false); // Выключаем LED на двойной клик
-            break;
-        case HallGesture::LONG_PRESS_START:
-            Registry::getLogger().info("INPUT: Удержание (Long Press)\n");
-            break;
-        case HallGesture::RELEASE:
-            snprintf(buf, sizeof(buf), "INPUT: Отпущено (Длительность: %u мс)\n", e.duration);
-            Registry::getLogger().info(buf);
-            break;
-        }
+        auto data = telemetry.getData();
+        char buf[128];
+        snprintf(buf, sizeof(buf),
+                 "TELEMETRY: Alt: %.2fm | Temp: %.1fC | P: %.0fPa | Stable: %s\n",
+                 data.altitude, data.temperature, data.pressure,
+                 data.isStable ? "YES" : "NO");
+        Registry::getLogger().info(buf);
     }
 };
 
-TestInputListener inputObserver;
+LogTask loggerTask;
 
 void setup()
 {
     Serial.begin(config::DEFAULT_HW_MAP.baudRate);
     delay(1000);
 
-    // Инициализация ядра
     Registry::injectLogger(&asyncLogger);
+    asyncLogger.info("--- UEF 2.0 Stage 2: Telemetry Test ---\n");
 
-    // Подписка на события
-    globalBus.subscribe(&inputObserver);
+    // Инициализация I2C
+    i2cBus.init(config::DEFAULT_HW_MAP.pinI2cSda, config::DEFAULT_HW_MAP.pinI2cScl);
 
-    asyncLogger.info("--- UEF 2.0 Stage 1: Input Test ---\n");
-    asyncLogger.info("Используйте магнит для проверки датчика Холла.\n");
+    // Инициализация сервиса
+    if (telemetry.begin().isOk())
+    {
+        asyncLogger.info("BMP180: OK\n");
+        // Установим текущее давление как базовое для теста (обнуление)
+        // В реальном приложении это будет делать сервис калибровки
+        telemetry.execute(millis());
+        telemetry.setBasePressure(telemetry.getData().pressure);
+    }
+    else
+    {
+        asyncLogger.error("BMP180: FAIL\n");
+    }
+
+    // Настройка планировщика
+    scheduler.addTask(&telemetry, 100);   // Опрос датчика 10 раз в секунду
+    scheduler.addTask(&loggerTask, 1000); // Вывод в лог раз в секунду
 }
 
 void loop()
 {
     uint32_t now = millis();
-
-    // Обновление логики ввода
-    hallHandler.update(now);
-
-    // Сброс логов в Serial (неблокирующий)
-    asyncLogger.flush(serialSink, 128);
+    scheduler.run(now);
+    asyncLogger.flush(serialSink, 256);
 }
