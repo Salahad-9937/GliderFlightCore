@@ -9,30 +9,39 @@ namespace domain::telemetry
     class KalmanFilter
     {
     public:
-        explicit KalmanFilter(float q = 0.05f, float r = 0.3f)
-            : _q(q), _r(r) {}
+        /**
+         * Параметры фильтра.
+         */
+        struct Settings
+        {
+            float processNoise = 0.05F;    // Q
+            float measurementNoise = 0.3F; // R
+        };
+
+        explicit KalmanFilter(const Settings &settings)
+            : _processNoise(settings.processNoise), _measurementNoise(settings.measurementNoise) {}
 
         auto update(float measurement) -> float
         {
-            _p = _p + _q;
-            _k = _p / (_p + _r);
-            _x = _x + _k * (measurement - _x);
-            _p = (1.0f - _k) * _p;
-            return _x;
+            _errorCovariance = _errorCovariance + _processNoise;
+            _kalmanGain = _errorCovariance / (_errorCovariance + _measurementNoise);
+            _stateEstimate = _stateEstimate + (_kalmanGain * (measurement - _stateEstimate));
+            _errorCovariance = (1.0F - _kalmanGain) * _errorCovariance;
+            return _stateEstimate;
         }
 
-        auto reset(float value = 0.0f) -> void
+        auto reset(float value = 0.0F) -> void
         {
-            _x = value;
-            _p = 1.0f;
+            _stateEstimate = value;
+            _errorCovariance = 1.0F;
         }
 
     private:
-        float _q;        // Процессный шум
-        float _r;        // Шум измерения
-        float _x = 0.0f; // Оценка состояния
-        float _p = 1.0f; // Ошибка оценки
-        float _k = 0.0f; // Коэффициент усиления
+        float _processNoise;           // Q
+        float _measurementNoise;       // R
+        float _stateEstimate = 0.0F;   // x
+        float _errorCovariance = 1.0F; // p
+        float _kalmanGain = 0.0F;      // k
     };
 }
 

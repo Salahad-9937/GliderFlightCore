@@ -12,8 +12,17 @@ namespace domain::telemetry
     class StabilityMonitor
     {
     public:
-        explicit StabilityMonitor(float threshold = 0.25f, uint16_t requiredReadings = 10)
-            : _threshold(threshold), _requiredReadings(requiredReadings) {}
+        /**
+         * Конфигурация монитора для предотвращения перепутывания параметров.
+         */
+        struct Config
+        {
+            float threshold = 0.25F;
+            uint16_t requiredReadings = 10;
+        };
+
+        explicit StabilityMonitor(const Config &cfg)
+            : _threshold(cfg.threshold), _requiredReadings(cfg.requiredReadings) {}
 
         auto process(float currentAltitude) -> void
         {
@@ -21,7 +30,9 @@ namespace domain::telemetry
             if (diff < _threshold)
             {
                 if (_stableCount < _requiredReadings)
+                {
                     _stableCount++;
+                }
             }
             else
             {
@@ -38,7 +49,7 @@ namespace domain::telemetry
         float _threshold;
         uint16_t _requiredReadings;
         uint16_t _stableCount = 0;
-        float _lastAltitude = 0.0f;
+        float _lastAltitude = 0.0F;
     };
 }
 

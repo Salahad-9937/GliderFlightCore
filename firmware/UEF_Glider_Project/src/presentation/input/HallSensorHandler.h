@@ -32,7 +32,9 @@ namespace presentation::input
         {
             auto readRes = _input->read();
             if (!readRes.isOk())
+            {
                 return;
+            }
 
             // Инвертируем логику: LOW (false) означает срабатывание датчика Холла
             bool isActive = !readRes.value();
@@ -49,16 +51,20 @@ namespace presentation::input
                 {
                     _stableState = isActive;
                     if (_stableState)
+                    {
                         handlePress(now);
+                    }
                     else
+                    {
                         handleRelease(now);
+                    }
                 }
             }
 
             // 2. Проверка удержания (Long Press)
             if (_stableState && !_longPressTriggered)
             {
-                if (now - _pressStartTime >= LONG_PRESS_MS)
+                if ((now - _pressStartTime) >= LONG_PRESS_MS)
                 {
                     _longPressTriggered = true;
                     _eventBus->publish(HallEvent::ID, HallEvent(HallGesture::LONG_PRESS_START));
@@ -66,14 +72,18 @@ namespace presentation::input
             }
 
             // 3. Проверка таймаута двойного клика
-            if (!_stableState && _clickCount > 0)
+            if (!_stableState && (_clickCount > 0))
             {
-                if (now - _lastReleaseTime >= DOUBLE_CLICK_MS)
+                if ((now - _lastReleaseTime) >= DOUBLE_CLICK_MS)
                 {
                     if (_clickCount == 1)
+                    {
                         _eventBus->publish(HallEvent::ID, HallEvent(HallGesture::CLICK));
+                    }
                     else if (_clickCount >= 2)
+                    {
                         _eventBus->publish(HallEvent::ID, HallEvent(HallGesture::DOUBLE_CLICK));
+                    }
 
                     _clickCount = 0;
                 }
