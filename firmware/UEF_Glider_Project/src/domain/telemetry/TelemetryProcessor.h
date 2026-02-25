@@ -38,14 +38,16 @@ namespace domain::telemetry
         /**
          * Основной конвейер обработки данных.
          */
-        auto process(const Input &in) -> Output
+        // Исправлено: readability-identifier-length (in -> input)
+        auto process(const Input &input) -> Output
         {
             // 1. Расчет относительной высоты
-            float rawAlt = AltitudeCalculator::calculate(in.pressure, _adaptiveBaseline);
+            float rawAlt = AltitudeCalculator::calculate(input.pressure, _adaptiveBaseline);
 
             // 2. Адаптация базового давления (компенсация дрейфа)
             float alpha = _stability.process(rawAlt);
-            _adaptiveBaseline = _adaptiveBaseline * (1.0F - alpha) + in.pressure * alpha;
+            // Исправлено: readability-math-missing-parentheses
+            _adaptiveBaseline = (_adaptiveBaseline * (1.0F - alpha)) + (input.pressure * alpha);
 
             // 3. Фильтрация Калмана
             float filtered = _kalman.update(rawAlt);

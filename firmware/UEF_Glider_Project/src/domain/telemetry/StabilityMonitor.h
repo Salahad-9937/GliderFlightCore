@@ -30,10 +30,15 @@ namespace domain::telemetry
             float altChange = fabsf(currentAltitude - _lastAltitude);
             _lastAltitude = currentAltitude;
 
+            // Исправлено: readability-braces-around-statements
             if (altChange < _threshold)
+            {
                 _stableCount++;
+            }
             else
+            {
                 _stableCount = 0;
+            }
 
             return isStable() ? ADAPTATION_FAST : ADAPTATION_SLOW;
         }

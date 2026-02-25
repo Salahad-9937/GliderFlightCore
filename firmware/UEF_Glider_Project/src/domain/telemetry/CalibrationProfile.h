@@ -10,12 +10,13 @@ namespace domain::telemetry
      */
     struct CalibrationProfile
     {
-        float basePressure; ///< Опорное давление "нуля" (Па)
-        uint32_t timestamp; ///< Время проведения калибровки (Unix или uptime)
-        bool isValid;       ///< Флаг готовности данных
+        // Исправлено: cppcoreguidelines-use-default-member-init и readability-uppercase-literal-suffix
+        float basePressure = 101325.0F; ///< Опорное давление "нуля" (Па)
+        uint32_t timestamp = 0;         ///< Время проведения калибровки
+        bool isValid = false;           ///< Флаг готовности данных
 
-        // Конструктор по умолчанию для корректной инициализации
-        CalibrationProfile() : basePressure(101325.0f), timestamp(0), isValid(false) {}
+        // Конструктор по умолчанию использует инициализаторы членов
+        CalibrationProfile() = default;
     };
 }
 
