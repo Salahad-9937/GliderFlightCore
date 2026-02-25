@@ -1,106 +1,97 @@
 /**
- * UEF 2.0: ТЕСТ ЭТАПА 1 (DOMAIN & PERSISTENCE)
- *
- * Проверка:
- * 1. Создание доменной модели FlightProgram.
- * 2. Сохранение через PersistenceManager (расчет CRC16).
- * 3. Загрузка через ProgramManager (проверка CRC16).
+ * UEF 2.0: ПОДРОБНЫЙ ТЕСТ ЭТАПА 2 (FLIGHT FSM) - FIXED
  */
 
 #include <Arduino.h>
 #include <LittleFS.h>
+#include <ESP8266WiFi.h>
 
 #include "src/core2/Config.h"
 #include "src/core2/base/Registry.h"
 #include "src/core2/base/BufferedLogger.h"
+#include "src/core2/messaging/EventBus.h"
+#include "src/core2/messaging/EventListener.h"
 #include "src/core2/engine/Scheduler.h"
 #include "src/platforms/esp8266/Esp8266Platform.h"
-#include "src/drivers/storage/FlashStorage.h"
-#include "src/infrastructure/persistence/PersistenceManager.h"
-#include "src/application/flight/ProgramManager.h"
+#include "src/presentation/input/HallSensorHandler.h"
+#include "src/application/flight/FlightService.h"
 
 using namespace core2;
-using namespace infrastructure::persistence;
 using namespace application::flight;
-using namespace domain::flight;
+using namespace application::events;
+using namespace presentation::input;
 
 // --- ИНФРАСТРУКТУРА ---
 platform::SerialSink serialSink;
 BufferedLogger asyncLogger;
-Scheduler<4> scheduler;
+EventBus<> globalBus;
+Scheduler<8> scheduler;
 
-drivers::FlashStorage flashDriver;
-PersistenceManager persistence(flashDriver);
+platform::DigitalInput hallPin(config::DEFAULT_HW_MAP.pinHall);
+platform::Esp8266Network network;
 
 // --- СЕРВИСЫ ---
-ProgramManager programManager(persistence);
+HallSensorHandler hallHandler(hallPin, globalBus);
+FlightService flightService(network, globalBus);
 
-/**
- * @brief Функция имитации получения программы по сети (Mock).
- */
-auto mockIncomingProgram() -> FlightProgram
+// --- МОНИТОРИНГ СОБЫТИЙ ---
+class EventMonitor : public TypedEventListener<HallEvent>,
+                     public TypedEventListener<FlightStateEvent>
 {
-    FlightProgram p;
-    strncpy(p.id, "550e8400-e29b-41d4-a716-446655440000", ID_MAX_LEN);
-    strncpy(p.name, "Термик-Актив", NAME_MAX_LEN);
-
-    p.stepsCount = 3;
-    // Шаг 1: Руль вправо на 20 градусов, 2.5 сек
-    p.steps[0] = {20, 2500};
-    // Шаг 2: Руль влево на 10 градусов, 5 сек
-    p.steps[1] = {-10, 5000};
-    // Шаг 3: Нейтраль, 10 сек
-    p.steps[2] = {0, 10000};
-
-    return p;
-}
-
-/**
- * @brief Тестовая задача для верификации данных.
- */
-void runPersistenceTest()
-{
-    asyncLogger.info("\n>>> ЗАПУСК ТЕСТА PERSISTENCE <<<\n");
-
-    // 1. Создаем мок-программу
-    FlightProgram original = mockIncomingProgram();
-    asyncLogger.info("TEST: Подготовка мок-программы...\n");
-
-    // 2. Сохраняем
-    if (programManager.saveProgram(original).isOk())
+public:
+    void onTypedEvent(const HallEvent &e) override
     {
-        asyncLogger.info("TEST: Программа сохранена с CRC16.\n");
-    }
-    else
-    {
-        asyncLogger.error("TEST: Ошибка сохранения!\n");
+        const char *g = "UNKNOWN";
+        switch (e.gesture)
+        {
+        case HallGesture::CLICK:
+            g = "CLICK";
+            break;
+        case HallGesture::DOUBLE_CLICK:
+            g = "DOUBLE_CLICK";
+            break;
+        case HallGesture::LONG_PRESS_START:
+            g = "LONG_PRESS_START";
+            break;
+        case HallGesture::RELEASE:
+            g = "RELEASE";
+            break;
+        }
+        char buf[64];
+        snprintf(buf, sizeof(buf), "[EVENT] Hall: %s (dur: %ums)\n", g, e.duration);
+        Registry::getLogger().info(buf);
     }
 
-    // 3. Пытаемся загрузить в новый объект
-    if (programManager.loadActiveProgram().isOk())
+    void onTypedEvent(const FlightStateEvent &e) override
     {
-        const auto &loaded = programManager.getActiveProgram();
+        const char *m = (e.mode == FlightMode::SETUP) ? "SETUP" : (e.mode == FlightMode::ARMED) ? "ARMED"
+                                                                                                : "IN_FLIGHT";
+        char buf[64];
+        snprintf(buf, sizeof(buf), "[EVENT] System Mode Changed to: %s\n", m);
+        Registry::getLogger().info(buf);
+    }
+};
+
+EventMonitor eventMonitor;
+
+class StatusReportTask : public ITask
+{
+public:
+    void execute(uint32_t now) override
+    {
+        (void)now;
+        bool wifi = network.isPowered();
+        bool locked = flightService.isConfigLocked();
 
         char buf[128];
-        snprintf(buf, sizeof(buf), "TEST: Загружено: [%s] '%s', Шагов: %u\n",
-                 loaded.id, loaded.name, loaded.stepsCount);
-        asyncLogger.info(buf);
+        snprintf(buf, sizeof(buf), ">>> STATUS: WiFi: %s | Config: %s <<<\n",
+                 wifi ? "ON" : "OFF",
+                 locked ? "LOCKED (Read Only)" : "UNLOCKED (Full Access)");
+        Registry::getLogger().info(buf);
+    }
+};
 
-        // Проверка целостности данных шагов
-        if (loaded.steps[0].durationMs == 2500 && loaded.steps[1].value == -10)
-        {
-            asyncLogger.info("TEST: ВЕРИФИКАЦИЯ ДАННЫХ ПРОЙДЕНА (Match OK).\n");
-        }
-        else
-        {
-            asyncLogger.error("TEST: ДАННЫЕ ИСКАЖЕНЫ!\n");
-        }
-    }
-    else
-    {
-        asyncLogger.error("TEST: Ошибка загрузки или CRC!\n");
-    }
-}
+StatusReportTask statusTask;
 
 void setup()
 {
@@ -108,30 +99,29 @@ void setup()
     delay(1000);
     Registry::injectLogger(&asyncLogger);
 
-    asyncLogger.info("\n=== UEF 2.0: STAGE 1 TEST (FLIGHT PROGRAM) ===\n");
+    asyncLogger.info("\n=== UEF 2.0: DETAILED FSM INTEGRATION TEST ===\n");
 
-    if (!LittleFS.begin())
-    {
-        asyncLogger.error("FS: Ошибка LittleFS\n");
-        return;
-    }
+    // Инициализация Wi-Fi
+    network.setPower(true);
+    WiFi.mode(WIFI_AP); // Устанавливаем режим для корректного отображения статуса
 
-    // Запуск теста
-    runPersistenceTest();
+    // Подписки
+    (void)globalBus.subscribe(static_cast<TypedEventListener<HallEvent> *>(&eventMonitor));
+    (void)globalBus.subscribe(static_cast<TypedEventListener<FlightStateEvent> *>(&eventMonitor));
+    (void)globalBus.subscribe(&flightService);
+
+    flightService.init();
+
+    (void)scheduler.addTask(&hallHandler, 10);
+    (void)scheduler.addTask(&flightService, 20);
+    (void)scheduler.addTask(&statusTask, 5000);
+
+    asyncLogger.info("Система готова. Ожидание действий с магнитом...\n");
 }
 
 void loop()
 {
     uint32_t now = millis();
     scheduler.run(now);
-
-    // Команда для повторного теста
-    if (Serial.available() > 0)
-    {
-        char cmd = (char)Serial.read();
-        if (cmd == 't')
-            runPersistenceTest();
-    }
-
     asyncLogger.flush(serialSink, 512);
 }

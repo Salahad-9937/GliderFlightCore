@@ -13,9 +13,8 @@ namespace presentation::input
     using namespace application::events;
 
     /**
-     * Обработчик физического уровня датчика Холла.
+     * @brief Обработчик физического уровня датчика Холла.
      * Реализует распознавание жестов: клик, двойной клик, удержание.
-     * Наследует ITask для безопасной интеграции в планировщик.
      */
     class HallSensorHandler : public ITask
     {
@@ -27,17 +26,11 @@ namespace presentation::input
         explicit HallSensorHandler(hal::IDigitalInput &input, EventBus<> &eventBus)
             : _input(&input), _eventBus(&eventBus) {}
 
-        /**
-         * Реализация интерфейса ITask.
-         */
         void execute(uint32_t now) override
         {
             update(now);
         }
 
-        /**
-         * Основной цикл обработки.
-         */
         auto update(uint32_t now) -> void
         {
             auto readRes = _input->read();
@@ -46,8 +39,9 @@ namespace presentation::input
                 return;
             }
 
-            // Инвертируем логику: LOW (false) означает срабатывание датчика Холла
-            bool isActive = !readRes.value();
+            // ИСПРАВЛЕНО: Убрана лишняя инверсия (!).
+            // readRes.value() уже возвращает true, когда магнит поднесен (LOW на пине).
+            bool isActive = readRes.value();
 
             // 1. Обработка изменения состояния (Антидребезг)
             if (isActive != _lastRawState)
