@@ -1,8 +1,10 @@
 /**
- * UEF 2.0: ТЕСТ СЕРВИСОВ ТЕЛЕМЕТРИИ И КАЛИБРОВКИ
+ * UEF 2.0: ТЕСТ ЭТАПА 1 (DOMAIN & PERSISTENCE)
  *
- * Проверка интеграции:
- * HAL (Adafruit) -> Driver (Bmp180) -> Services (Telemetry/Calibration)
+ * Проверка:
+ * 1. Создание доменной модели FlightProgram.
+ * 2. Сохранение через PersistenceManager (расчет CRC16).
+ * 3. Загрузка через ProgramManager (проверка CRC16).
  */
 
 #include <Arduino.h>
@@ -11,99 +13,94 @@
 #include "src/core2/Config.h"
 #include "src/core2/base/Registry.h"
 #include "src/core2/base/BufferedLogger.h"
-#include "src/core2/messaging/EventBus.h"
-#include "src/core2/messaging/EventListener.h"
 #include "src/core2/engine/Scheduler.h"
 #include "src/platforms/esp8266/Esp8266Platform.h"
-#include "src/drivers/sensors/Bmp180.h"
 #include "src/drivers/storage/FlashStorage.h"
 #include "src/infrastructure/persistence/PersistenceManager.h"
-#include "src/application/telemetry/TelemetryService.h"
-#include "src/application/calibration/CalibrationService.h"
-#include "src/application/events/CalibrationEvents.h"
+#include "src/application/flight/ProgramManager.h"
 
 using namespace core2;
-using namespace application::events;
-using namespace application::telemetry;
-using namespace application::calibration;
 using namespace infrastructure::persistence;
+using namespace application::flight;
+using namespace domain::flight;
 
 // --- ИНФРАСТРУКТУРА ---
 platform::SerialSink serialSink;
 BufferedLogger asyncLogger;
-EventBus<> globalBus;
-Scheduler<8> scheduler;
-
-platform::ArduinoI2c i2cBus;
-platform::Esp8266Barometer baroHal;
-drivers::Bmp180 bmp(baroHal);
+Scheduler<4> scheduler;
 
 drivers::FlashStorage flashDriver;
 PersistenceManager persistence(flashDriver);
 
 // --- СЕРВИСЫ ---
-TelemetryService telemetry(bmp);
-CalibrationService calibService(bmp, persistence, globalBus);
+ProgramManager programManager(persistence);
 
-// --- МОНИТОРИНГ СОБЫТИЙ ---
-class CalibrationMonitor : public TypedEventListener<CalibrationEvent>
+/**
+ * @brief Функция имитации получения программы по сети (Mock).
+ */
+auto mockIncomingProgram() -> FlightProgram
 {
-public:
-    void onTypedEvent(const CalibrationEvent &e) override
+    FlightProgram p;
+    strncpy(p.id, "550e8400-e29b-41d4-a716-446655440000", ID_MAX_LEN);
+    strncpy(p.name, "Термик-Актив", NAME_MAX_LEN);
+
+    p.stepsCount = 3;
+    // Шаг 1: Руль вправо на 20 градусов, 2.5 сек
+    p.steps[0] = {20, 2500};
+    // Шаг 2: Руль влево на 10 градусов, 5 сек
+    p.steps[1] = {-10, 5000};
+    // Шаг 3: Нейтраль, 10 сек
+    p.steps[2] = {0, 10000};
+
+    return p;
+}
+
+/**
+ * @brief Тестовая задача для верификации данных.
+ */
+void runPersistenceTest()
+{
+    asyncLogger.info("\n>>> ЗАПУСК ТЕСТА PERSISTENCE <<<\n");
+
+    // 1. Создаем мок-программу
+    FlightProgram original = mockIncomingProgram();
+    asyncLogger.info("TEST: Подготовка мок-программы...\n");
+
+    // 2. Сохраняем
+    if (programManager.saveProgram(original).isOk())
     {
-        char buf[64];
-        switch (e.status)
+        asyncLogger.info("TEST: Программа сохранена с CRC16.\n");
+    }
+    else
+    {
+        asyncLogger.error("TEST: Ошибка сохранения!\n");
+    }
+
+    // 3. Пытаемся загрузить в новый объект
+    if (programManager.loadActiveProgram().isOk())
+    {
+        const auto &loaded = programManager.getActiveProgram();
+
+        char buf[128];
+        snprintf(buf, sizeof(buf), "TEST: Загружено: [%s] '%s', Шагов: %u\n",
+                 loaded.id, loaded.name, loaded.stepsCount);
+        asyncLogger.info(buf);
+
+        // Проверка целостности данных шагов
+        if (loaded.steps[0].durationMs == 2500 && loaded.steps[1].value == -10)
         {
-        case CalibrationStatus::WARMUP:
-            snprintf(buf, sizeof(buf), "[CALIB] Прогрев: %u%%\n", e.progress);
-            Registry::getLogger().info(buf);
-            break;
-        case CalibrationStatus::MEASURING:
-            snprintf(buf, sizeof(buf), "[CALIB] Сбор данных: %u%%\n", e.progress);
-            Registry::getLogger().info(buf);
-            break;
-        case CalibrationStatus::ZEROING:
-            snprintf(buf, sizeof(buf), "[CALIB] Обнуление: %u%%\n", e.progress);
-            Registry::getLogger().info(buf);
-            break;
-        case CalibrationStatus::SUCCESS:
-            Registry::getLogger().info("[CALIB] УСПЕХ! Новое давление применено.\n");
-            // Обновляем базу в телеметрии сразу после успеха
-            telemetry.setBasePressure(calibService.getLastResult().basePressure);
-            break;
-        case CalibrationStatus::ERROR:
-            Registry::getLogger().error("[CALIB] ОШИБКА ОБОРУДОВАНИЯ!\n");
-            break;
-        default:
-            break;
+            asyncLogger.info("TEST: ВЕРИФИКАЦИЯ ДАННЫХ ПРОЙДЕНА (Match OK).\n");
+        }
+        else
+        {
+            asyncLogger.error("TEST: ДАННЫЕ ИСКАЖЕНЫ!\n");
         }
     }
-};
-
-CalibrationMonitor calibMonitor;
-
-// Задача для вывода данных в Serial
-class LogTask : public ITask
-{
-public:
-    void execute(uint32_t now) override
+    else
     {
-        (void)now;
-        // Не мешаем логам калибровки, если она идет
-        if (calibService.getStatus() != CalibrationStatus::IDLE)
-            return;
-
-        const auto &data = telemetry.getData();
-        char buf[128];
-        snprintf(buf, sizeof(buf),
-                 "TELEMETRY: Alt: %.2fм | P: %.0fПа | T: %.1fC | Stable: %s\n",
-                 data.altitude, data.pressure, data.temperature,
-                 data.isStable ? "YES" : "NO");
-        Registry::getLogger().info(buf);
+        asyncLogger.error("TEST: Ошибка загрузки или CRC!\n");
     }
-};
-
-LogTask logTask;
+}
 
 void setup()
 {
@@ -111,39 +108,16 @@ void setup()
     delay(1000);
     Registry::injectLogger(&asyncLogger);
 
-    asyncLogger.info("\n=== UEF 2.0: SERVICE INTEGRATION TEST ===\n");
+    asyncLogger.info("\n=== UEF 2.0: STAGE 1 TEST (FLIGHT PROGRAM) ===\n");
 
     if (!LittleFS.begin())
+    {
         asyncLogger.error("FS: Ошибка LittleFS\n");
-
-    // 1. Инициализация I2C и сервиса телеметрии
-    i2cBus.init(config::DEFAULT_HW_MAP.pinI2cSda, config::DEFAULT_HW_MAP.pinI2cScl);
-
-    if (telemetry.begin().isOk())
-    {
-        asyncLogger.info("HW: BMP180 инициализирован через TelemetryService\n");
-    }
-    else
-    {
-        asyncLogger.error("HW: Ошибка инициализации BMP180\n");
+        return;
     }
 
-    // 2. Загрузка сохраненной калибровки
-    CalibrationProfile saved;
-    if (persistence.load(StorageKey::CALIBRATION, saved).isOk())
-    {
-        asyncLogger.info("FS: Калибровка восстановлена из памяти\n");
-        telemetry.setBasePressure(saved.basePressure);
-    }
-
-    // 3. Подписки и задачи
-    (void)globalBus.subscribe(&calibMonitor);
-
-    (void)scheduler.addTask(&telemetry, 5);    // Опрос датчика каждые 5мс
-    (void)scheduler.addTask(&calibService, 5); // Логика калибровки каждые 5мс
-    (void)scheduler.addTask(&logTask, 1000);   // Вывод в лог раз в секунду
-
-    asyncLogger.info("Команды: 'c'-Full Calib, 'z'-Zero, 's'-Save to Flash\n");
+    // Запуск теста
+    runPersistenceTest();
 }
 
 void loop()
@@ -151,22 +125,13 @@ void loop()
     uint32_t now = millis();
     scheduler.run(now);
 
-    // Обработка команд
+    // Команда для повторного теста
     if (Serial.available() > 0)
     {
         char cmd = (char)Serial.read();
-        if (cmd == 'c')
-            calibService.startFull();
-        else if (cmd == 'z')
-            calibService.startZero();
-        else if (cmd == 's')
-        {
-            if (calibService.saveToStorage().isOk())
-                asyncLogger.info("FS: Сохранено\n");
-            else
-                asyncLogger.error("FS: Ошибка сохранения\n");
-        }
+        if (cmd == 't')
+            runPersistenceTest();
     }
 
-    asyncLogger.flush(serialSink, 256);
+    asyncLogger.flush(serialSink, 512);
 }
