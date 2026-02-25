@@ -1,7 +1,7 @@
 #ifndef DOMAIN_TELEMETRY_BMP180_MATH_H
 #define DOMAIN_TELEMETRY_BMP180_MATH_H
 
-#include "../../drivers/sensors/Bmp180Types.h"
+#include "../../core2/hal/IBarometer.h"
 
 namespace domain::telemetry
 {
@@ -14,7 +14,6 @@ namespace domain::telemetry
     public:
         /**
          * Вспомогательная структура для передачи параметров давления.
-         * Устраняет риск перепутывания параметров (bugprone-easily-swappable-parameters).
          */
         struct PressureInput
         {
@@ -22,14 +21,14 @@ namespace domain::telemetry
             int32_t b5TemperatureParam;
         };
 
-        static auto compensateTemperature(int32_t uncompensatedTemperature, const drivers::Bmp180Calibration &cal) -> int32_t
+        static auto compensateTemperature(int32_t uncompensatedTemperature, const core2::hal::Bmp180Calibration &cal) -> int32_t
         {
             int32_t x1 = (uncompensatedTemperature - static_cast<int32_t>(cal.ac6)) * static_cast<int32_t>(cal.ac5) >> 15;
             int32_t x2 = (static_cast<int32_t>(cal.mc) << 11) / (x1 + cal.md);
             return x1 + x2; // Это B5 в терминах даташита
         }
 
-        static auto compensatePressure(const PressureInput &input, const drivers::Bmp180Calibration &cal, uint8_t oss) -> uint32_t
+        static auto compensatePressure(const PressureInput &input, const core2::hal::Bmp180Calibration &cal, uint8_t oss) -> uint32_t
         {
             int32_t b6 = input.b5TemperatureParam - 4000;
             int32_t x1 = (cal.b2 * (b6 * b6 >> 12)) >> 11;

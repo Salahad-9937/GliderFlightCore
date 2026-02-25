@@ -9,6 +9,7 @@ namespace drivers
     /**
      * Драйвер барометра BMP180.
      * Обертка над HAL-интерфейсом IBarometer.
+     * Проксирует вызовы к платформенной реализации для поддержки сервисов.
      */
     class Bmp180
     {
@@ -37,6 +38,38 @@ namespace drivers
         auto readTemperature() -> core2::Result<float>
         {
             return _hal->readTemperature();
+        }
+
+        /**
+         * Чтение калибровочных коэффициентов из HAL.
+         */
+        auto readCalibrationData() -> core2::Result<core2::hal::Bmp180Calibration>
+        {
+            return _hal->readCalibrationData();
+        }
+
+        /**
+         * Запуск измерения температуры (неблокирующий).
+         */
+        auto startRawTemperature() -> core2::Status
+        {
+            return _hal->startRawTemperature();
+        }
+
+        /**
+         * Запуск измерения давления (неблокирующий).
+         */
+        auto startRawPressure(uint8_t oss) -> core2::Status
+        {
+            return _hal->startRawPressure(oss);
+        }
+
+        /**
+         * Чтение сырого результата из HAL.
+         */
+        auto readRawResult() -> core2::Result<uint32_t>
+        {
+            return _hal->readRawResult();
         }
 
     private:

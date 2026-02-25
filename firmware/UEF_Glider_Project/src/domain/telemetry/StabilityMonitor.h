@@ -7,41 +7,38 @@
 namespace domain::telemetry
 {
     /**
-     * Определяет, находится ли датчик в покое.
+     * Определяет, находится ли датчик в покое и возвращает коэффициент адаптации.
+     * Полностью соответствует логике STABLE_THRESHOLD из старой прошивки.
      */
     class StabilityMonitor
     {
     public:
-        /**
-         * Конфигурация монитора для предотвращения перепутывания параметров.
-         */
         struct Config
         {
-            float threshold = 0.25F;
-            uint16_t requiredReadings = 10;
+            float threshold = 0.25F;       ///< Порог изменения высоты (метры)
+            uint16_t requiredReadings = 5; ///< Количество чтений для подтверждения (STABLE_THRESHOLD)
         };
 
         explicit StabilityMonitor(const Config &cfg)
             : _threshold(cfg.threshold), _requiredReadings(cfg.requiredReadings) {}
 
-        auto process(float currentAltitude) -> void
+        /**
+         * Обработка нового значения высоты.
+         * @return alpha - коэффициент фильтрации для базового давления.
+         */
+        auto process(float currentAltitude) -> float
         {
-            float diff = fabsf(currentAltitude - _lastAltitude);
-            if (diff < _threshold)
-            {
-                if (_stableCount < _requiredReadings)
-                {
-                    _stableCount++;
-                }
-            }
-            else
-            {
-                _stableCount = 0;
-            }
+            float altChange = fabsf(currentAltitude - _lastAltitude);
+
+            // Логика 1:1 из старой прошивки
+            _stableCount = (altChange < _threshold) ? _stableCount + 1 : 0;
             _lastAltitude = currentAltitude;
+
+            // Если стабилен (> 5 чтений) -> быстрая адаптация (0.05), иначе почти замерзает (0.001)
+            return (_stableCount > _requiredReadings) ? 0.05F : 0.001F;
         }
 
-        [[nodiscard]] auto isStable() const -> bool { return _stableCount >= _requiredReadings; }
+        [[nodiscard]] auto isStable() const -> bool { return _stableCount > _requiredReadings; }
 
         auto reset() -> void { _stableCount = 0; }
 

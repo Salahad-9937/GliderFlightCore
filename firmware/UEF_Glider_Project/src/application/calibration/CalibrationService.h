@@ -4,7 +4,6 @@
 #include "../../core2/engine/Scheduler.h"
 #include "../../core2/messaging/EventBus.h"
 #include "../../drivers/sensors/Bmp180.h"
-#include "../../domain/telemetry/Bmp180Math.h"
 #include "../../domain/telemetry/CalibrationProfile.h"
 #include "../../infrastructure/persistence/PersistenceManager.h"
 #include "../events/CalibrationEvents.h"
@@ -18,7 +17,7 @@ namespace application::calibration
 
     /**
      * Сервис калибровки барометра.
-     * Полностью неблокирующая реализация без использования delay().
+     * Использует готовые значения давления (Па) для расчета базы.
      */
     class CalibrationService : public ITask
     {
@@ -26,7 +25,6 @@ namespace application::calibration
         static constexpr uint32_t WARMUP_MS = 10000;
         static constexpr uint16_t FULL_SAMPLES = 2000;
         static constexpr uint16_t ZERO_SAMPLES = 500;
-        static constexpr uint32_t CONVERSION_TIME_MS = 26; // Время замера для OSS3
 
         explicit CalibrationService(
             drivers::Bmp180 &bmp,
@@ -50,14 +48,12 @@ namespace application::calibration
             _status = CalibrationStatus::ZEROING;
             _samplesCount = 0;
             _pressureSum = 0;
-            _isWaitingForSensor = false;
             notify();
         }
 
         auto cancel() -> void
         {
             _status = CalibrationStatus::IDLE;
-            _isWaitingForSensor = false;
             notify();
         }
 
@@ -76,10 +72,10 @@ namespace application::calibration
                 handleWarmup(now);
                 break;
             case CalibrationStatus::MEASURING:
-                handleSampling(now, FULL_SAMPLES);
+                handleSampling(FULL_SAMPLES);
                 break;
             case CalibrationStatus::ZEROING:
-                handleSampling(now, ZERO_SAMPLES);
+                handleSampling(ZERO_SAMPLES);
                 break;
             default:
                 break;
@@ -98,32 +94,18 @@ namespace application::calibration
                 _status = CalibrationStatus::MEASURING;
                 _samplesCount = 0;
                 _pressureSum = 0;
-                _isWaitingForSensor = false;
             }
             notify((elapsed * 100) / WARMUP_MS);
         }
 
-        auto handleSampling(uint32_t now, uint16_t target) -> void
+        auto handleSampling(uint16_t target) -> void
         {
-            if (!_isWaitingForSensor)
-            {
-                // Запускаем новый цикл замера
-                (void)_bmp->startRawPressure(3);
-                _lastSampleTime = now;
-                _isWaitingForSensor = true;
-                return;
-            }
-
-            // Ждем завершения преобразования датчиком
-            if (now - _lastSampleTime < CONVERSION_TIME_MS)
-                return;
-
-            auto res = _bmp->readRawResult();
+            // Читаем уже компенсированное давление в Паскалях
+            auto res = _bmp->readPressure();
             if (res.isOk())
             {
                 _pressureSum += res.value();
                 _samplesCount++;
-                _isWaitingForSensor = false; // Готовы к следующему замеру
             }
 
             uint8_t progress = (_samplesCount * 100) / target;
@@ -160,10 +142,8 @@ namespace application::calibration
         CalibrationProfile _lastResult;
 
         uint32_t _startTime = 0;
-        uint32_t _lastSampleTime = 0;
         uint16_t _samplesCount = 0;
         double _pressureSum = 0;
-        bool _isWaitingForSensor = false;
     };
 }
 

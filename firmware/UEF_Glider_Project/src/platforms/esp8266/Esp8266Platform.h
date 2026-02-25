@@ -73,7 +73,7 @@ namespace core2::platform
 
     /**
      * Barometer Bridge (BMP180).
-     * Использует библиотеку Adafruit BMP085.
+     * Реализация через библиотеку Adafruit.
      */
     class Esp8266Barometer : public hal::IBarometer
     {
@@ -91,6 +91,64 @@ namespace core2::platform
         auto readTemperature() -> Result<float> override
         {
             return _bmp.readTemperature();
+        }
+
+        auto readCalibrationData() -> Result<hal::Bmp180Calibration> override
+        {
+            hal::Bmp180Calibration c;
+            // Прямое чтение из EEPROM датчика (адрес 0xAA, длина 22 байта)
+            Wire.beginTransmission(0x77);
+            Wire.write(0xAA);
+            if (Wire.endTransmission() != 0)
+                return ErrorCode::HARDWARE_FAILURE;
+            if (Wire.requestFrom(0x77, 22) != 22)
+                return ErrorCode::HARDWARE_FAILURE;
+
+            auto read16 = []()
+            { return (int16_t)((Wire.read() << 8) | Wire.read()); };
+            auto readU16 = []()
+            { return (uint16_t)((Wire.read() << 8) | Wire.read()); };
+
+            c.ac1 = read16();
+            c.ac2 = read16();
+            c.ac3 = read16();
+            c.ac4 = readU16();
+            c.ac5 = readU16();
+            c.ac6 = readU16();
+            c.b1 = read16();
+            c.b2 = read16();
+            c.mb = read16();
+            c.mc = read16();
+            c.md = read16();
+            return c;
+        }
+
+        auto startRawTemperature() -> Status override
+        {
+            Wire.beginTransmission(0x77);
+            Wire.write(0xF4);
+            Wire.write(0x2E);
+            return (Wire.endTransmission() == 0) ? Status::ok() : Status::fail(ErrorCode::HARDWARE_FAILURE);
+        }
+
+        auto startRawPressure(uint8_t oss) -> Status override
+        {
+            Wire.beginTransmission(0x77);
+            Wire.write(0xF4);
+            Wire.write(0x34 + (oss << 6));
+            return (Wire.endTransmission() == 0) ? Status::ok() : Status::fail(ErrorCode::HARDWARE_FAILURE);
+        }
+
+        auto readRawResult() -> Result<uint32_t> override
+        {
+            Wire.beginTransmission(0x77);
+            Wire.write(0xF6);
+            if (Wire.endTransmission() != 0)
+                return ErrorCode::HARDWARE_FAILURE;
+            if (Wire.requestFrom(0x77, 3) != 3)
+                return ErrorCode::HARDWARE_FAILURE;
+            uint32_t res = ((uint32_t)Wire.read() << 16) | ((uint32_t)Wire.read() << 8) | (uint32_t)Wire.read();
+            return res >> 8;
         }
 
     private:
