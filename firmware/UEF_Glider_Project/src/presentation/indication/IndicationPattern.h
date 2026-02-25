@@ -13,12 +13,21 @@ namespace presentation::indication
     class IIndicationPattern
     {
     public:
+        // Исправлено: cppcoreguidelines-special-member-functions (Rule of 5)
         virtual ~IIndicationPattern() = default;
+        IIndicationPattern() = default;
+        IIndicationPattern(const IIndicationPattern &) = delete;
+        auto operator=(const IIndicationPattern &) -> IIndicationPattern & = delete;
+        IIndicationPattern(IIndicationPattern &&) = delete;
+        auto operator=(IIndicationPattern &&) -> IIndicationPattern & = delete;
+
         virtual void update(uint32_t now, drivers::LedChannel &led) = 0;
         virtual void reset() = 0;
     };
 
-    // Пример реализации: Медленное мигание
+    /**
+     * @brief Реализация: Медленное мигание.
+     */
     class BlinkPattern : public IIndicationPattern
     {
     public:
@@ -38,7 +47,9 @@ namespace presentation::indication
         uint32_t _lastTime = 0;
     };
 
-    // Пример реализации: Постоянное свечение
+    /**
+     * @brief Реализация: Постоянное свечение.
+     */
     class SteadyPattern : public IIndicationPattern
     {
     public:

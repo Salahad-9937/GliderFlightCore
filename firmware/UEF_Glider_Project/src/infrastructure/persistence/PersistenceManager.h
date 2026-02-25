@@ -12,7 +12,7 @@ namespace infrastructure::persistence
 
     /**
      * Высокоуровневый менеджер для работы с данными.
-     * Добавляет заголовок с CRC16 для защиты от повреждения файлов (п. 10.1 Протокола).
+     * Добавляет заголовок с CRC16 для защиты от повреждения файлов.
      */
     class PersistenceManager
     {
@@ -27,7 +27,11 @@ namespace infrastructure::persistence
         {
             StorageRecord<T> record;
             record.payload = data;
-            record.crc = utils::Checksum::crc16(reinterpret_cast<const uint8_t *>(&record.payload), sizeof(T));
+
+            // Использование reinterpret_cast оправдано для расчета CRC байтового представления структуры.
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+            const auto *payloadPtr = reinterpret_cast<const uint8_t *>(&record.payload);
+            record.crc = utils::Checksum::crc16(payloadPtr, sizeof(T));
 
             return _storage->store(static_cast<uint16_t>(key), &record, sizeof(record));
         }
@@ -42,9 +46,14 @@ namespace infrastructure::persistence
             auto status = _storage->load(static_cast<uint16_t>(key), &record, sizeof(record));
 
             if (!status.isOk())
+            {
                 return status;
+            }
 
-            uint16_t calculatedCrc = utils::Checksum::crc16(reinterpret_cast<const uint8_t *>(&record.payload), sizeof(T));
+            // Использование reinterpret_cast оправдано для расчета CRC байтового представления структуры.
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+            const auto *payloadPtr = reinterpret_cast<const uint8_t *>(&record.payload);
+            uint16_t calculatedCrc = utils::Checksum::crc16(payloadPtr, sizeof(T));
 
             if (calculatedCrc != record.crc)
             {

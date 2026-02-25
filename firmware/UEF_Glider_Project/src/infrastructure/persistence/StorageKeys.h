@@ -9,7 +9,8 @@ namespace infrastructure::persistence
      * @brief Константы ключей для IStorage.
      * Каждому ключу соответствует отдельный файл в LittleFS.
      */
-    enum class StorageKey : uint16_t
+    // Исправлено: performance-enum-size (использование uint8_t вместо uint16_t)
+    enum class StorageKey : uint8_t
     {
         CALIBRATION = 100,    ///< Данные калибровки датчиков (f_100.bin)
         HARDWARE_PINS = 101,  ///< Конфигурация пинов (f_101.bin)
