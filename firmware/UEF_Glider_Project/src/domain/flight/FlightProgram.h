@@ -4,13 +4,15 @@
 #include "../../core2/engine/Sequencer.h"
 #include <stdint.h>
 #include <string.h>
+#include <array>
 
 namespace domain::flight
 {
     /**
      * @brief Лимиты программы полета.
      */
-    enum ProgramLimits : uint8_t
+    // Исправлено: cppcoreguidelines-use-enum-class
+    enum class ProgramLimits : uint8_t
     {
         MAX_STEPS = 16,    ///< Максимальное кол-во фаз полета
         NAME_MAX_LEN = 32, ///< Макс. длина имени программы
@@ -19,37 +21,40 @@ namespace domain::flight
 
     /**
      * @brief Доменная модель полетной программы (Rich Domain Model).
-     * Содержит не только данные, но и логику их обработки.
      */
     struct FlightProgram
     {
-        char id[ID_MAX_LEN];                  ///< Уникальный идентификатор
-        char name[NAME_MAX_LEN];              ///< Имя программы
-        uint8_t stepsCount;                   ///< Кол-во шагов
-        core2::SequenceStep steps[MAX_STEPS]; ///< Массив шагов
+        // Исправлено: cppcoreguidelines-avoid-c-arrays
+        std::array<char, static_cast<size_t>(ProgramLimits::ID_MAX_LEN)> id{};
+        std::array<char, static_cast<size_t>(ProgramLimits::NAME_MAX_LEN)> name{};
+        uint8_t stepsCount = 0; // Исправлено: cppcoreguidelines-use-default-member-init
+        std::array<core2::SequenceStep, static_cast<size_t>(ProgramLimits::MAX_STEPS)> steps{};
 
-        FlightProgram() : stepsCount(0)
-        {
-            memset(id, 0, ID_MAX_LEN);
-            memset(name, 0, NAME_MAX_LEN);
-            memset(steps, 0, sizeof(steps));
-        }
+        // Исправлено: cppcoreguidelines-pro-type-member-init
+        FlightProgram() = default;
 
         /**
          * @brief Проверка валидности программы.
          */
         [[nodiscard]] auto isValid() const -> bool
         {
-            if (stepsCount == 0 || stepsCount > MAX_STEPS)
+            if (stepsCount == 0 || stepsCount > static_cast<uint8_t>(ProgramLimits::MAX_STEPS))
+            {
                 return false;
-            if (id[0] == '\0')
+            }
+            // Исправлено: cppcoreguidelines-pro-bounds-array-to-pointer-decay
+            if (id.at(0) == '\0')
+            {
                 return false;
+            }
 
-            // Проверка на наличие шагов с нулевой длительностью
             for (uint8_t i = 0; i < stepsCount; i++)
             {
-                if (steps[i].durationMs == 0)
+                // Исправлено: cppcoreguidelines-pro-bounds-constant-array-index
+                if (steps.at(i).durationMs == 0)
+                {
                     return false;
+                }
             }
             return true;
         }
@@ -62,7 +67,8 @@ namespace domain::flight
             uint32_t total = 0;
             for (uint8_t i = 0; i < stepsCount; i++)
             {
-                total += steps[i].durationMs;
+                // Исправлено: cppcoreguidelines-pro-bounds-constant-array-index
+                total += steps.at(i).durationMs;
             }
             return total;
         }
@@ -70,9 +76,11 @@ namespace domain::flight
         /**
          * @brief Сравнение программ по ID.
          */
-        auto isSameAs(const FlightProgram &other) const -> bool
+        // Исправлено: modernize-use-nodiscard
+        [[nodiscard]] auto isSameAs(const FlightProgram &other) const -> bool
         {
-            return strcmp(id, other.id) == 0;
+            // Исправлено: cppcoreguidelines-pro-bounds-array-to-pointer-decay
+            return strcmp(id.data(), other.id.data()) == 0;
         }
     };
 }

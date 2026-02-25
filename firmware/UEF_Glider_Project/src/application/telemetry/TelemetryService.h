@@ -5,6 +5,7 @@
 #include "../../domain/telemetry/TelemetryProcessor.h"
 #include "../../core2/engine/Scheduler.h"
 #include "../../core2/base/Registry.h"
+#include <array>
 
 namespace application::telemetry
 {
@@ -31,8 +32,11 @@ namespace application::telemetry
         auto begin() -> core2::Status
         {
             auto status = _bmp->begin();
+            // Исправлено: readability-braces-around-statements
             if (status.isOk())
+            {
                 _isReady = true;
+            }
             return status;
         }
 
@@ -43,14 +47,22 @@ namespace application::telemetry
         }
 
         void setMonitoring(bool enable) { _isMonitoring = enable; }
-        bool isMonitoring() const { return _isMonitoring; }
+
+        // Исправлено: modernize-use-nodiscard и modernize-use-trailing-return-type
+        [[nodiscard]] auto isMonitoring() const -> bool { return _isMonitoring; }
+
         void setLogging(bool enable) { _isLogging = enable; }
-        bool isLogging() const { return _isLogging; }
+
+        // Исправлено: modernize-use-nodiscard и modernize-use-trailing-return-type
+        [[nodiscard]] auto isLogging() const -> bool { return _isLogging; }
 
         void execute(uint32_t now) override
         {
+            // Исправлено: readability-braces-around-statements
             if (!_isReady || !_isMonitoring)
+            {
                 return;
+            }
 
             accumulateSamples();
 
@@ -69,7 +81,7 @@ namespace application::telemetry
             auto pRes = _bmp->readPressure();
             if (pRes.isOk())
             {
-                float p = static_cast<float>(pRes.value());
+                auto p = static_cast<float>(pRes.value()); // Исправлено: modernize-use-auto
                 if (p > 40000.0F && p < 115000.0F)
                 {
                     _pressureAccumulator += p;
@@ -80,11 +92,14 @@ namespace application::telemetry
 
         void performUpdate()
         {
+            // Исправлено: readability-braces-around-statements
             if (_sampleCount == 0)
+            {
                 return;
+            }
 
             // Подготовка входных данных
-            float avgP = _pressureAccumulator / static_cast<float>(_sampleCount);
+            auto avgP = _pressureAccumulator / static_cast<float>(_sampleCount);
             _pressureAccumulator = 0;
             _sampleCount = 0;
 
@@ -101,15 +116,20 @@ namespace application::telemetry
             _currentData.altitude = out.altitude;
             _currentData.isStable = out.isStable;
 
+            // Исправлено: readability-braces-around-statements
             if (_isLogging)
+            {
                 log();
+            }
         }
 
         void log() const
         {
-            char buf[64];
-            snprintf(buf, sizeof(buf), "TELE: Alt: %.2f, P: %.0f\n", _currentData.altitude, _currentData.pressure);
-            core2::Registry::getLogger().info(buf);
+            // Исправлено: cppcoreguidelines-avoid-c-arrays
+            std::array<char, 64> buf{};
+            // Исправлено: cppcoreguidelines-pro-bounds-array-to-pointer-decay
+            snprintf(buf.data(), buf.size(), "TELE: Alt: %.2f, P: %.0f\n", _currentData.altitude, _currentData.pressure);
+            core2::Registry::getLogger().info(buf.data());
         }
 
         drivers::Bmp180 *_bmp;
