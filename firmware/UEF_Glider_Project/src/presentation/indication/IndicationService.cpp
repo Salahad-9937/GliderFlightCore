@@ -1,17 +1,16 @@
 #include "IndicationService.h"
-#include <Arduino.h>
 
 namespace presentation::indication
 {
-    IndicationService::IndicationService(drivers::LedChannel &led)
+    IndicationService::IndicationService(drivers::DualLed &led)
         : _led(&led),
-          _slowBlink(500),
-          _fastBlink(150),
-          _rapidBlink(50),
-          _steadyOn(true),
-          _steadyOff(false)
+          _setupPattern(true, false),      // SETUP: Только Цвет 1
+          _armedPattern(500, false, true), // ARMED: Цвет 2, 1Гц
+          _flightPattern(false, true),     // FLIGHT: Цвет 2, Heartbeat
+          _calibPattern(50, true, true),   // CALIB: Смешивание (C1+C2), 10Гц
+          _errorPattern(50, true, false)   // ERROR: Цвет 1, Rapid
     {
-        _currentPattern = &_slowBlink;
+        _currentPattern = &_setupPattern;
     }
 
     void IndicationService::setPattern(IIndicationPattern &pattern)
@@ -29,13 +28,13 @@ namespace presentation::indication
         switch (e.mode)
         {
         case FlightMode::SETUP:
-            setPattern(_slowBlink);
+            setPattern(_setupPattern);
             break;
         case FlightMode::ARMED:
-            setPattern(_fastBlink);
-            break; // Упрощено для примера
+            setPattern(_armedPattern);
+            break;
         case FlightMode::IN_FLIGHT:
-            setPattern(_steadyOn);
+            setPattern(_flightPattern);
             break;
         }
     }
@@ -48,9 +47,10 @@ namespace presentation::indication
 
     void IndicationService::onTypedEvent(const application::events::HallEvent &e)
     {
+        // Кратковременная вспышка при клике (опционально, не мешает основным режимам)
         if (e.gesture == application::events::HallGesture::CLICK)
         {
-            _led->on(); // Визуальный фидбек
+            (void)_led->set(true, true);
         }
     }
 
@@ -58,13 +58,13 @@ namespace presentation::indication
     {
         if (_isError)
         {
-            _rapidBlink.update(now, *_led);
+            _errorPattern.update(now, *_led);
             return;
         }
 
         if (_isCalibrating)
         {
-            _fastBlink.update(now, *_led);
+            _calibPattern.update(now, *_led);
             return;
         }
 

@@ -27,6 +27,7 @@
 #include "src/drivers/power/VccMonitor.h"
 #include "src/drivers/system/SystemMonitor.h"
 #include "src/drivers/led/LedChannel.h"
+#include "src/drivers/led/DualLed.h"
 
 // Сервисы
 #include "src/infrastructure/persistence/PersistenceManager.h"
@@ -61,7 +62,8 @@ platform::Esp8266Lock globalLock;
 platform::ArduinoI2c i2cBus;
 platform::Esp8266Barometer baroHal;
 platform::DigitalInput hallPin(config::DEFAULT_HW_MAP.pinHall);
-platform::DigitalOutput ledPin(config::DEFAULT_HW_MAP.pinLed1);
+platform::DigitalOutput ledPin1(config::DEFAULT_HW_MAP.pinLed1);
+platform::DigitalOutput ledPin2(config::DEFAULT_HW_MAP.pinLed2);
 platform::ServoActuator servoHal(config::DEFAULT_HW_MAP.pinServo);
 platform::Esp8266Network network;
 platform::Esp8266Adc adc;
@@ -74,7 +76,11 @@ drivers::Bmp180 bmp(baroHal);
 drivers::FlashStorage flash;
 drivers::VccMonitor vcc(adc);
 drivers::SystemMonitor sysMon(sysInfo, sysTimer);
-drivers::LedChannel statusLed(ledPin, true);
+
+// Светодиод: Канал 1 (Синий), Канал 2 (Красный)
+drivers::LedChannel ledCh1(ledPin1, true);
+drivers::LedChannel ledCh2(ledPin2, true);
+drivers::DualLed statusLed(ledCh1, ledCh2);
 
 // --- СЕРВИСЫ ---
 PersistenceManager persistence(flash);
@@ -136,7 +142,6 @@ void setup()
     (void)globalBus.subscribe(&flight);
 
     // 5. Планировщик (Приоритеты: Телеметрия > Ввод > FSM > Индикация > API)
-    // Исправлено: явное игнорирование возвращаемого значения addTask для подавления nodiscard
     (void)scheduler.addTask(&telemetry, 5);    // 200 Hz
     (void)scheduler.addTask(&hallHandler, 10); // 100 Hz
     (void)scheduler.addTask(&calib, 20);       // 50 Hz
