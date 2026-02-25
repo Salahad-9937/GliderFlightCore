@@ -7,13 +7,13 @@
 #include "../../../core2/engine/Sequencer.h"
 #include "../../../application/flight/ProgramManager.h"
 #include "../../../application/telemetry/TelemetryService.h"
+#include "../../../infrastructure/persistence/StorageKeys.h"
 #include <ESP8266WiFi.h>
 
 namespace application::flight
 {
     /**
      * @brief Состояние активного полета.
-     * Выполняет программу сервопривода и записывает лог давления.
      */
     class InFlightState : public BaseFlightState
     {
@@ -35,37 +35,31 @@ namespace application::flight
         auto onEnter() -> void override
         {
             core2::Registry::getLogger().info("FLIGHT: Старт автономной программы...\n");
-
-            // 1. Энергосбережение
             _net->setPower(false);
 
-            // 2. Запуск секвенсора, если есть программа
             if (_progManager->hasActiveProgram())
             {
                 const auto &prog = _progManager->getActiveProgram();
                 _sequencer.start(prog.steps, prog.stepsCount, millis());
-                core2::Registry::getLogger().info("FLIGHT: Секвенсор запущен.\n");
             }
-            else
-            {
-                core2::Registry::getLogger().error("FLIGHT: Программа не найдена!\n");
-            }
-
             _lastLogTime = 0;
+        }
+
+        auto handleGesture(application::events::HallGesture gesture) -> BaseFlightState * override
+        {
+            (void)gesture;
+            return nullptr; // В полете жесты игнорируются (защита)
         }
 
         auto onUpdate(uint32_t now) -> void override
         {
-            // Обновление позиции сервопривода
             _sequencer.update(now);
 
-            // Запись лога давления каждую секунду (Black Box)
             if (now - _lastLogTime >= 1000)
             {
                 _lastLogTime = now;
                 float p = _telemetry->getData().pressure;
-                // Записываем сырое давление (float) в файл лога (ключ 255)
-                _storage->append(255, &p, sizeof(p));
+                _storage->append(static_cast<uint16_t>(infrastructure::persistence::StorageKey::FLIGHT_LOG), &p, sizeof(p));
             }
         }
 

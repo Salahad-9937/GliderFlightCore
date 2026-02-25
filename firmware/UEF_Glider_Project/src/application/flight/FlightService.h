@@ -34,6 +34,9 @@ namespace application::flight
               _armedState(),
               _inFlightState(net, servo, progManager, storage, telemetry)
         {
+            // Связывание состояний для переходов
+            _setupState.setArmedState(&_armedState);
+            _armedState.setInFlightState(&_inFlightState);
         }
 
         auto init() -> void
@@ -41,25 +44,34 @@ namespace application::flight
             changeState(&_setupState, FlightMode::SETUP);
         }
 
+        /**
+         * Обработка жестов через полиморфизм состояний.
+         */
         void onTypedEvent(const HallEvent &e) override
         {
-            switch (e.gesture)
+            // Глобальный жест сброса в SETUP
+            if (e.gesture == HallGesture::DOUBLE_CLICK)
             {
-            case HallGesture::DOUBLE_CLICK:
                 changeState(&_setupState, FlightMode::SETUP);
-                _readyToLaunch = false;
-                break;
+                return;
+            }
 
-            case HallGesture::LONG_PRESS_START:
-                handleLongPress();
-                break;
+            // Делегирование обработки жеста текущему состоянию
+            auto *current = static_cast<BaseFlightState *>(_fsm.getCurrentState());
+            if (current != nullptr)
+            {
+                BaseFlightState *next = current->handleGesture(e.gesture);
+                if (next != nullptr)
+                {
+                    // Определяем режим для события на основе целевого состояния
+                    FlightMode nextMode = FlightMode::SETUP;
+                    if (next == &_armedState)
+                        nextMode = FlightMode::ARMED;
+                    else if (next == &_inFlightState)
+                        nextMode = FlightMode::IN_FLIGHT;
 
-            case HallGesture::RELEASE:
-                handleRelease();
-                break;
-
-            default:
-                break;
+                    changeState(next, nextMode);
+                }
             }
         }
 
@@ -77,29 +89,6 @@ namespace application::flight
         [[nodiscard]] auto getCurrentMode() const -> FlightMode { return _currentMode; }
 
     private:
-        auto handleLongPress() -> void
-        {
-            auto *current = _fsm.getCurrentState();
-            if (current == &_setupState)
-            {
-                changeState(&_armedState, FlightMode::ARMED);
-            }
-            else if (current == &_armedState)
-            {
-                _readyToLaunch = true;
-                Registry::getLogger().info("FSM: ПУСК ГОТОВ\n");
-            }
-        }
-
-        auto handleRelease() -> void
-        {
-            if (_readyToLaunch && _fsm.getCurrentState() == &_armedState)
-            {
-                changeState(&_inFlightState, FlightMode::IN_FLIGHT);
-                _readyToLaunch = false;
-            }
-        }
-
         auto changeState(BaseFlightState *newState, FlightMode mode) -> void
         {
             _fsm.transitionTo(newState);
@@ -115,7 +104,6 @@ namespace application::flight
         InFlightState _inFlightState;
 
         FlightMode _currentMode = FlightMode::SETUP;
-        bool _readyToLaunch = false;
     };
 }
 

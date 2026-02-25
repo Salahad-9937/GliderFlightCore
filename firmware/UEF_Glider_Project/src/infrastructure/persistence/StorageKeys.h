@@ -11,9 +11,10 @@ namespace infrastructure::persistence
      */
     enum class StorageKey : uint16_t
     {
-        CALIBRATION = 100,   ///< Данные калибровки датчиков (f_100.bin)
-        HARDWARE_PINS = 101, ///< Конфигурация пинов (f_101.bin)
-        FLIGHT_PROGRAM = 200 ///< Активная программа полета (f_200.bin)
+        CALIBRATION = 100,    ///< Данные калибровки датчиков (f_100.bin)
+        HARDWARE_PINS = 101,  ///< Конфигурация пинов (f_101.bin)
+        FLIGHT_PROGRAM = 200, ///< Активная программа полета (f_200.bin)
+        FLIGHT_LOG = 255      ///< Лог сырого давления полета (f_255.bin)
     };
 }
 

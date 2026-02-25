@@ -15,7 +15,6 @@ namespace application::telemetry
 
     /**
      * @brief Сервис управления телеметрией.
-     * Реализует накопительное усреднение, адаптивную компенсацию дрейфа и фильтрацию Калмана.
      */
     class TelemetryService : public core2::ITask
     {
@@ -46,9 +45,6 @@ namespace application::telemetry
             return core2::Status::ok();
         }
 
-        /**
-         * Установка базового давления.
-         */
         auto setBasePressure(float pressurePa) -> void
         {
             _adaptiveBaseline = pressurePa;
@@ -56,32 +52,18 @@ namespace application::telemetry
             _kalman.reset(0.0F);
         }
 
-        // Управление состоянием опроса
         void setMonitoring(bool enable) { _isMonitoring = enable; }
         bool isMonitoring() const { return _isMonitoring; }
 
         void setLogging(bool enable) { _isLogging = enable; }
         bool isLogging() const { return _isLogging; }
 
-        /**
-         * Выполняется планировщиком.
-         */
         void execute(uint32_t now) override
         {
             if (!_isReady || !_isMonitoring)
                 return;
 
-            auto pRes = _bmp->readPressure();
-            if (pRes.isOk())
-            {
-                float p = static_cast<float>(pRes.value());
-                // Фильтрация аппаратных выбросов
-                if (p > 40000.0F && p < 115000.0F)
-                {
-                    _pressureAccumulator += p;
-                    _sampleCount++;
-                }
-            }
+            accumulatePressure();
 
             if (now - _lastCalcTime >= CALC_INTERVAL_MS)
             {
@@ -94,22 +76,40 @@ namespace application::telemetry
 
     private:
         /**
-         * Основная математическая модель.
+         * Сбор и первичная фильтрация данных.
+         */
+        void accumulatePressure()
+        {
+            auto pRes = _bmp->readPressure();
+            if (pRes.isOk())
+            {
+                float p = static_cast<float>(pRes.value());
+                if (isValidPressure(p))
+                {
+                    _pressureAccumulator += p;
+                    _sampleCount++;
+                }
+            }
+        }
+
+        /**
+         * Проверка физической достоверности давления.
+         */
+        bool isValidPressure(float p) const
+        {
+            return (p > 40000.0F && p < 115000.0F);
+        }
+
+        /**
+         * Основной цикл расчетов.
          */
         void performCalculations()
         {
             if (_sampleCount == 0)
                 return;
 
-            // 1. Усреднение накопленного давления
-            _currentData.pressure = _pressureAccumulator / static_cast<float>(_sampleCount);
-            _pressureAccumulator = 0;
-            _sampleCount = 0;
-
-            // 2. Чтение температуры
-            auto tRes = _bmp->readTemperature();
-            if (tRes.isOk())
-                _currentData.temperature = tRes.value();
+            updateAveragePressure();
+            updateTemperature();
 
             if (!_isCalibrated)
             {
@@ -117,26 +117,45 @@ namespace application::telemetry
                 return;
             }
 
-            // 3. Расчет высоты и компенсация дрейфа
+            processAltitude();
+
+            if (_isLogging)
+                logDiagnostics();
+        }
+
+        void updateAveragePressure()
+        {
+            _currentData.pressure = _pressureAccumulator / static_cast<float>(_sampleCount);
+            _pressureAccumulator = 0;
+            _sampleCount = 0;
+        }
+
+        void updateTemperature()
+        {
+            auto tRes = _bmp->readTemperature();
+            if (tRes.isOk())
+                _currentData.temperature = tRes.value();
+        }
+
+        void processAltitude()
+        {
             float rawAlt = AltitudeCalculator::calculate(_currentData.pressure, _adaptiveBaseline);
+
+            // Адаптация базового давления (компенсация дрейфа)
             float alpha = _stability.process(rawAlt);
             _adaptiveBaseline = _adaptiveBaseline * (1.0F - alpha) + _currentData.pressure * alpha;
 
-            // 4. Фильтрация Калмана
-            _currentData.altitude = _kalman.update(rawAlt);
+            // Фильтрация и мертвая зона
+            float filtered = _kalman.update(rawAlt);
+            _currentData.altitude = (fabsf(filtered) < 0.12F) ? 0.0F : filtered;
             _currentData.isStable = _stability.isStable();
+        }
 
-            // 5. Мертвая зона
-            if (fabsf(_currentData.altitude) < 0.12F)
-                _currentData.altitude = 0.0F;
-
-            // 6. Диагностический вывод
-            if (_isLogging)
-            {
-                char buf[64];
-                snprintf(buf, sizeof(buf), "TELE: Alt: %.2f, P: %.0f\n", _currentData.altitude, _currentData.pressure);
-                core2::Registry::getLogger().info(buf);
-            }
+        void logDiagnostics() const
+        {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "TELE: Alt: %.2f, P: %.0f\n", _currentData.altitude, _currentData.pressure);
+            core2::Registry::getLogger().info(buf);
         }
 
         drivers::Bmp180 *_bmp;

@@ -3,6 +3,7 @@
 
 #include "../../../core2/engine/IState.h"
 #include "../../../core2/base/Registry.h"
+#include "../../events/InputEvents.h"
 
 namespace application::flight
 {
@@ -17,8 +18,11 @@ namespace application::flight
         auto onExit() -> void override {}
 
         /**
-         * @brief Проверка, разрешено ли изменение конфигурации в этом состоянии.
+         * @brief Обработка жеста в контексте текущего состояния.
+         * @return Новое состояние или nullptr, если переход не требуется.
          */
+        virtual auto handleGesture(application::events::HallGesture gesture) -> BaseFlightState * = 0;
+
         [[nodiscard]] virtual auto isConfigLocked() const -> bool = 0;
     };
 }
