@@ -1,10 +1,5 @@
 /**
- * UEF 2.0: ПОЛНАЯ ИНТЕГРАЦИЯ (STAGE 3) - FIXED NAMESPACES
- *
- * Проверка:
- * 1. Работа REST API (/status, /program, /system).
- * 2. Блокировка деструктивных действий в режиме ARMED.
- * 3. Полное отключение API в режиме FLIGHT (через WiFi OFF).
+ * UEF 2.0: ПОЛНАЯ СИСТЕМА С ИНДИКАЦИЕЙ (STAGE 4)
  */
 
 #include <Arduino.h>
@@ -23,6 +18,7 @@
 #include "src/drivers/storage/FlashStorage.h"
 #include "src/drivers/power/VccMonitor.h"
 #include "src/drivers/system/SystemMonitor.h"
+#include "src/drivers/led/LedChannel.h"
 
 // Сервисы
 #include "src/infrastructure/persistence/PersistenceManager.h"
@@ -32,8 +28,8 @@
 #include "src/application/flight/ProgramManager.h"
 #include "src/presentation/input/HallSensorHandler.h"
 #include "src/presentation/web/ApiService.h"
+#include "src/presentation/indication/IndicationService.h"
 
-// Раскрытие пространств имен для удобства в .ino файле
 using namespace core2;
 using namespace infrastructure::persistence;
 using namespace application::telemetry;
@@ -41,17 +37,19 @@ using namespace application::calibration;
 using namespace application::flight;
 using namespace presentation::input;
 using namespace presentation::web;
+using namespace presentation::indication;
 
 // --- ИНФРАСТРУКТУРА ---
 platform::SerialSink serialSink;
 BufferedLogger asyncLogger;
 EventBus<> globalBus;
-Scheduler<12> scheduler;
+Scheduler<15> scheduler;
 
 // Платформа и HAL
 platform::ArduinoI2c i2cBus;
 platform::Esp8266Barometer baroHal;
 platform::DigitalInput hallPin(config::DEFAULT_HW_MAP.pinHall);
+platform::DigitalOutput ledPin(config::DEFAULT_HW_MAP.pinLed1);
 platform::Esp8266Network network;
 platform::Esp8266Adc adc;
 platform::Esp8266Timer sysTimer;
@@ -62,6 +60,7 @@ drivers::Bmp180 bmp(baroHal);
 drivers::FlashStorage flash;
 drivers::VccMonitor vcc(adc);
 drivers::SystemMonitor sysMon(sysInfo, sysTimer);
+drivers::LedChannel statusLed(ledPin, true); // true = инвертирован (для встроенного LED ESP8266)
 
 // --- СЕРВИСЫ ---
 PersistenceManager persistence(flash);
@@ -71,6 +70,7 @@ ProgramManager programManager(persistence);
 FlightService flight(network, globalBus);
 HallSensorHandler hallHandler(hallPin, globalBus);
 ApiService api(telemetry, calib, flight, programManager, vcc, sysMon);
+IndicationService indication(statusLed);
 
 void setup()
 {
@@ -78,52 +78,56 @@ void setup()
     delay(1000);
     Registry::injectLogger(&asyncLogger);
 
-    asyncLogger.info("\n=== UEF 2.0: FULL SYSTEM INTEGRATION ===\n");
+    asyncLogger.info("\n=== UEF 2.0: SYSTEM WITH INDICATION ===\n");
 
     if (!LittleFS.begin())
     {
         asyncLogger.error("FS: Ошибка LittleFS\n");
+        indication.setError(true);
     }
 
     // 1. Инициализация железа
     i2cBus.init(config::DEFAULT_HW_MAP.pinI2cSda, config::DEFAULT_HW_MAP.pinI2cScl);
-
-    // Явная настройка Wi-Fi точки доступа
     network.setPower(true);
     WiFi.mode(WIFI_AP);
     WiFi.softAP("Glider-UEF-2", "");
 
     // 2. Инициализация сервисов
-    (void)telemetry.begin();
+    if (!telemetry.begin().isOk())
+    {
+        asyncLogger.error("HW: Ошибка BMP180\n");
+        indication.setError(true);
+    }
+
     flight.init();
     api.begin();
 
-    // Восстановление калибровки из Flash при старте
+    // Восстановление калибровки
     domain::telemetry::CalibrationProfile savedCal;
     if (persistence.load(StorageKey::CALIBRATION, savedCal).isOk())
     {
-        asyncLogger.info("FS: Калибровка восстановлена\n");
         telemetry.setBasePressure(savedCal.basePressure);
     }
 
-    // 3. Подписки на события
+    // 3. Подписки на события (Indication слушает всё)
+    (void)globalBus.subscribe(static_cast<TypedEventListener<FlightStateEvent> *>(&indication));
+    (void)globalBus.subscribe(static_cast<TypedEventListener<CalibrationEvent> *>(&indication));
+    (void)globalBus.subscribe(static_cast<TypedEventListener<HallEvent> *>(&indication));
     (void)globalBus.subscribe(&flight);
 
-    // 4. Регистрация задач в планировщике
-    (void)scheduler.addTask(&telemetry, 5);    // Опрос датчика (высокий приоритет)
-    (void)scheduler.addTask(&calib, 10);       // Логика калибровки
-    (void)scheduler.addTask(&hallHandler, 10); // Обработка магнита
-    (void)scheduler.addTask(&flight, 20);      // Машина состояний полета
-    (void)scheduler.addTask(&api, 50);         // Обработка HTTP запросов
+    // 4. Планировщик
+    scheduler.addTask(&telemetry, 5);
+    scheduler.addTask(&calib, 10);
+    scheduler.addTask(&hallHandler, 10);
+    scheduler.addTask(&flight, 20);
+    scheduler.addTask(&indication, 50); // Обновление LED каждые 50мс
+    scheduler.addTask(&api, 100);
 
-    asyncLogger.info("Система запущена. IP: 192.168.4.1\n");
+    asyncLogger.info("Индикация: SETUP-Медленно, ARMED-Двойной, FLIGHT-Вкл, CALIB-Быстро\n");
 }
 
 void loop()
 {
-    // Запуск планировщика
     scheduler.run(millis());
-
-    // Сброс накопленных логов в Serial (неблокирующий)
     asyncLogger.flush(serialSink, 512);
 }
