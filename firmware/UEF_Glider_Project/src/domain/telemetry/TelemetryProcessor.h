@@ -8,8 +8,8 @@
 namespace domain::telemetry
 {
     /**
-     * @brief Чистая доменная модель для обработки данных телеметрии.
-     * Реализует SRP: только математика и фильтрация, без привязки к железу.
+     * @brief Процессор телеметрии (Версия: Strict Baseline).
+     * Адаптивная подгонка удалена для исключения дрейфа после калибровки.
      */
     class TelemetryProcessor
     {
@@ -19,56 +19,48 @@ namespace domain::telemetry
             float pressure;
             float temperature;
         };
-
         struct Output
         {
             float altitude;
             bool isStable;
-            float adaptiveBaseline;
         };
 
         explicit TelemetryProcessor(float initialBaseline)
             : _kalman(KalmanFilter::Settings{0.05F, 0.3F}),
               _stability(StabilityMonitor::Config{0.25F, 5}),
-              _adaptiveBaseline(initialBaseline)
+              _basePressure(initialBaseline)
         {
             _kalman.reset(0.0F);
         }
 
-        /**
-         * Основной конвейер обработки данных.
-         */
-        // Исправлено: readability-identifier-length (in -> input)
         auto process(const Input &input) -> Output
         {
-            // 1. Расчет относительной высоты
-            float rawAlt = AltitudeCalculator::calculate(input.pressure, _adaptiveBaseline);
+            // 1. Расчет высоты относительно ЖЕСТКОЙ базы
+            float rawAlt = AltitudeCalculator::calculate(input.pressure, _basePressure);
 
-            // 2. Адаптация базового давления (компенсация дрейфа)
-            float alpha = _stability.process(rawAlt);
-            // Исправлено: readability-math-missing-parentheses
-            _adaptiveBaseline = (_adaptiveBaseline * (1.0F - alpha)) + (input.pressure * alpha);
+            // 2. Мониторинг стабильности (только для индикации)
+            (void)_stability.process(rawAlt);
 
             // 3. Фильтрация Калмана
             float filtered = _kalman.update(rawAlt);
 
-            // 4. Применение мертвой зоны
+            // 4. Мертвая зона
             float finalAlt = (fabsf(filtered) < 0.12F) ? 0.0F : filtered;
 
-            return {finalAlt, _stability.isStable(), _adaptiveBaseline};
+            return {finalAlt, _stability.isStable()};
         }
 
         auto resetBaseline(float newBaseline) -> void
         {
-            _adaptiveBaseline = newBaseline;
+            _basePressure = newBaseline;
             _kalman.reset(0.0F);
-            _stability.reset();
+            _stability.reset(0.0F);
         }
 
     private:
         KalmanFilter _kalman;
         StabilityMonitor _stability;
-        float _adaptiveBaseline;
+        float _basePressure;
     };
 }
 
