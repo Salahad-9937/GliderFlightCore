@@ -15,6 +15,9 @@ namespace application::calibration
     using namespace domain::telemetry;
     using namespace infrastructure::persistence;
 
+    /**
+     * @brief Сервис калибровки барометра.
+     */
     class CalibrationService : public ITask
     {
     public:
@@ -31,7 +34,9 @@ namespace application::calibration
         auto startFull() -> void
         {
             if (_status != CalibrationStatus::IDLE)
+            {
                 return;
+            }
 
             _status = CalibrationStatus::WARMUP;
             _startTime = millis();
@@ -42,7 +47,9 @@ namespace application::calibration
         auto startZero() -> void
         {
             if (_status != CalibrationStatus::IDLE)
+            {
                 return;
+            }
 
             _status = CalibrationStatus::ZEROING;
             resetAccumulator();
@@ -59,18 +66,26 @@ namespace application::calibration
         auto saveToStorage() -> Status
         {
             if (!_lastResult.isValid)
+            {
                 return ErrorCode::INVALID_ARGUMENT;
+            }
             return _persistence->save(StorageKey::CALIBRATION, _lastResult);
         }
 
         void execute(uint32_t now) override
         {
             if (_status == CalibrationStatus::WARMUP)
+            {
                 handleWarmup(now);
+            }
             else if (_status == CalibrationStatus::MEASURING)
+            {
                 handleSampling(FULL_SAMPLES);
+            }
             else if (_status == CalibrationStatus::ZEROING)
+            {
                 handleSampling(ZERO_SAMPLES);
+            }
         }
 
         [[nodiscard]] auto getStatus() const -> CalibrationStatus { return _status; }
@@ -88,7 +103,7 @@ namespace application::calibration
         void handleWarmup(uint32_t now)
         {
             uint32_t elapsed = now - _startTime;
-            _currentProgress = (elapsed * 100) / WARMUP_MS;
+            _currentProgress = static_cast<uint8_t>((elapsed * 100) / WARMUP_MS);
 
             if (elapsed >= WARMUP_MS)
             {
@@ -107,12 +122,16 @@ namespace application::calibration
                 _samplesCount++;
             }
 
-            _currentProgress = (_samplesCount * 100) / target;
+            _currentProgress = static_cast<uint8_t>((_samplesCount * 100) / target);
 
             if (_samplesCount >= target)
+            {
                 finalize(target);
+            }
             else
+            {
                 notify(_currentProgress);
+            }
         }
 
         void finalize(uint16_t target)
@@ -131,9 +150,9 @@ namespace application::calibration
             _eventBus->publish(CalibrationEvent::ID, CalibrationEvent(_status, progress));
         }
 
-        drivers::Bmp180 *_bmp;
-        PersistenceManager *_persistence;
-        EventBus<> *_eventBus;
+        drivers::Bmp180 *_bmp = nullptr;
+        PersistenceManager *_persistence = nullptr;
+        EventBus<> *_eventBus = nullptr;
 
         CalibrationStatus _status = CalibrationStatus::IDLE;
         CalibrationProfile _lastResult;
