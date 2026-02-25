@@ -32,6 +32,7 @@ namespace application::calibration
         {
             if (_status != CalibrationStatus::IDLE)
                 return;
+
             _status = CalibrationStatus::WARMUP;
             _startTime = millis();
             _currentProgress = 0;
@@ -42,10 +43,9 @@ namespace application::calibration
         {
             if (_status != CalibrationStatus::IDLE)
                 return;
+
             _status = CalibrationStatus::ZEROING;
-            _samplesCount = 0;
-            _pressureSum = 0;
-            _currentProgress = 0;
+            resetAccumulator();
             notify();
         }
 
@@ -65,20 +65,12 @@ namespace application::calibration
 
         void execute(uint32_t now) override
         {
-            switch (_status)
-            {
-            case CalibrationStatus::WARMUP:
+            if (_status == CalibrationStatus::WARMUP)
                 handleWarmup(now);
-                break;
-            case CalibrationStatus::MEASURING:
+            else if (_status == CalibrationStatus::MEASURING)
                 handleSampling(FULL_SAMPLES);
-                break;
-            case CalibrationStatus::ZEROING:
+            else if (_status == CalibrationStatus::ZEROING)
                 handleSampling(ZERO_SAMPLES);
-                break;
-            default:
-                break;
-            }
         }
 
         [[nodiscard]] auto getStatus() const -> CalibrationStatus { return _status; }
@@ -86,21 +78,27 @@ namespace application::calibration
         [[nodiscard]] auto getLastResult() const -> const CalibrationProfile & { return _lastResult; }
 
     private:
-        auto handleWarmup(uint32_t now) -> void
+        void resetAccumulator()
+        {
+            _samplesCount = 0;
+            _pressureSum = 0;
+            _currentProgress = 0;
+        }
+
+        void handleWarmup(uint32_t now)
         {
             uint32_t elapsed = now - _startTime;
             _currentProgress = (elapsed * 100) / WARMUP_MS;
+
             if (elapsed >= WARMUP_MS)
             {
                 _status = CalibrationStatus::MEASURING;
-                _samplesCount = 0;
-                _pressureSum = 0;
-                _currentProgress = 0;
+                resetAccumulator();
             }
             notify(_currentProgress);
         }
 
-        auto handleSampling(uint16_t target) -> void
+        void handleSampling(uint16_t target)
         {
             auto res = _bmp->readPressure();
             if (res.isOk())
@@ -110,28 +108,25 @@ namespace application::calibration
             }
 
             _currentProgress = (_samplesCount * 100) / target;
+
             if (_samplesCount >= target)
-            {
                 finalize(target);
-            }
             else
-            {
                 notify(_currentProgress);
-            }
         }
 
-        auto finalize(uint16_t target) -> void
+        void finalize(uint16_t target)
         {
-            _lastResult.basePressure = (float)(_pressureSum / target);
+            _lastResult.basePressure = static_cast<float>(_pressureSum / target);
             _lastResult.timestamp = millis();
             _lastResult.isValid = true;
+
             _status = CalibrationStatus::SUCCESS;
-            _currentProgress = 100;
             notify(100);
             _status = CalibrationStatus::IDLE;
         }
 
-        auto notify(uint8_t progress = 0) -> void
+        void notify(uint8_t progress = 0)
         {
             _eventBus->publish(CalibrationEvent::ID, CalibrationEvent(_status, progress));
         }

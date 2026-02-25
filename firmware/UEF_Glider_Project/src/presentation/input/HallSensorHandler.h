@@ -28,82 +28,85 @@ namespace presentation::input
 
         void execute(uint32_t now) override
         {
-            update(now);
-        }
-
-        auto update(uint32_t now) -> void
-        {
-            auto readRes = _input->read();
-            if (!readRes.isOk())
-            {
-                return;
-            }
-
-            // ИСПРАВЛЕНО: Убрана лишняя инверсия (!).
-            // readRes.value() уже возвращает true, когда магнит поднесен (LOW на пине).
-            bool isActive = readRes.value();
-
-            // 1. Обработка изменения состояния (Антидребезг)
-            if (isActive != _lastRawState)
-            {
-                _lastDebounceTime = now;
-            }
-
-            if ((now - _lastDebounceTime) > DEBOUNCE_MS)
-            {
-                if (isActive != _stableState)
-                {
-                    _stableState = isActive;
-                    if (_stableState)
-                    {
-                        handlePress(now);
-                    }
-                    else
-                    {
-                        handleRelease(now);
-                    }
-                }
-            }
-
-            // 2. Проверка удержания (Long Press)
-            if (_stableState && !_longPressTriggered)
-            {
-                if ((now - _pressStartTime) >= LONG_PRESS_MS)
-                {
-                    _longPressTriggered = true;
-                    _eventBus->publish(HallEvent::ID, HallEvent(HallGesture::LONG_PRESS_START));
-                }
-            }
-
-            // 3. Проверка таймаута двойного клика
-            if (!_stableState && (_clickCount > 0))
-            {
-                if ((now - _lastReleaseTime) >= DOUBLE_CLICK_MS)
-                {
-                    if (_clickCount == 1)
-                    {
-                        _eventBus->publish(HallEvent::ID, HallEvent(HallGesture::CLICK));
-                    }
-                    else if (_clickCount >= 2)
-                    {
-                        _eventBus->publish(HallEvent::ID, HallEvent(HallGesture::DOUBLE_CLICK));
-                    }
-
-                    _clickCount = 0;
-                }
-            }
-
-            _lastRawState = isActive;
+            processPhysicalLevel(now);
+            processLongPress(now);
+            processClickTimeout(now);
         }
 
     private:
-        auto handlePress(uint32_t now) -> void
+        /**
+         * Обработка изменения физического уровня с антидребезгом.
+         */
+        void processPhysicalLevel(uint32_t now)
+        {
+            auto readRes = _input->read();
+            if (!readRes.isOk())
+                return;
+
+            bool isActive = readRes.value();
+
+            // Сброс таймера при любом изменении уровня
+            if (isActive != _lastRawState)
+            {
+                _lastDebounceTime = now;
+                _lastRawState = isActive;
+                return;
+            }
+
+            // Если уровень стабилен, проверяем необходимость смены состояния
+            if (now - _lastDebounceTime <= DEBOUNCE_MS)
+                return;
+            if (isActive == _stableState)
+                return;
+
+            _stableState = isActive;
+            if (_stableState)
+                handlePress(now);
+            else
+                handleRelease(now);
+        }
+
+        /**
+         * Проверка длительного удержания.
+         */
+        void processLongPress(uint32_t now)
+        {
+            if (!_stableState)
+                return;
+            if (_longPressTriggered)
+                return;
+            if (now - _pressStartTime < LONG_PRESS_MS)
+                return;
+
+            _longPressTriggered = true;
+            _eventBus->publish(HallEvent::ID, HallEvent(HallGesture::LONG_PRESS_START));
+        }
+
+        /**
+         * Проверка таймаута для завершения серии кликов.
+         */
+        void processClickTimeout(uint32_t now)
+        {
+            if (_stableState)
+                return;
+            if (_clickCount == 0)
+                return;
+            if (now - _lastReleaseTime < DOUBLE_CLICK_MS)
+                return;
+
+            HallGesture gesture = (_clickCount >= 2) ? HallGesture::DOUBLE_CLICK : HallGesture::CLICK;
+            _eventBus->publish(HallEvent::ID, HallEvent(gesture));
+
+            _clickCount = 0;
+        }
+
+        void handlePress(uint32_t now)
         {
             _pressStartTime = now;
             _longPressTriggered = false;
         }
 
-        auto handleRelease(uint32_t now) -> void
+        void handleRelease(uint32_t now)
         {
             uint32_t duration = now - _pressStartTime;
             _lastReleaseTime = now;

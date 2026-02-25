@@ -8,7 +8,6 @@ namespace domain::telemetry
 {
     /**
      * Определяет, находится ли датчик в покое и возвращает коэффициент адаптации.
-     * Полностью соответствует логике STABLE_THRESHOLD из старой прошивки.
      */
     class StabilityMonitor
     {
@@ -16,7 +15,7 @@ namespace domain::telemetry
         struct Config
         {
             float threshold = 0.25F;       ///< Порог изменения высоты (метры)
-            uint16_t requiredReadings = 5; ///< Количество чтений для подтверждения (STABLE_THRESHOLD)
+            uint16_t requiredReadings = 5; ///< Количество чтений для подтверждения
         };
 
         explicit StabilityMonitor(const Config &cfg)
@@ -29,20 +28,27 @@ namespace domain::telemetry
         auto process(float currentAltitude) -> float
         {
             float altChange = fabsf(currentAltitude - _lastAltitude);
-
-            // Логика 1:1 из старой прошивки
-            _stableCount = (altChange < _threshold) ? _stableCount + 1 : 0;
             _lastAltitude = currentAltitude;
 
-            // Если стабилен (> 5 чтений) -> быстрая адаптация (0.05), иначе почти замерзает (0.001)
-            return (_stableCount > _requiredReadings) ? 0.05F : 0.001F;
+            if (altChange < _threshold)
+                _stableCount++;
+            else
+                _stableCount = 0;
+
+            return isStable() ? ADAPTATION_FAST : ADAPTATION_SLOW;
         }
 
-        [[nodiscard]] auto isStable() const -> bool { return _stableCount > _requiredReadings; }
+        [[nodiscard]] auto isStable() const -> bool
+        {
+            return _stableCount > _requiredReadings;
+        }
 
         auto reset() -> void { _stableCount = 0; }
 
     private:
+        static constexpr float ADAPTATION_FAST = 0.05F;
+        static constexpr float ADAPTATION_SLOW = 0.001F;
+
         float _threshold;
         uint16_t _requiredReadings;
         uint16_t _stableCount = 0;
