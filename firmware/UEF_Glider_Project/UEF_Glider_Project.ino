@@ -47,6 +47,9 @@ using namespace presentation::input;
 using namespace presentation::web;
 using namespace presentation::indication;
 
+// КРИТИЧЕСКИЙ МАКРОС ДЛЯ ESP8266: Переключение АЦП в режим замера VCC
+ADC_MODE(ADC_VCC);
+
 // --- ИНФРАСТРУКТУРА ---
 platform::SerialSink serialSink;
 BufferedLogger asyncLogger;
