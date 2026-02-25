@@ -28,8 +28,9 @@ namespace application::events
         CalibrationStatus status;
         uint8_t progress; // 0-100%
 
-        explicit CalibrationEvent(CalibrationStatus s, uint8_t p = 0)
-            : status(s), progress(p) {}
+        // Исправлено: именование параметров согласно readability-identifier-length
+        explicit CalibrationEvent(CalibrationStatus newStatus, uint8_t newProgress = 0)
+            : status(newStatus), progress(newProgress) {}
     };
 }
 

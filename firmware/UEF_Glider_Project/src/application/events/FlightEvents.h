@@ -24,7 +24,8 @@ namespace application::events
 
         FlightMode mode;
 
-        explicit FlightStateEvent(FlightMode m) : mode(m) {}
+        // Исправлено: именование параметра согласно readability-identifier-length
+        explicit FlightStateEvent(FlightMode newMode) : mode(newMode) {}
     };
 }
 
