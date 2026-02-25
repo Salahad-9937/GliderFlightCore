@@ -18,19 +18,16 @@ namespace domain::flight
     };
 
     /**
-     * @brief Доменная модель полетной программы (Value Object).
-     * Предназначена для хранения в бинарном виде с защитой CRC.
+     * @brief Доменная модель полетной программы (Rich Domain Model).
+     * Содержит не только данные, но и логику их обработки.
      */
     struct FlightProgram
     {
-        char id[ID_MAX_LEN];                  ///< Уникальный идентификатор программы
-        char name[NAME_MAX_LEN];              ///< Человекочитаемое имя
-        uint8_t stepsCount;                   ///< Фактическое кол-во шагов
-        core2::SequenceStep steps[MAX_STEPS]; ///< Массив шагов (значение, длительность)
+        char id[ID_MAX_LEN];                  ///< Уникальный идентификатор
+        char name[NAME_MAX_LEN];              ///< Имя программы
+        uint8_t stepsCount;                   ///< Кол-во шагов
+        core2::SequenceStep steps[MAX_STEPS]; ///< Массив шагов
 
-        /**
-         * @brief Конструктор по умолчанию с занулением данных.
-         */
         FlightProgram() : stepsCount(0)
         {
             memset(id, 0, ID_MAX_LEN);
@@ -39,11 +36,43 @@ namespace domain::flight
         }
 
         /**
-         * @brief Проверка валидности структуры.
+         * @brief Проверка валидности программы.
          */
         [[nodiscard]] auto isValid() const -> bool
         {
-            return (stepsCount > 0 && stepsCount <= MAX_STEPS && id[0] != '\0');
+            if (stepsCount == 0 || stepsCount > MAX_STEPS)
+                return false;
+            if (id[0] == '\0')
+                return false;
+
+            // Проверка на наличие шагов с нулевой длительностью
+            for (uint8_t i = 0; i < stepsCount; i++)
+            {
+                if (steps[i].durationMs == 0)
+                    return false;
+            }
+            return true;
+        }
+
+        /**
+         * @brief Расчет общей длительности программы.
+         */
+        [[nodiscard]] auto getTotalDuration() const -> uint32_t
+        {
+            uint32_t total = 0;
+            for (uint8_t i = 0; i < stepsCount; i++)
+            {
+                total += steps[i].durationMs;
+            }
+            return total;
+        }
+
+        /**
+         * @brief Сравнение программ по ID.
+         */
+        auto isSameAs(const FlightProgram &other) const -> bool
+        {
+            return strcmp(id, other.id) == 0;
         }
     };
 }
