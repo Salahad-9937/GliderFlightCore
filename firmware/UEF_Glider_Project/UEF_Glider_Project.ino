@@ -1,5 +1,13 @@
 /**
- * UEF 2.0: ПОЛНАЯ СИСТЕМА С ИНДИКАЦИЕЙ (STAGE 4)
+ * UEF 2.0: FINAL RELEASE (STAGE 5)
+ *
+ * Полная интеграция:
+ * - Телеметрия (BMP180 + Kalman)
+ * - Управление (Hall Sensor Gestures)
+ * - Полет (Sequencer + Servo + Pressure Logging)
+ * - Сеть (REST API + WiFi Power Management)
+ * - Защита (Hardware Watchdog + CRC16 Persistence)
+ * - Индикация (LED Patterns)
  */
 
 #include <Arduino.h>
@@ -44,41 +52,47 @@ platform::SerialSink serialSink;
 BufferedLogger asyncLogger;
 EventBus<> globalBus;
 Scheduler<15> scheduler;
+platform::Esp8266Lock globalLock;
 
 // Платформа и HAL
 platform::ArduinoI2c i2cBus;
 platform::Esp8266Barometer baroHal;
 platform::DigitalInput hallPin(config::DEFAULT_HW_MAP.pinHall);
 platform::DigitalOutput ledPin(config::DEFAULT_HW_MAP.pinLed1);
+platform::ServoActuator servoHal(config::DEFAULT_HW_MAP.pinServo);
 platform::Esp8266Network network;
 platform::Esp8266Adc adc;
 platform::Esp8266Timer sysTimer;
 platform::Esp8266SystemInfo sysInfo;
+platform::Esp8266Watchdog wdt;
 
 // Драйверы
 drivers::Bmp180 bmp(baroHal);
 drivers::FlashStorage flash;
 drivers::VccMonitor vcc(adc);
 drivers::SystemMonitor sysMon(sysInfo, sysTimer);
-drivers::LedChannel statusLed(ledPin, true); // true = инвертирован (для встроенного LED ESP8266)
+drivers::LedChannel statusLed(ledPin, true);
 
 // --- СЕРВИСЫ ---
 PersistenceManager persistence(flash);
 TelemetryService telemetry(bmp);
 CalibrationService calib(bmp, persistence, globalBus);
 ProgramManager programManager(persistence);
-FlightService flight(network, globalBus);
+FlightService flight(network, servoHal, flash, programManager, telemetry, globalBus);
 HallSensorHandler hallHandler(hallPin, globalBus);
 ApiService api(telemetry, calib, flight, programManager, vcc, sysMon);
 IndicationService indication(statusLed);
 
 void setup()
 {
-    Serial.begin(115200);
-    delay(1000);
-    Registry::injectLogger(&asyncLogger);
+    // 1. Базовая инициализация
+    Serial.begin(config::DEFAULT_HW_MAP.baudRate);
+    delay(500);
 
-    asyncLogger.info("\n=== UEF 2.0: SYSTEM WITH INDICATION ===\n");
+    Registry::injectLogger(&asyncLogger);
+    Registry::injectLock(&globalLock);
+
+    asyncLogger.info("\n=== GliderFlightCore UEF 2.0 START ===\n");
 
     if (!LittleFS.begin())
     {
@@ -86,48 +100,59 @@ void setup()
         indication.setError(true);
     }
 
-    // 1. Инициализация железа
+    // 2. Инициализация железа
     i2cBus.init(config::DEFAULT_HW_MAP.pinI2cSda, config::DEFAULT_HW_MAP.pinI2cScl);
+    wdt.begin(4000); // Watchdog на 4 секунды
+
     network.setPower(true);
     WiFi.mode(WIFI_AP);
     WiFi.softAP("Glider-UEF-2", "");
 
-    // 2. Инициализация сервисов
+    // 3. Инициализация логики
     if (!telemetry.begin().isOk())
     {
         asyncLogger.error("HW: Ошибка BMP180\n");
         indication.setError(true);
     }
 
-    flight.init();
-    api.begin();
-
-    // Восстановление калибровки
+    // Загрузка настроек
+    (void)programManager.loadActiveProgram();
     domain::telemetry::CalibrationProfile savedCal;
     if (persistence.load(StorageKey::CALIBRATION, savedCal).isOk())
     {
         telemetry.setBasePressure(savedCal.basePressure);
     }
 
-    // 3. Подписки на события (Indication слушает всё)
+    flight.init();
+    api.begin();
+
+    // 4. Подписки
     (void)globalBus.subscribe(static_cast<TypedEventListener<FlightStateEvent> *>(&indication));
     (void)globalBus.subscribe(static_cast<TypedEventListener<CalibrationEvent> *>(&indication));
     (void)globalBus.subscribe(static_cast<TypedEventListener<HallEvent> *>(&indication));
     (void)globalBus.subscribe(&flight);
 
-    // 4. Планировщик
-    scheduler.addTask(&telemetry, 5);
-    scheduler.addTask(&calib, 10);
-    scheduler.addTask(&hallHandler, 10);
-    scheduler.addTask(&flight, 20);
-    scheduler.addTask(&indication, 50); // Обновление LED каждые 50мс
-    scheduler.addTask(&api, 100);
+    // 5. Планировщик (Приоритеты: Телеметрия > Ввод > FSM > Индикация > API)
+    scheduler.addTask(&telemetry, 5);    // 200 Hz
+    scheduler.addTask(&hallHandler, 10); // 100 Hz
+    scheduler.addTask(&calib, 20);       // 50 Hz
+    scheduler.addTask(&flight, 20);      // 50 Hz
+    scheduler.addTask(&indication, 50);  // 20 Hz
+    scheduler.addTask(&api, 100);        // 10 Hz
 
-    asyncLogger.info("Индикация: SETUP-Медленно, ARMED-Двойной, FLIGHT-Вкл, CALIB-Быстро\n");
+    asyncLogger.info("Система готова к эксплуатации.\n");
 }
 
 void loop()
 {
-    scheduler.run(millis());
+    uint32_t now = millis();
+
+    // Выполнение задач
+    scheduler.run(now);
+
+    // Сброс WDT
+    wdt.kick();
+
+    // Вывод логов
     asyncLogger.flush(serialSink, 512);
 }

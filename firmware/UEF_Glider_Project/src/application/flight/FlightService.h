@@ -17,17 +17,22 @@ namespace application::flight
     using namespace application::events;
 
     /**
-     * @brief Координатор полетных режимов с расширенным логированием.
+     * @brief Координатор полетных режимов.
      */
     class FlightService : public ITask, public TypedEventListener<HallEvent>
     {
     public:
-        explicit FlightService(hal::INetwork &net, EventBus<> &bus)
+        explicit FlightService(hal::INetwork &net,
+                               hal::IActuator &servo,
+                               hal::IStorage &storage,
+                               ProgramManager &progManager,
+                               application::telemetry::TelemetryService &telemetry,
+                               EventBus<> &bus)
             : _bus(&bus),
               _fsm(Registry::getLogger()),
               _setupState(),
               _armedState(),
-              _inFlightState(net)
+              _inFlightState(net, servo, progManager, storage, telemetry)
         {
         }
 
@@ -36,15 +41,11 @@ namespace application::flight
             changeState(&_setupState, FlightMode::SETUP);
         }
 
-        /**
-         * @brief Обработка жестов датчика Холла.
-         */
         void onTypedEvent(const HallEvent &e) override
         {
             switch (e.gesture)
             {
             case HallGesture::DOUBLE_CLICK:
-                Registry::getLogger().info("FSM: Обнаружен DOUBLE_CLICK -> Сброс в SETUP\n");
                 changeState(&_setupState, FlightMode::SETUP);
                 _readyToLaunch = false;
                 break;
@@ -54,7 +55,7 @@ namespace application::flight
                 break;
 
             case HallGesture::RELEASE:
-                handleRelease(e.duration);
+                handleRelease();
                 break;
 
             default:
@@ -79,38 +80,26 @@ namespace application::flight
         auto handleLongPress() -> void
         {
             auto *current = _fsm.getCurrentState();
-
             if (current == &_setupState)
             {
-                Registry::getLogger().info("FSM: Удержание 3с в SETUP -> Переход в ARMED\n");
                 changeState(&_armedState, FlightMode::ARMED);
             }
             else if (current == &_armedState)
             {
-                Registry::getLogger().info("FSM: Удержание 3с в ARMED -> ТРИГГЕР ПУСКА ВЗВЕДЕН\n");
                 _readyToLaunch = true;
+                Registry::getLogger().info("FSM: ПУСК ГОТОВ\n");
             }
         }
 
-        auto handleRelease(uint32_t duration) -> void
+        auto handleRelease() -> void
         {
             if (_readyToLaunch && _fsm.getCurrentState() == &_armedState)
             {
-                Registry::getLogger().info("FSM: Магнит убран -> ЗАПУСК ПОГРАММЫ ПОЛЕТА\n");
                 changeState(&_inFlightState, FlightMode::IN_FLIGHT);
                 _readyToLaunch = false;
             }
-            else
-            {
-                char buf[64];
-                snprintf(buf, sizeof(buf), "FSM: Магнит убран (удержание %ums), пуск не взведен\n", duration);
-                Registry::getLogger().info(buf);
-            }
         }
 
-        /**
-         * @brief Вспомогательный метод для смены состояния и уведомления шины.
-         */
         auto changeState(BaseFlightState *newState, FlightMode mode) -> void
         {
             _fsm.transitionTo(newState);
