@@ -47,28 +47,33 @@ namespace application::flight
         /**
          * Обработка жестов через полиморфизм состояний.
          */
-        void onTypedEvent(const HallEvent &e) override
+        void onTypedEvent(const HallEvent &event) override
         {
             // Глобальный жест сброса в SETUP
-            if (e.gesture == HallGesture::DOUBLE_CLICK)
+            if (event.gesture == HallGesture::DOUBLE_CLICK)
             {
                 changeState(&_setupState, FlightMode::SETUP);
                 return;
             }
 
             // Делегирование обработки жеста текущему состоянию
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-static-cast-downcast)
             auto *current = static_cast<BaseFlightState *>(_fsm.getCurrentState());
             if (current != nullptr)
             {
-                BaseFlightState *next = current->handleGesture(e.gesture);
+                BaseFlightState *next = current->handleGesture(event.gesture);
                 if (next != nullptr)
                 {
                     // Определяем режим для события на основе целевого состояния
                     FlightMode nextMode = FlightMode::SETUP;
                     if (next == &_armedState)
+                    {
                         nextMode = FlightMode::ARMED;
+                    }
                     else if (next == &_inFlightState)
+                    {
                         nextMode = FlightMode::IN_FLIGHT;
+                    }
 
                     changeState(next, nextMode);
                 }
@@ -82,8 +87,9 @@ namespace application::flight
 
         [[nodiscard]] auto isConfigLocked() const -> bool
         {
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-static-cast-downcast)
             auto *current = static_cast<BaseFlightState *>(_fsm.getCurrentState());
-            return current ? current->isConfigLocked() : true;
+            return (current != nullptr) ? current->isConfigLocked() : true;
         }
 
         [[nodiscard]] auto getCurrentMode() const -> FlightMode { return _currentMode; }
@@ -96,7 +102,7 @@ namespace application::flight
             _bus->publish(FlightStateEvent::ID, FlightStateEvent(mode));
         }
 
-        EventBus<> *_bus;
+        EventBus<> *_bus = nullptr;
         StateMachine _fsm;
 
         SetupState _setupState;
