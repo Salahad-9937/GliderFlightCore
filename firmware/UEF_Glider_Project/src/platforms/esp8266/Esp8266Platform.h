@@ -6,6 +6,7 @@
 #include <Servo.h>
 #include <ESP8266WiFi.h>
 #include <LittleFS.h>
+#include <Adafruit_BMP085.h>
 
 #include "../../core2/hal/II2c.h"
 #include "../../core2/hal/IGpio.h"
@@ -16,13 +17,13 @@
 #include "../../core2/hal/ITimer.h"
 #include "../../core2/hal/ILock.h"
 #include "../../core2/hal/ISystemInfo.h"
+#include "../../core2/hal/IBarometer.h"
 #include "../../core2/base/ILogger.h"
 
 namespace core2::platform
 {
     /**
      * Timer Bridge.
-     * Источник системного времени для планировщика и таймингов.
      */
     class Esp8266Timer : public hal::ITimer
     {
@@ -33,7 +34,6 @@ namespace core2::platform
 
     /**
      * Lock Bridge.
-     * Реализация критической секции через глобальный запрет прерываний.
      */
     class Esp8266Lock : public hal::ILock
     {
@@ -43,7 +43,7 @@ namespace core2::platform
     };
 
     /**
-     * I2C Bridge. Транспорт байт через Wire.
+     * I2C Bridge.
      */
     class ArduinoI2c : public hal::II2c
     {
@@ -72,13 +72,39 @@ namespace core2::platform
     };
 
     /**
+     * Barometer Bridge (BMP180).
+     * Использует библиотеку Adafruit BMP085.
+     */
+    class Esp8266Barometer : public hal::IBarometer
+    {
+    public:
+        auto begin() -> Status override
+        {
+            return _bmp.begin(BMP085_ULTRAHIGHRES) ? Status::ok() : Status::fail(ErrorCode::HARDWARE_FAILURE);
+        }
+
+        auto readPressure() -> Result<int32_t> override
+        {
+            return static_cast<int32_t>(_bmp.readPressure());
+        }
+
+        auto readTemperature() -> Result<float> override
+        {
+            return _bmp.readTemperature();
+        }
+
+    private:
+        Adafruit_BMP085 _bmp;
+    };
+
+    /**
      * GPIO Input Bridge.
      */
     class DigitalInput : public hal::IDigitalInput
     {
     public:
         DigitalInput(uint8_t pin) : _pin(pin) { pinMode(_pin, INPUT_PULLUP); }
-        auto read() -> Result<bool> override { return (digitalRead(_pin) == HIGH); }
+        auto read() -> Result<bool> override { return (digitalRead(_pin) == LOW); }
 
     private:
         uint8_t _pin;
