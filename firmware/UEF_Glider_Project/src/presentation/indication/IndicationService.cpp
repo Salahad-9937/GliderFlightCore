@@ -3,98 +3,71 @@
 
 namespace presentation::indication
 {
-    void IndicationService::onTypedEvent(const FlightStateEvent &e)
+    IndicationService::IndicationService(drivers::LedChannel &led)
+        : _led(&led),
+          _slowBlink(500),
+          _fastBlink(150),
+          _rapidBlink(50),
+          _steadyOn(true),
+          _steadyOff(false)
     {
+        _currentPattern = &_slowBlink;
+    }
+
+    void IndicationService::setPattern(IIndicationPattern &pattern)
+    {
+        if (_currentPattern != &pattern)
+        {
+            _currentPattern = &pattern;
+            _currentPattern->reset();
+        }
+    }
+
+    void IndicationService::onTypedEvent(const application::events::FlightStateEvent &e)
+    {
+        using application::events::FlightMode;
         switch (e.mode)
         {
         case FlightMode::SETUP:
-            _currentPattern = Pattern::SLOW_BLINK;
+            setPattern(_slowBlink);
             break;
         case FlightMode::ARMED:
-            _currentPattern = Pattern::HEARTBEAT;
-            break;
+            setPattern(_fastBlink);
+            break; // Упрощено для примера
         case FlightMode::IN_FLIGHT:
-            _currentPattern = Pattern::STEADY_ON;
+            setPattern(_steadyOn);
             break;
         }
     }
 
-    void IndicationService::onTypedEvent(const CalibrationEvent &e)
+    void IndicationService::onTypedEvent(const application::events::CalibrationEvent &e)
     {
-        _isCalibrating = (e.status != CalibrationStatus::IDLE &&
-                          e.status != CalibrationStatus::SUCCESS &&
-                          e.status != CalibrationStatus::ERROR);
-
-        if (e.status == CalibrationStatus::ERROR)
-            _isError = true;
+        _isCalibrating = (e.status != application::events::CalibrationStatus::IDLE &&
+                          e.status != application::events::CalibrationStatus::SUCCESS);
     }
 
-    void IndicationService::onTypedEvent(const HallEvent &e)
+    void IndicationService::onTypedEvent(const application::events::HallEvent &e)
     {
-        // Короткая вспышка при любом клике для визуального подтверждения
-        if (e.gesture == HallGesture::CLICK || e.gesture == HallGesture::DOUBLE_CLICK)
+        if (e.gesture == application::events::HallGesture::CLICK)
         {
-            _led->on();
-            _lastToggleTime = millis() + 100; // Продлеваем фазу включения
+            _led->on(); // Визуальный фидбек
         }
     }
 
     void IndicationService::execute(uint32_t now)
     {
-        // Приоритеты индикации: Error > Calibrating > Flight Mode
-        Pattern active = _currentPattern;
         if (_isError)
-            active = Pattern::RAPID_FIRE;
-        else if (_isCalibrating)
-            active = Pattern::FAST_BLINK;
-
-        switch (active)
         {
-        case Pattern::SLOW_BLINK: // 500мс ВКЛ / 500мс ВЫКЛ
-            if (now - _lastToggleTime >= 500)
-            {
-                _led->toggle();
-                _lastToggleTime = now;
-            }
-            break;
-
-        case Pattern::HEARTBEAT: // Двойной короткий импульс (Armed)
-            if (now - _lastToggleTime >= 100)
-            {
-                _lastToggleTime = now;
-                _phase = (_phase + 1) % 10;
-                // Паттерн: ВКЛ, ВЫКЛ, ВКЛ, ВЫКЛ... (всего 10 фаз по 100мс)
-                if (_phase == 0 || _phase == 2)
-                    _led->on();
-                else
-                    _led->off();
-            }
-            break;
-
-        case Pattern::STEADY_ON:
-            _led->on();
-            break;
-
-        case Pattern::FAST_BLINK: // 100мс ВКЛ / 100мс ВЫКЛ
-            if (now - _lastToggleTime >= 100)
-            {
-                _led->toggle();
-                _lastToggleTime = now;
-            }
-            break;
-
-        case Pattern::RAPID_FIRE: // 50мс ВКЛ / 50мс ВЫКЛ
-            if (now - _lastToggleTime >= 50)
-            {
-                _led->toggle();
-                _lastToggleTime = now;
-            }
-            break;
-
-        case Pattern::OFF:
-        default:
-            _led->off();
-            break;
+            _rapidBlink.update(now, *_led);
+            return;
         }
+
+        if (_isCalibrating)
+        {
+            _fastBlink.update(now, *_led);
+            return;
+        }
+
+        _currentPattern->update(now, *_led);
     }
 }

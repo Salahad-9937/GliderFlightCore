@@ -1,20 +1,16 @@
 #ifndef APPLICATION_TELEMETRY_TELEMETRY_SERVICE_H
 #define APPLICATION_TELEMETRY_TELEMETRY_SERVICE_H
 
-#include <Arduino.h>
 #include "../../drivers/sensors/Bmp180.h"
-#include "../../domain/telemetry/KalmanFilter.h"
-#include "../../domain/telemetry/AltitudeCalculator.h"
-#include "../../domain/telemetry/StabilityMonitor.h"
+#include "../../domain/telemetry/TelemetryProcessor.h"
 #include "../../core2/engine/Scheduler.h"
 #include "../../core2/base/Registry.h"
 
 namespace application::telemetry
 {
-    using namespace domain::telemetry;
-
     /**
-     * @brief Сервис управления телеметрией.
+     * @brief Сервис телеметрии.
+     * Отвечает за сбор данных (I/O) и координацию вычислений.
      */
     class TelemetryService : public core2::ITask
     {
@@ -30,31 +26,24 @@ namespace application::telemetry
         };
 
         explicit TelemetryService(drivers::Bmp180 &bmp)
-            : _bmp(&bmp),
-              _kalman(KalmanFilter::Settings{0.05F, 0.3F}),
-              _stability(StabilityMonitor::Config{0.25F, 5})
-        {
-        }
+            : _bmp(&bmp), _processor(101325.0F) {}
 
         auto begin() -> core2::Status
         {
             auto status = _bmp->begin();
-            if (!status.isOk())
-                return status;
-            _isReady = true;
-            return core2::Status::ok();
+            if (status.isOk())
+                _isReady = true;
+            return status;
         }
 
         auto setBasePressure(float pressurePa) -> void
         {
-            _adaptiveBaseline = pressurePa;
+            _processor.resetBaseline(pressurePa);
             _isCalibrated = true;
-            _kalman.reset(0.0F);
         }
 
         void setMonitoring(bool enable) { _isMonitoring = enable; }
         bool isMonitoring() const { return _isMonitoring; }
-
         void setLogging(bool enable) { _isLogging = enable; }
         bool isLogging() const { return _isLogging; }
 
@@ -63,28 +52,25 @@ namespace application::telemetry
             if (!_isReady || !_isMonitoring)
                 return;
 
-            accumulatePressure();
+            accumulateSamples();
 
             if (now - _lastCalcTime >= CALC_INTERVAL_MS)
             {
                 _lastCalcTime = now;
-                performCalculations();
+                performUpdate();
             }
         }
 
         [[nodiscard]] auto getData() const -> const Data & { return _currentData; }
 
     private:
-        /**
-         * Сбор и первичная фильтрация данных.
-         */
-        void accumulatePressure()
+        void accumulateSamples()
         {
             auto pRes = _bmp->readPressure();
             if (pRes.isOk())
             {
                 float p = static_cast<float>(pRes.value());
-                if (isValidPressure(p))
+                if (p > 40000.0F && p < 115000.0F)
                 {
                     _pressureAccumulator += p;
                     _sampleCount++;
@@ -92,66 +78,34 @@ namespace application::telemetry
             }
         }
 
-        /**
-         * Проверка физической достоверности давления.
-         */
-        bool isValidPressure(float p) const
-        {
-            return (p > 40000.0F && p < 115000.0F);
-        }
-
-        /**
-         * Основной цикл расчетов.
-         */
-        void performCalculations()
+        void performUpdate()
         {
             if (_sampleCount == 0)
                 return;
 
-            updateAveragePressure();
-            updateTemperature();
-
-            if (!_isCalibrated)
-            {
-                setBasePressure(_currentData.pressure);
-                return;
-            }
-
-            processAltitude();
-
-            if (_isLogging)
-                logDiagnostics();
-        }
-
-        void updateAveragePressure()
-        {
-            _currentData.pressure = _pressureAccumulator / static_cast<float>(_sampleCount);
+            // Подготовка входных данных
+            float avgP = _pressureAccumulator / static_cast<float>(_sampleCount);
             _pressureAccumulator = 0;
             _sampleCount = 0;
-        }
 
-        void updateTemperature()
-        {
             auto tRes = _bmp->readTemperature();
-            if (tRes.isOk())
-                _currentData.temperature = tRes.value();
+            float temp = tRes.isOk() ? tRes.value() : _currentData.temperature;
+
+            // Делегирование расчетов процессору (SRP)
+            domain::telemetry::TelemetryProcessor::Input in{avgP, temp};
+            auto out = _processor.process(in);
+
+            // Обновление состояния
+            _currentData.pressure = avgP;
+            _currentData.temperature = temp;
+            _currentData.altitude = out.altitude;
+            _currentData.isStable = out.isStable;
+
+            if (_isLogging)
+                log();
         }
 
-        void processAltitude()
-        {
-            float rawAlt = AltitudeCalculator::calculate(_currentData.pressure, _adaptiveBaseline);
-
-            // Адаптация базового давления (компенсация дрейфа)
-            float alpha = _stability.process(rawAlt);
-            _adaptiveBaseline = _adaptiveBaseline * (1.0F - alpha) + _currentData.pressure * alpha;
-
-            // Фильтрация и мертвая зона
-            float filtered = _kalman.update(rawAlt);
-            _currentData.altitude = (fabsf(filtered) < 0.12F) ? 0.0F : filtered;
-            _currentData.isStable = _stability.isStable();
-        }
-
-        void logDiagnostics() const
+        void log() const
         {
             char buf[64];
             snprintf(buf, sizeof(buf), "TELE: Alt: %.2f, P: %.0f\n", _currentData.altitude, _currentData.pressure);
@@ -159,11 +113,8 @@ namespace application::telemetry
         }
 
         drivers::Bmp180 *_bmp;
-        KalmanFilter _kalman;
-        StabilityMonitor _stability;
-
+        domain::telemetry::TelemetryProcessor _processor;
         Data _currentData;
-        float _adaptiveBaseline = 101325.0F;
         float _pressureAccumulator = 0.0F;
         uint16_t _sampleCount = 0;
         uint32_t _lastCalcTime = 0;
