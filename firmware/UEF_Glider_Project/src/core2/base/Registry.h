@@ -6,9 +6,8 @@
 
 namespace core2
 {
-
     /**
-     * Глобальный реестр сервисов (Service Locator).
+     * @brief Глобальный реестр сервисов (Service Locator).
      */
     class Registry
     {
@@ -19,7 +18,6 @@ namespace core2
         static auto getLogger() -> ILogger &
         {
             static NullLogger nullLogger;
-            // Исправлено: явное сравнение с nullptr
             return (_logger != nullptr) ? *_logger : nullLogger;
         }
 
@@ -29,7 +27,6 @@ namespace core2
         static auto getLock() -> hal::ILock &
         {
             static NullLock nullLock;
-            // Исправлено: явное сравнение с nullptr
             return (_lock != nullptr) ? *_lock : nullLock;
         }
 
@@ -40,7 +37,6 @@ namespace core2
         class NullLogger : public ILogger
         {
         public:
-            // Исправлено: именованные параметры и trailing return type
             auto info(const char *msg) -> void override { (void)msg; }
             auto error(const char *msg) -> void override { (void)msg; }
             auto debug(const char *msg) -> void override { (void)msg; }
@@ -53,13 +49,6 @@ namespace core2
             auto unlock() -> void override {}
         };
     };
-
-    // Инициализация статики
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-    ILogger *Registry::_logger = nullptr;
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-    hal::ILock *Registry::_lock = nullptr;
-
 } // namespace core2
 
 #endif

@@ -7,19 +7,20 @@
 #include "../../domain/telemetry/AltitudeCalculator.h"
 #include "../../domain/telemetry/StabilityMonitor.h"
 #include "../../core2/engine/Scheduler.h"
+#include "../../core2/base/Registry.h"
 
 namespace application::telemetry
 {
     using namespace domain::telemetry;
 
     /**
-     * Сервис управления телеметрией.
+     * @brief Сервис управления телеметрией.
      * Реализует накопительное усреднение, адаптивную компенсацию дрейфа и фильтрацию Калмана.
      */
     class TelemetryService : public core2::ITask
     {
     public:
-        static constexpr uint32_t CALC_INTERVAL_MS = 500; // BARO_INTERVAL из старого кода
+        static constexpr uint32_t CALC_INTERVAL_MS = 500;
 
         struct Data
         {
@@ -32,7 +33,7 @@ namespace application::telemetry
         explicit TelemetryService(drivers::Bmp180 &bmp)
             : _bmp(&bmp),
               _kalman(KalmanFilter::Settings{0.05F, 0.3F}),
-              _stability(StabilityMonitor::Config{0.25F, 5}) // STABLE_THRESHOLD = 5
+              _stability(StabilityMonitor::Config{0.25F, 5})
         {
         }
 
@@ -46,7 +47,7 @@ namespace application::telemetry
         }
 
         /**
-         * Установка базового давления (вызывается при старте или из калибровки).
+         * Установка базового давления.
          */
         auto setBasePressure(float pressurePa) -> void
         {
@@ -55,21 +56,26 @@ namespace application::telemetry
             _kalman.reset(0.0F);
         }
 
+        // Управление состоянием опроса
+        void setMonitoring(bool enable) { _isMonitoring = enable; }
+        bool isMonitoring() const { return _isMonitoring; }
+
+        void setLogging(bool enable) { _isLogging = enable; }
+        bool isLogging() const { return _isLogging; }
+
         /**
          * Выполняется планировщиком.
-         * Накапливает сырые данные и раз в 500мс проводит расчеты.
          */
         void execute(uint32_t now) override
         {
-            if (!_isReady)
+            if (!_isReady || !_isMonitoring)
                 return;
 
-            // 1. Сбор данных в аккумулятор (аналог sampler.add из старого кода)
             auto pRes = _bmp->readPressure();
             if (pRes.isOk())
             {
                 float p = static_cast<float>(pRes.value());
-                // Жесткая фильтрация аппаратного мусора I2C
+                // Фильтрация аппаратных выбросов
                 if (p > 40000.0F && p < 115000.0F)
                 {
                     _pressureAccumulator += p;
@@ -77,7 +83,6 @@ namespace application::telemetry
                 }
             }
 
-            // 2. Цикл расчетов по интервалу (аналог performCalculations)
             if (now - _lastCalcTime >= CALC_INTERVAL_MS)
             {
                 _lastCalcTime = now;
@@ -89,45 +94,48 @@ namespace application::telemetry
 
     private:
         /**
-         * Основная математическая модель (1:1 со старой прошивкой).
+         * Основная математическая модель.
          */
         void performCalculations()
         {
             if (_sampleCount == 0)
                 return;
 
-            // Усреднение давления
+            // 1. Усреднение накопленного давления
             _currentData.pressure = _pressureAccumulator / static_cast<float>(_sampleCount);
             _pressureAccumulator = 0;
             _sampleCount = 0;
 
-            // Чтение температуры
+            // 2. Чтение температуры
             auto tRes = _bmp->readTemperature();
             if (tRes.isOk())
                 _currentData.temperature = tRes.value();
 
             if (!_isCalibrated)
             {
-                // Авто-инициализация базы при первом запуске, если не загружена из Flash
                 setBasePressure(_currentData.pressure);
                 return;
             }
 
-            // Расчет сырой высоты относительно АДАПТИВНОЙ базы
+            // 3. Расчет высоты и компенсация дрейфа
             float rawAlt = AltitudeCalculator::calculate(_currentData.pressure, _adaptiveBaseline);
-
-            // Расчет коэффициента адаптации (alpha) и обновление базы (Drift Compensation)
             float alpha = _stability.process(rawAlt);
             _adaptiveBaseline = _adaptiveBaseline * (1.0F - alpha) + _currentData.pressure * alpha;
 
-            // Фильтрация Калмана (используем rawAlt, рассчитанный на текущей базе)
+            // 4. Фильтрация Калмана
             _currentData.altitude = _kalman.update(rawAlt);
             _currentData.isStable = _stability.isStable();
 
-            // Мертвая зона (deadZone = 0.12)
+            // 5. Мертвая зона
             if (fabsf(_currentData.altitude) < 0.12F)
-            {
                 _currentData.altitude = 0.0F;
+
+            // 6. Диагностический вывод
+            if (_isLogging)
+            {
+                char buf[64];
+                snprintf(buf, sizeof(buf), "TELE: Alt: %.2f, P: %.0f\n", _currentData.altitude, _currentData.pressure);
+                core2::Registry::getLogger().info(buf);
             }
         }
 
@@ -142,6 +150,8 @@ namespace application::telemetry
         uint32_t _lastCalcTime = 0;
         bool _isReady = false;
         bool _isCalibrated = false;
+        bool _isMonitoring = false;
+        bool _isLogging = false;
     };
 }
 

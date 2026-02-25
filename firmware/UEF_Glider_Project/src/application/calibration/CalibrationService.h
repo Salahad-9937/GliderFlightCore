@@ -15,10 +15,6 @@ namespace application::calibration
     using namespace domain::telemetry;
     using namespace infrastructure::persistence;
 
-    /**
-     * Сервис калибровки барометра.
-     * Использует готовые значения давления (Па) для расчета базы.
-     */
     class CalibrationService : public ITask
     {
     public:
@@ -38,6 +34,7 @@ namespace application::calibration
                 return;
             _status = CalibrationStatus::WARMUP;
             _startTime = millis();
+            _currentProgress = 0;
             notify();
         }
 
@@ -48,12 +45,14 @@ namespace application::calibration
             _status = CalibrationStatus::ZEROING;
             _samplesCount = 0;
             _pressureSum = 0;
+            _currentProgress = 0;
             notify();
         }
 
         auto cancel() -> void
         {
             _status = CalibrationStatus::IDLE;
+            _currentProgress = 0;
             notify();
         }
 
@@ -83,24 +82,26 @@ namespace application::calibration
         }
 
         [[nodiscard]] auto getStatus() const -> CalibrationStatus { return _status; }
+        [[nodiscard]] auto getProgress() const -> uint8_t { return _currentProgress; }
         [[nodiscard]] auto getLastResult() const -> const CalibrationProfile & { return _lastResult; }
 
     private:
         auto handleWarmup(uint32_t now) -> void
         {
             uint32_t elapsed = now - _startTime;
+            _currentProgress = (elapsed * 100) / WARMUP_MS;
             if (elapsed >= WARMUP_MS)
             {
                 _status = CalibrationStatus::MEASURING;
                 _samplesCount = 0;
                 _pressureSum = 0;
+                _currentProgress = 0;
             }
-            notify((elapsed * 100) / WARMUP_MS);
+            notify(_currentProgress);
         }
 
         auto handleSampling(uint16_t target) -> void
         {
-            // Читаем уже компенсированное давление в Паскалях
             auto res = _bmp->readPressure();
             if (res.isOk())
             {
@@ -108,14 +109,14 @@ namespace application::calibration
                 _samplesCount++;
             }
 
-            uint8_t progress = (_samplesCount * 100) / target;
+            _currentProgress = (_samplesCount * 100) / target;
             if (_samplesCount >= target)
             {
                 finalize(target);
             }
             else
             {
-                notify(progress);
+                notify(_currentProgress);
             }
         }
 
@@ -125,6 +126,7 @@ namespace application::calibration
             _lastResult.timestamp = millis();
             _lastResult.isValid = true;
             _status = CalibrationStatus::SUCCESS;
+            _currentProgress = 100;
             notify(100);
             _status = CalibrationStatus::IDLE;
         }
@@ -144,6 +146,7 @@ namespace application::calibration
         uint32_t _startTime = 0;
         uint16_t _samplesCount = 0;
         double _pressureSum = 0;
+        uint8_t _currentProgress = 0;
     };
 }
 
