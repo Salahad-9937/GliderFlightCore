@@ -25,7 +25,8 @@ namespace presentation::web::handlers
             return;
         }
 
-        StaticJsonDocument<2048> doc;
+        // Исправлено: замена StaticJsonDocument на JsonDocument (ArduinoJson v7)
+        JsonDocument doc;
         if (deserializeJson(doc, api.server().arg("plain")))
         {
             api.server().send(400, "application/json", "{\"error\":\"invalid_json\"}");

@@ -105,9 +105,9 @@ void setup()
 
     // 2. Инициализация железа
     i2cBus.init(config::DEFAULT_HW_MAP.pinI2cSda, config::DEFAULT_HW_MAP.pinI2cScl);
-    wdt.begin(4000); // Watchdog на 4 секунды
+    (void)wdt.begin(4000); // Watchdog на 4 секунды
 
-    network.setPower(true);
+    (void)network.setPower(true);
     WiFi.mode(WIFI_AP);
     WiFi.softAP("Glider-UEF-2", "");
 
@@ -136,12 +136,13 @@ void setup()
     (void)globalBus.subscribe(&flight);
 
     // 5. Планировщик (Приоритеты: Телеметрия > Ввод > FSM > Индикация > API)
-    scheduler.addTask(&telemetry, 5);    // 200 Hz
-    scheduler.addTask(&hallHandler, 10); // 100 Hz
-    scheduler.addTask(&calib, 20);       // 50 Hz
-    scheduler.addTask(&flight, 20);      // 50 Hz
-    scheduler.addTask(&indication, 50);  // 20 Hz
-    scheduler.addTask(&api, 100);        // 10 Hz
+    // Исправлено: явное игнорирование возвращаемого значения addTask для подавления nodiscard
+    (void)scheduler.addTask(&telemetry, 5);    // 200 Hz
+    (void)scheduler.addTask(&hallHandler, 10); // 100 Hz
+    (void)scheduler.addTask(&calib, 20);       // 50 Hz
+    (void)scheduler.addTask(&flight, 20);      // 50 Hz
+    (void)scheduler.addTask(&indication, 50);  // 20 Hz
+    (void)scheduler.addTask(&api, 100);        // 10 Hz
 
     asyncLogger.info("Система готова к эксплуатации.\n");
 }

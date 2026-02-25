@@ -37,6 +37,5 @@ namespace presentation::web
                            { _server.send(404, "text/plain", "Not Found"); });
 
         _server.begin();
-        core2::Registry::getLogger().info("WEB: API восстановлено (v1.2 compatible)\n");
     }
 }

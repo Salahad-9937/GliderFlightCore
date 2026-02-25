@@ -19,7 +19,8 @@ namespace presentation::web::handlers
         }
 
         auto r = reportRes.value();
-        StaticJsonDocument<256> doc;
+        // Исправлено: замена StaticJsonDocument на JsonDocument (ArduinoJson v7)
+        JsonDocument doc;
 
         doc["uptime"] = r.uptimeSec;
         doc["free_heap"] = r.freeHeap;

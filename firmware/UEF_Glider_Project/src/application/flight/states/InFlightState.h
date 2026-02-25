@@ -14,6 +14,7 @@ namespace application::flight
 {
     /**
      * @brief Состояние активного полета.
+     * Выполняет программу сервопривода и записывает лог давления.
      */
     class InFlightState : public BaseFlightState
     {
@@ -35,13 +36,23 @@ namespace application::flight
         auto onEnter() -> void override
         {
             core2::Registry::getLogger().info("FLIGHT: Старт автономной программы...\n");
-            _net->setPower(false);
 
+            // 1. Энергосбережение
+            (void)_net->setPower(false);
+
+            // 2. Запуск секвенсора, если есть программа
             if (_progManager->hasActiveProgram())
             {
                 const auto &prog = _progManager->getActiveProgram();
-                _sequencer.start(prog.steps, prog.stepsCount, millis());
+                // Исправлено: передача указателя на данные std::array через .data()
+                (void)_sequencer.start(prog.steps.data(), prog.stepsCount, millis());
+                core2::Registry::getLogger().info("FLIGHT: Секвенсор запущен.\n");
             }
+            else
+            {
+                core2::Registry::getLogger().error("FLIGHT: Программа не найдена!\n");
+            }
+
             _lastLogTime = 0;
         }
 
@@ -53,20 +64,23 @@ namespace application::flight
 
         auto onUpdate(uint32_t now) -> void override
         {
-            _sequencer.update(now);
+            // Обновление позиции сервопривода
+            (void)_sequencer.update(now);
 
+            // Запись лога давления каждую секунду (Black Box)
             if (now - _lastLogTime >= 1000)
             {
                 _lastLogTime = now;
                 float p = _telemetry->getData().pressure;
-                _storage->append(static_cast<uint16_t>(infrastructure::persistence::StorageKey::FLIGHT_LOG), &p, sizeof(p));
+                // Записываем сырое давление (float) в файл лога
+                (void)_storage->append(static_cast<uint16_t>(infrastructure::persistence::StorageKey::FLIGHT_LOG), &p, sizeof(p));
             }
         }
 
         auto onExit() -> void override
         {
             _sequencer.stop();
-            _net->setPower(true);
+            (void)_net->setPower(true);
             WiFi.mode(WIFI_AP);
             core2::Registry::getLogger().info("FLIGHT: Программа завершена.\n");
         }

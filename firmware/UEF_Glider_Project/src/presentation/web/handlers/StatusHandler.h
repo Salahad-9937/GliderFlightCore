@@ -28,7 +28,8 @@ namespace presentation::web::handlers
 
     inline void handleStatus(ApiService &api)
     {
-        StaticJsonDocument<1024> doc;
+        // Исправлено: замена StaticJsonDocument на JsonDocument (ArduinoJson v7)
+        JsonDocument doc;
 
         const auto &tData = api.telemetry().getData();
         const auto &cRes = api.calib().getLastResult();
