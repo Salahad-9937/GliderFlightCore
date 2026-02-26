@@ -96,7 +96,6 @@ namespace core2::platform
         auto readCalibrationData() -> Result<hal::Bmp180Calibration> override
         {
             hal::Bmp180Calibration c;
-            // Прямое чтение из EEPROM датчика (адрес 0xAA, длина 22 байта)
             Wire.beginTransmission(0x77);
             Wire.write(0xAA);
             if (Wire.endTransmission() != 0)
@@ -187,11 +186,17 @@ namespace core2::platform
 
     /**
      * Actuator Bridge (Servo).
+     * Настроен на работу с SG90 (500-2400 мкс).
      */
     class ServoActuator : public hal::IActuator
     {
     public:
-        ServoActuator(uint8_t pin) : _pin(pin) { _servo.attach(_pin); }
+        ServoActuator(uint8_t pin) : _pin(pin)
+        {
+            // Установка лимитов согласно даташиту SG90 для обеспечения хода 180 градусов
+            _servo.attach(_pin, 500, 2400);
+        }
+
         auto setValue(int16_t value) -> Status override
         {
             _servo.write(value);
