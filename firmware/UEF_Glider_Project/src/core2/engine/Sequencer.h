@@ -11,6 +11,7 @@ namespace core2
 
     /**
      * Шаг временной последовательности.
+     * В новой логике: durationMs — это время ожидания ПЕРЕД установкой value.
      */
     struct SequenceStep
     {
@@ -20,20 +21,20 @@ namespace core2
 
     /**
      * Исполнитель последовательностей (Sequencer).
-     * Управляет актуатором согласно заданной программе шагов.
+     * Реализует логику: Ждать -> Повернуть -> Перейти к следующему шагу.
      */
     class Sequencer
     {
     public:
-        // Исправлено: внедрение зависимости через указатель (avoid-const-or-ref-data-members)
         explicit Sequencer(hal::IActuator &actuator)
             : _actuator(&actuator) {}
 
-        // Исправлено: trailing return type и подавление swappable-parameters
-        // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+        /**
+         * Запуск программы.
+         * В отличие от старой версии, НЕ устанавливает значение немедленно.
+         */
         auto start(const SequenceStep *program, size_t size, uint32_t now) -> Status
         {
-            // Исправлено: явное сравнение указателя (implicit-bool-conversion)
             if (program == nullptr || size == 0)
             {
                 return Status::fail(ErrorCode::INVALID_ARGUMENT);
@@ -45,11 +46,13 @@ namespace core2
             _startTime = now;
             _isRunning = true;
 
-            // Исправлено: доступ к массиву через индекс (pointer-arithmetic)
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            return _actuator->setValue(_program[_currentIndex].value);
+            return Status::ok();
         }
 
+        /**
+         * Обновление состояния.
+         * Сначала отсчитывает время, затем выполняет действие.
+         */
         auto update(uint32_t now) -> Status
         {
             if (!_isRunning)
@@ -59,23 +62,23 @@ namespace core2
 
             uint32_t elapsed = now - _startTime;
 
-            // Исправлено: добавлены скобки (braces-around-statements) и арифметика
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            // Если время ожидания текущего шага истекло
             if (elapsed >= _program[_currentIndex].durationMs)
             {
-                _currentIndex++;
-                if (_currentIndex < _programSize)
+                // Выполняем действие (поворот на угол)
+                Status status = _actuator->setValue(_program[_currentIndex].value);
+                if (!status.isOk())
                 {
-                    _startTime = now;
-                    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                    Status status = _actuator->setValue(_program[_currentIndex].value);
-                    if (!status.isOk())
-                    {
-                        _isRunning = false;
-                        return status;
-                    }
+                    _isRunning = false;
+                    return status;
                 }
-                else
+
+                // Переходим к следующему шагу
+                _currentIndex++;
+                _startTime = now;
+
+                // Если шаги закончились — останавливаемся
+                if (_currentIndex >= _programSize)
                 {
                     _isRunning = false;
                 }
@@ -90,7 +93,6 @@ namespace core2
         [[nodiscard]] auto getCurrentStep() const -> size_t { return _currentIndex; }
 
     private:
-        // Исправлено: использование указателя вместо ссылки и инициализация при объявлении
         hal::IActuator *_actuator{nullptr};
         const SequenceStep *_program{nullptr};
         size_t _programSize{0};

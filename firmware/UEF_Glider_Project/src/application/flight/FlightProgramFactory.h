@@ -9,7 +9,7 @@ namespace application::flight
 {
     /**
      * @brief Фабрика для создания доменных моделей из внешних форматов.
-     * Изолирует инфраструктурную зависимость от ArduinoJson.
+     * Реализует новую логику: угол (angle) и задержка перед поворотом (delay).
      */
     class FlightProgramFactory
     {
@@ -30,7 +30,6 @@ namespace application::flight
                 return core2::ErrorCode::INVALID_ARGUMENT;
             }
 
-            // Исправлено: использование квалифицированных имен из ProgramLimits и доступ к std::array через .data()
             strncpy(p.id.data(), idStr, static_cast<size_t>(ProgramLimits::ID_MAX_LEN) - 1);
             strncpy(p.name.data(), nameStr, static_cast<size_t>(ProgramLimits::NAME_MAX_LEN) - 1);
 
@@ -48,12 +47,18 @@ namespace application::flight
                     break;
                 }
 
-                int direction = step["direction"] | 1;
-                uint32_t sec = step["durationSec"] | 0;
-                uint32_t ms = step["durationMs"] | 0;
+                // Новая логика полей: угол в градусах и задержка
+                int angle = step["angle"] | 0;
+                uint32_t sec = step["delaySec"] | 0;
+                uint32_t ms = step["delayMs"] | 0;
 
-                // Исправлено: доступ к std::array через .at()
-                p.steps.at(p.stepsCount).value = static_cast<int16_t>(direction * 90);
+                // Ограничиваем угол физическими пределами серво (0-180)
+                if (angle < 0)
+                    angle = 0;
+                if (angle > 180)
+                    angle = 180;
+
+                p.steps.at(p.stepsCount).value = static_cast<int16_t>(angle);
                 p.steps.at(p.stepsCount).durationMs = (sec * 1000) + ms;
                 p.stepsCount++;
             }

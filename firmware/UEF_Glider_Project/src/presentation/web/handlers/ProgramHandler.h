@@ -9,31 +9,35 @@ namespace presentation::web::handlers
 {
     /**
      * @brief Прием и сохранение полетной программы.
-     * Реализует Layering: UI -> Factory -> Manager.
+     * Реализует Layering: API -> Factory -> Manager -> Persistence.
      */
     inline void handleProgramUpload(ApiService &api)
     {
+        // 1. Проверка состояния (нельзя менять программу в полете или в режиме Armed)
         if (api.flight().isConfigLocked())
         {
             api.server().send(403, "application/json", "{\"error\":\"config_locked\"}");
             return;
         }
 
+        // 2. Проверка наличия тела запроса
         if (!api.server().hasArg("plain"))
         {
             api.server().send(400, "application/json", "{\"error\":\"empty_body\"}");
             return;
         }
 
-        // Исправлено: замена StaticJsonDocument на JsonDocument (ArduinoJson v7)
+        // 3. Парсинг JSON (ArduinoJson v7)
         JsonDocument doc;
-        if (deserializeJson(doc, api.server().arg("plain")))
+        DeserializationError error = deserializeJson(doc, api.server().arg("plain"));
+
+        if (error)
         {
             api.server().send(400, "application/json", "{\"error\":\"invalid_json\"}");
             return;
         }
 
-        // Использование фабрики для создания доменного объекта (Pattern: Factory)
+        // 4. Создание доменного объекта через фабрику (уже поддерживает angle/delay)
         auto createRes = application::flight::FlightProgramFactory::createFromJson(doc.as<JsonVariant>());
 
         if (!createRes.isOk())
@@ -42,7 +46,7 @@ namespace presentation::web::handlers
             return;
         }
 
-        // Сохранение через менеджер
+        // 5. Сохранение и активация программы через менеджер
         if (api.program().saveProgram(createRes.value()).isOk())
         {
             api.server().send(200, "application/json", "{\"status\":\"ok\"}");

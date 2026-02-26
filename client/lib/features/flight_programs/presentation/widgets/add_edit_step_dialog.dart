@@ -4,15 +4,23 @@ import 'package:flutter/services.dart';
 import '../../domain/entities/flight_program_step.dart';
 
 /// Показывает диалог для создания или редактирования шага программы.
+///
+/// Теперь принимает угол (0-180) и время задержки от предыдущего события.
 Future<FlightProgramStep?> showAddEditStepDialog(
   BuildContext context, {
   FlightProgramStep? existingStep,
 }) {
   final formKey = GlobalKey<FormState>();
-  
-  final durationSecController = TextEditingController(text: existingStep?.durationSec.toString() ?? '');
-  final durationMsController = TextEditingController(text: existingStep?.durationMs.toString() ?? '');
-  final directionNotifier = ValueNotifier<int>(existingStep?.direction ?? 1);
+
+  final angleController = TextEditingController(
+    text: existingStep?.angle.toString() ?? '',
+  );
+  final delaySecController = TextEditingController(
+    text: existingStep?.delaySec.toString() ?? '',
+  );
+  final delayMsController = TextEditingController(
+    text: existingStep?.delayMs.toString() ?? '',
+  );
 
   return showDialog<FlightProgramStep>(
     context: context,
@@ -27,29 +35,56 @@ Future<FlightProgramStep?> showAddEditStepDialog(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Длительность вращения',
+                  'Положение сервопривода',
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 8),
-
+                TextFormField(
+                  controller: angleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Угол (градусы)',
+                    suffixText: '°',
+                    helperText: 'Обычно от 0 до 180',
+                  ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  autofocus: true,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Введите угол';
+                    final val = int.tryParse(v);
+                    if (val == null || val < 0 || val > 180) return '0 - 180';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Задержка перед поворотом',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
                       child: TextFormField(
-                        controller: durationSecController,
+                        controller: delaySecController,
                         decoration: const InputDecoration(labelText: 'Секунды'),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        autofocus: true, // Фокус на первом поле ввода
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: TextFormField(
-                        controller: durationMsController,
-                        decoration: const InputDecoration(labelText: 'Миллисекунды'),
+                        controller: delayMsController,
+                        decoration: const InputDecoration(
+                          labelText: 'Миллисекунды',
+                        ),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
                         validator: (v) {
                           if (v == null || v.isEmpty) return null;
                           final ms = int.tryParse(v);
@@ -60,22 +95,12 @@ Future<FlightProgramStep?> showAddEditStepDialog(
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                
-                ValueListenableBuilder<int>(
-                  valueListenable: directionNotifier,
-                  builder: (context, direction, child) {
-                    return SegmentedButton<int>(
-                      segments: const [
-                        ButtonSegment(value: 1, label: Text('По часовой'), icon: Icon(Icons.rotate_right)),
-                        ButtonSegment(value: -1, label: Text('Против'), icon: Icon(Icons.rotate_left)),
-                      ],
-                      selected: {direction},
-                      onSelectionChanged: (newSelection) {
-                        directionNotifier.value = newSelection.first;
-                      },
-                    );
-                  },
+                const SizedBox(height: 8),
+                Text(
+                  'Время отсчитывается от завершения предыдущего шага.',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.grey),
                 ),
               ],
             ),
@@ -89,23 +114,14 @@ Future<FlightProgramStep?> showAddEditStepDialog(
           FilledButton(
             onPressed: () {
               if (formKey.currentState!.validate()) {
-                final sec = int.tryParse(durationSecController.text) ?? 0;
-                final ms = int.tryParse(durationMsController.text) ?? 0;
-
-                if (sec == 0 && ms == 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Длительность вращения не может быть нулевой'),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
-                  return;
-                }
+                final angle = int.tryParse(angleController.text) ?? 0;
+                final sec = int.tryParse(delaySecController.text) ?? 0;
+                final ms = int.tryParse(delayMsController.text) ?? 0;
 
                 final newStep = FlightProgramStep(
-                  direction: directionNotifier.value,
-                  durationSec: sec,
-                  durationMs: ms,
+                  angle: angle,
+                  delaySec: sec,
+                  delayMs: ms,
                 );
                 Navigator.of(context).pop(newStep);
               }

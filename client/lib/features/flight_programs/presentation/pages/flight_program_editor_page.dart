@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../device_communication/presentation/providers/program_upload_controller.dart';
 import '../../domain/entities/flight_program.dart';
 import '../../domain/entities/flight_program_step.dart';
 import '../providers/flight_programs_providers.dart';
@@ -19,17 +20,23 @@ class FlightProgramEditorPage extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<FlightProgramEditorPage> createState() => _FlightProgramEditorPageState();
+  ConsumerState<FlightProgramEditorPage> createState() =>
+      _FlightProgramEditorPageState();
 }
 
-class _FlightProgramEditorPageState extends ConsumerState<FlightProgramEditorPage> {
+class _FlightProgramEditorPageState
+    extends ConsumerState<FlightProgramEditorPage> {
   FlightProgram? _program;
-  bool _hasChanges = false; // Отслеживание изменений для предупреждения при выходе
+  bool _hasChanges =
+      false; // Отслеживание изменений для предупреждения при выходе
 
   @override
   void initState() {
     super.initState();
-    final programIdObj = ProgramId(profileId: widget.profileId, programId: widget.programId);
+    final programIdObj = ProgramId(
+      profileId: widget.profileId,
+      programId: widget.programId,
+    );
     final initialProgram = ref.read(programByIdProvider(programIdObj));
     if (initialProgram != null) {
       // Создаем копию программы для редактирования
@@ -48,7 +55,10 @@ class _FlightProgramEditorPageState extends ConsumerState<FlightProgramEditorPag
   }
 
   Future<void> _editStep(FlightProgramStep stepToEdit, int index) async {
-    final updatedStep = await showAddEditStepDialog(context, existingStep: stepToEdit);
+    final updatedStep = await showAddEditStepDialog(
+      context,
+      existingStep: stepToEdit,
+    );
     if (updatedStep != null && _program != null) {
       setState(() {
         _program!.steps[index] = updatedStep;
@@ -71,10 +81,50 @@ class _FlightProgramEditorPageState extends ConsumerState<FlightProgramEditorPag
           .read(flightProgramsControllerProvider)
           .updateProgram(widget.profileId, _program!);
       setState(() => _hasChanges = false);
-      Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Программа сохранена')),
+        const SnackBar(content: Text('Программа сохранена локально')),
       );
+    }
+  }
+
+  /// Отправка программы на борт устройства по Wi-Fi.
+  Future<void> _uploadToDevice() async {
+    if (_program == null) return;
+
+    // Сначала сохраняем локально, чтобы данные были актуальны
+    _saveChanges();
+
+    final result = await ref
+        .read(programUploadControllerProvider)
+        .uploadProgram(_program!);
+
+    if (!mounted) return;
+
+    switch (result) {
+      case UploadResult.success:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Программа успешно загружена на планер'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        break;
+      case UploadResult.failure:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ошибка загрузки. Проверьте связь.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        break;
+      case UploadResult.notConnected:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Нет подключения к планеру'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        break;
     }
   }
 
@@ -85,7 +135,9 @@ class _FlightProgramEditorPageState extends ConsumerState<FlightProgramEditorPag
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Несохраненные изменения'),
-        content: const Text('Вы уверены, что хотите выйти? Изменения будут потеряны.'),
+        content: const Text(
+          'Вы уверены, что хотите выйти? Изменения будут потеряны.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -123,7 +175,16 @@ class _FlightProgramEditorPageState extends ConsumerState<FlightProgramEditorPag
         appBar: AppBar(
           title: Text(_program!.name),
           actions: [
-            IconButton(onPressed: _saveChanges, icon: const Icon(Icons.save_outlined)),
+            IconButton(
+              onPressed: _uploadToDevice,
+              icon: const Icon(Icons.upload_file_rounded),
+              tooltip: 'Загрузить на планер',
+            ),
+            IconButton(
+              onPressed: _saveChanges,
+              icon: const Icon(Icons.save_outlined),
+              tooltip: 'Сохранить локально',
+            ),
           ],
         ),
         body: _program!.steps.isEmpty
@@ -163,16 +224,20 @@ class _StepCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final durationString = '${step.durationSec} с  ${step.durationMs} мс';
+    final delayStr = '${step.delaySec} с ${step.delayMs} мс';
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: ListTile(
         leading: CircleAvatar(
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
           child: Text('$stepNumber'),
         ),
-        title: Text(durationString, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(step.direction == 1 ? 'Направление: По часовой' : 'Направление: Против часовой'),
+        title: Text(
+          'Угол: ${step.angle}°',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text('Задержка: $delayStr'),
         trailing: IconButton(
           icon: Icon(Icons.delete_outline, color: Colors.grey.shade600),
           onPressed: onDelete,
@@ -192,13 +257,22 @@ class _EmptySteps extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.playlist_add_outlined, size: 80, color: Colors.grey.shade700),
+          Icon(
+            Icons.playlist_add_outlined,
+            size: 80,
+            color: Colors.grey.shade700,
+          ),
           const SizedBox(height: 16),
-          Text('Нет добавленных шагов', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            'Нет добавленных шагов',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 8),
           Text(
             'Нажмите "+", чтобы добавить первый шаг',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
           ),
         ],
       ),
