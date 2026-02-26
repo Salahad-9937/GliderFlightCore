@@ -11,7 +11,6 @@ namespace domain::flight
     /**
      * @brief Лимиты программы полета.
      */
-    // Исправлено: cppcoreguidelines-use-enum-class
     enum class ProgramLimits : uint8_t
     {
         MAX_STEPS = 16,    ///< Максимальное кол-во фаз полета
@@ -24,13 +23,11 @@ namespace domain::flight
      */
     struct FlightProgram
     {
-        // Исправлено: cppcoreguidelines-avoid-c-arrays
         std::array<char, static_cast<size_t>(ProgramLimits::ID_MAX_LEN)> id{};
         std::array<char, static_cast<size_t>(ProgramLimits::NAME_MAX_LEN)> name{};
-        uint8_t stepsCount = 0; // Исправлено: cppcoreguidelines-use-default-member-init
+        uint8_t stepsCount = 0;
         std::array<core2::SequenceStep, static_cast<size_t>(ProgramLimits::MAX_STEPS)> steps{};
 
-        // Исправлено: cppcoreguidelines-pro-type-member-init
         FlightProgram() = default;
 
         /**
@@ -42,7 +39,6 @@ namespace domain::flight
             {
                 return false;
             }
-            // Исправлено: cppcoreguidelines-pro-bounds-array-to-pointer-decay
             if (id.at(0) == '\0')
             {
                 return false;
@@ -50,7 +46,6 @@ namespace domain::flight
 
             for (uint8_t i = 0; i < stepsCount; i++)
             {
-                // Исправлено: cppcoreguidelines-pro-bounds-constant-array-index
                 if (steps.at(i).durationMs == 0)
                 {
                     return false;
@@ -67,20 +62,46 @@ namespace domain::flight
             uint32_t total = 0;
             for (uint8_t i = 0; i < stepsCount; i++)
             {
-                // Исправлено: cppcoreguidelines-pro-bounds-constant-array-index
                 total += steps.at(i).durationMs;
             }
             return total;
         }
 
         /**
-         * @brief Сравнение программ по ID.
+         * @brief Глубокое сравнение программ.
+         * Проверяет ID, имя, количество шагов и параметры каждого шага.
          */
-        // Исправлено: modernize-use-nodiscard
         [[nodiscard]] auto isSameAs(const FlightProgram &other) const -> bool
         {
-            // Исправлено: cppcoreguidelines-pro-bounds-array-to-pointer-decay
-            return strcmp(id.data(), other.id.data()) == 0;
+            // 1. Сравнение ID
+            if (strcmp(id.data(), other.id.data()) != 0)
+            {
+                return false;
+            }
+
+            // 2. Сравнение имени
+            if (strcmp(name.data(), other.name.data()) != 0)
+            {
+                return false;
+            }
+
+            // 3. Сравнение количества шагов
+            if (stepsCount != other.stepsCount)
+            {
+                return false;
+            }
+
+            // 4. Пошаговое сравнение данных секвенсора
+            for (uint8_t i = 0; i < stepsCount; i++)
+            {
+                if (steps.at(i).value != other.steps.at(i).value ||
+                    steps.at(i).durationMs != other.steps.at(i).durationMs)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     };
 }
