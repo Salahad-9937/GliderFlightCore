@@ -7,6 +7,7 @@ import '../services/i_datetime_service.dart';
 import '../services/i_logger_service.dart';
 import '../services/logger_service_impl.dart';
 import '../constants/app_constants.dart';
+import '../l10n/app_strings.dart';
 
 /// Провайдер базового HTTP клиента.
 final httpClientProvider = Provider<http.Client>((ref) {
@@ -23,6 +24,11 @@ final loggerServiceProvider = Provider<ILoggerService>((ref) {
 /// Провайдер службы времени.
 final dateTimeServiceProvider = Provider<IDateTimeService>((ref) {
   return DateTimeServiceImpl();
+});
+
+/// Провайдер локализации.
+final l10nProvider = Provider<AppStrings>((ref) {
+  return AppStrings.ru;
 });
 
 /// Провайдер сетевого клиента для связи с планером.

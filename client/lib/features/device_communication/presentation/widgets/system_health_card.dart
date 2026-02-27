@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/di/core_providers.dart';
+import '../../../../core/l10n/app_strings.dart';
 import '../../domain/entities/system_health.dart';
 import '../providers/system_health_provider.dart';
 
@@ -10,6 +13,7 @@ class SystemHealthCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final systemAsync = ref.watch(systemHealthProvider(profileId));
+    final strings = ref.watch(l10nProvider);
     ref.watch(systemUpdateTimerProvider);
 
     return Card(
@@ -18,12 +22,12 @@ class SystemHealthCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(context, ref, systemAsync.value),
+            _buildHeader(context, ref, systemAsync.value, strings),
             const Divider(height: 24),
             systemAsync.when(
               data: (health) => health == null
-                  ? const Text('Устройство не готово')
-                  : _buildSystemInfo(context, health),
+                  ? Text(strings.deviceNotReady)
+                  : _buildSystemInfo(context, health, strings),
               loading: () => const Center(
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: 20),
@@ -31,7 +35,7 @@ class SystemHealthCard extends ConsumerWidget {
                 ),
               ),
               error: (e, __) => Text(
-                'Ошибка диагностики: $e',
+                '${strings.diagError}: $e',
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
@@ -45,18 +49,21 @@ class SystemHealthCard extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     SystemHealth? health,
+    AppStrings strings,
   ) {
     String timeAgo = '';
     if (health != null) {
       final diff = DateTime.now().difference(health.timestamp).inSeconds;
-      timeAgo = diff < 60 ? '$diff сек. назад' : '${diff ~/ 60} мин. назад';
+      timeAgo = diff < 60
+          ? '$diff ${strings.timeSecAgo}'
+          : '${diff ~/ 60} ${strings.timeMinAgo}';
     }
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          'Диагностика системы',
+          strings.systemDiagTitle,
           style: Theme.of(context).textTheme.titleMedium,
         ),
         Row(
@@ -73,7 +80,7 @@ class SystemHealthCard extends ConsumerWidget {
               onPressed: () => ref.invalidate(systemHealthProvider(profileId)),
               icon: const Icon(Icons.refresh, size: 20),
               visualDensity: VisualDensity.compact,
-              tooltip: 'Обновить',
+              tooltip: strings.refresh,
             ),
           ],
         ),
@@ -81,7 +88,11 @@ class SystemHealthCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildSystemInfo(BuildContext context, SystemHealth health) {
+  Widget _buildSystemInfo(
+    BuildContext context,
+    SystemHealth health,
+    AppStrings strings,
+  ) {
     final freeMemKb = (health.freeHeap / 1024).toStringAsFixed(1);
     final fsUsedMb = (health.fsUsed / 1024 / 1024).toStringAsFixed(2);
     final fsTotalMb = (health.fsTotal / 1024 / 1024).toStringAsFixed(2);
@@ -89,16 +100,16 @@ class SystemHealthCard extends ConsumerWidget {
     final minutes = health.uptime ~/ 60;
     final seconds = health.uptime % 60;
     final uptimeString = minutes > 0
-        ? '$minutes мин. $seconds сек.'
-        : '$seconds сек.';
+        ? '$minutes ${strings.unitMin} $seconds ${strings.unitSec}'
+        : '$seconds ${strings.unitSec}';
 
     return Column(
       children: [
-        _buildRow('Версия ПО', health.version),
-        _buildRow('Uptime', uptimeString),
-        _buildRow('Свободно RAM', '$freeMemKb KB'),
-        _buildRow('Память FS', '$fsUsedMb / $fsTotalMb MB'),
-        _buildRow('Chip ID', health.chipId.toUpperCase()),
+        _buildRow(strings.firmwareVersion, health.version),
+        _buildRow(strings.uptime, uptimeString),
+        _buildRow(strings.freeRam, '$freeMemKb KB'),
+        _buildRow(strings.fsMemory, '$fsUsedMb / $fsTotalMb MB'),
+        _buildRow(strings.chipId, health.chipId.toUpperCase()),
       ],
     );
   }

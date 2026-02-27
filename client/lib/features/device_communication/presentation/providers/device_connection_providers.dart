@@ -3,12 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/architecture/use_case.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/di/core_providers.dart'; // Добавлено
 import '../../domain/entities/device.dart';
 import '../../domain/entities/device_status.dart';
 import 'device_usecase_providers.dart';
 import 'sensor_settings_controller.dart';
 
-/// Нотификатор управления сессией связи с устройством.
 class DeviceConnectionNotifier extends Notifier<Device> {
   Timer? _pollingTimer;
 
@@ -18,7 +18,6 @@ class DeviceConnectionNotifier extends Notifier<Device> {
     return const Device(status: DeviceStatus.disconnected);
   }
 
-  /// Инициирует подключение к устройству.
   Future<void> connect() async {
     if (state.status == DeviceStatus.connecting) return;
 
@@ -41,6 +40,10 @@ class DeviceConnectionNotifier extends Notifier<Device> {
         _startPolling();
       },
       (failure) {
+        // Логируем ошибку через сервис из core
+        ref
+            .read(loggerServiceProvider)
+            .e('Ошибка подключения: ${failure.message}');
         state = Device(
           status: DeviceStatus.error,
           errorMessage: failure.message,
@@ -49,28 +52,17 @@ class DeviceConnectionNotifier extends Notifier<Device> {
     );
   }
 
-  /// Разрывает соединение и останавливает опрос.
   void disconnect() {
     _stopPolling();
-
-    final wasConnected = state.status == DeviceStatus.connected;
-
-    if (wasConnected) {
+    if (state.status == DeviceStatus.connected) {
       ref.read(toggleMonitoringUseCaseProvider).call(false);
     }
-
-    // Используем Timer.run для избежания конфликтов в жизненном цикле Riverpod
-    Timer.run(() {
-      state = const Device(status: DeviceStatus.disconnected);
-    });
+    Timer.run(() => state = const Device(status: DeviceStatus.disconnected));
   }
 
   void pausePolling() => _stopPolling();
-
   void resumePolling() {
-    if (state.status == DeviceStatus.connected) {
-      _startPolling();
-    }
+    if (state.status == DeviceStatus.connected) _startPolling();
   }
 
   void _startPolling() {
@@ -92,6 +84,9 @@ class DeviceConnectionNotifier extends Notifier<Device> {
         .call(const NoParams());
 
     result.fold((device) => state = device, (failure) {
+      ref
+          .read(loggerServiceProvider)
+          .w('Потеря связи при опросе: ${failure.message}');
       _stopPolling();
       state = Device(
         status: DeviceStatus.error,

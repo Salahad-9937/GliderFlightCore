@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/l10n/app_strings.dart';
 import '../providers/device_connection_providers.dart';
 import 'calibration_bottom_sheet.dart';
 
@@ -12,14 +14,15 @@ class TelemetryDashboard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final device = ref.watch(deviceConnectionNotifierProvider);
+    final strings = ref.watch(l10nProvider);
 
     if (!device.isHardwareOk) {
       return Column(
         key: const ValueKey('error_state'),
         children: [
-          _buildHeader(context, ref),
+          _buildHeader(context, ref, strings),
           const SizedBox(height: 16),
-          _buildHardwareErrorCard(context),
+          _buildHardwareErrorCard(context, strings),
         ],
       );
     }
@@ -34,7 +37,7 @@ class TelemetryDashboard extends ConsumerWidget {
       key: const ValueKey('telemetry_state'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildHeader(context, ref),
+        _buildHeader(context, ref, strings),
         const SizedBox(height: 16),
 
         Center(
@@ -55,7 +58,7 @@ class TelemetryDashboard extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'м',
+                    strings.altitudeUnit,
                     style: Theme.of(
                       context,
                     ).textTheme.headlineMedium?.copyWith(color: Colors.grey),
@@ -63,11 +66,11 @@ class TelemetryDashboard extends ConsumerWidget {
                 ],
               ),
               if (device.isCalibrating)
-                const Padding(
-                  padding: EdgeInsets.only(top: 8.0),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
-                    'Идет калибровка...',
-                    style: TextStyle(
+                    strings.calibratingProgress,
+                    style: const TextStyle(
                       color: AppColors.warning,
                       fontWeight: FontWeight.w500,
                     ),
@@ -82,13 +85,23 @@ class TelemetryDashboard extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildInfoItem(context, Icons.thermostat, '$temp°C', 'Температура'),
-            _buildInfoItem(context, Icons.speed, '$pressure Pa', 'Давление'),
+            _buildInfoItem(
+              context,
+              Icons.thermostat,
+              '$temp°C',
+              strings.temperature,
+            ),
+            _buildInfoItem(
+              context,
+              Icons.speed,
+              '$pressure Pa',
+              strings.pressure,
+            ),
             _buildInfoItem(
               context,
               Icons.bolt,
               '$vcc V',
-              'Питание',
+              strings.power,
               color: (device.vcc != null && device.vcc! < 3.0)
                   ? AppColors.error
                   : null,
@@ -109,23 +122,23 @@ class TelemetryDashboard extends ConsumerWidget {
             );
           },
           icon: const Icon(Icons.settings_input_component),
-          label: const Text('Калибровка датчиков'),
+          label: Text(strings.calibrationTitle),
         ),
       ],
     );
   }
 
-  Widget _buildHeader(BuildContext context, WidgetRef ref) {
+  Widget _buildHeader(BuildContext context, WidgetRef ref, AppStrings strings) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Row(
+        Row(
           children: [
-            Icon(Icons.sensors, color: AppColors.success, size: 20),
-            SizedBox(width: 8),
+            const Icon(Icons.sensors, color: AppColors.success, size: 20),
+            const SizedBox(width: 8),
             Text(
-              'Датчики активны',
-              style: TextStyle(
+              strings.sensorsActive,
+              style: const TextStyle(
                 color: AppColors.success,
                 fontWeight: FontWeight.bold,
               ),
@@ -136,28 +149,24 @@ class TelemetryDashboard extends ConsumerWidget {
           onPressed: () =>
               ref.read(deviceConnectionNotifierProvider.notifier).disconnect(),
           icon: const Icon(Icons.link_off_rounded),
-          tooltip: 'Отключиться',
+          tooltip: strings.disconnect,
         ),
       ],
     );
   }
 
-  Widget _buildHardwareErrorCard(BuildContext context) {
+  Widget _buildHardwareErrorCard(BuildContext context, AppStrings strings) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.errorContainer,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.warning_amber_rounded, color: AppColors.error),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Ошибка датчика BMP180! Проверьте соединение на плате.',
-            ),
-          ),
+          const Icon(Icons.warning_amber_rounded, color: AppColors.error),
+          const SizedBox(width: 12),
+          Expanded(child: Text(strings.sensorError)),
         ],
       ),
     );

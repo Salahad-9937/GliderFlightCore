@@ -29,7 +29,12 @@ class DeviceMapper {
   }
 
   /// Преобразует DTO диагностики в сущность SystemHealth.
-  static SystemHealth toSystemHealthEntity(SystemHealthDto dto) {
+  ///
+  /// [timestamp] передается извне (IDateTimeService) для детерминизма.
+  static SystemHealth toSystemHealthEntity(
+    SystemHealthDto dto,
+    DateTime timestamp,
+  ) {
     return SystemHealth(
       uptime: dto.uptime,
       freeHeap: dto.freeHeap,
@@ -37,7 +42,7 @@ class DeviceMapper {
       fsUsed: dto.fsUsed,
       chipId: dto.chipId,
       version: dto.version,
-      timestamp: DateTime.now(),
+      timestamp: timestamp,
     );
   }
 }

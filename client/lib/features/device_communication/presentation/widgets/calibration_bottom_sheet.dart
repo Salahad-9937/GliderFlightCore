@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/di/core_providers.dart';
+import '../../../../core/l10n/app_strings.dart';
 import '../providers/sensor_calibration_providers.dart';
 
 /// Шторка (Bottom Sheet) для управления калибровкой датчиков.
@@ -11,11 +13,12 @@ class CalibrationBottomSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final calibState = ref.watch(sensorCalibrationProvider);
     final notifier = ref.read(sensorCalibrationProvider.notifier);
+    final strings = ref.watch(l10nProvider);
 
-    // Определяем, идет ли активный процесс
-    final isBusy = calibState.phase == CalibrationPhase.zeroing ||
-                   calibState.phase == CalibrationPhase.stabilization ||
-                   calibState.phase == CalibrationPhase.measuring;
+    final isBusy =
+        calibState.phase == CalibrationPhase.zeroing ||
+        calibState.phase == CalibrationPhase.stabilization ||
+        calibState.phase == CalibrationPhase.measuring;
 
     return SafeArea(
       child: Container(
@@ -26,80 +29,86 @@ class CalibrationBottomSheet extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Калибровка датчиков',
+              strings.calibrationTitle,
               style: Theme.of(context).textTheme.headlineSmall,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
 
-            // --- БЛОК 1: БЫСТРОЕ ОБНУЛЕНИЕ ---
-            if (calibState.phase == CalibrationPhase.idle || calibState.phase == CalibrationPhase.success) ...[
-              Text('Оперативное управление', style: Theme.of(context).textTheme.titleSmall),
+            if (calibState.phase == CalibrationPhase.idle ||
+                calibState.phase == CalibrationPhase.success) ...[
+              Text(
+                strings.operationalControl,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
-                onPressed: () async {
-                  final success = await notifier.zeroAltitude();
-                  if (success && context.mounted) {
-                    // Не закрываем шторку сразу, чтобы пользователь видел прогресс
-                  }
-                },
+                onPressed: () => notifier.zeroAltitude(),
                 icon: const Icon(Icons.vertical_align_center),
-                label: const Text('Обнулить высоту (Zero)'),
+                label: Text(strings.zeroAltitudeBtn),
               ),
               const SizedBox(height: 24),
             ],
 
-            // --- БЛОК 2: ПРОГРЕСС БАРЫ ---
             if (calibState.phase == CalibrationPhase.zeroing) ...[
-               Text('Оперативное управление', style: Theme.of(context).textTheme.titleSmall),
-               const SizedBox(height: 8),
-               _buildProgressIndicator(
-                 context, 
-                 calibState, 
-                 label: 'Обнуление высоты...', 
-                 color: Colors.lightBlue
-               ),
-               const SizedBox(height: 16),
+              Text(
+                strings.operationalControl,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              _buildProgressIndicator(
+                context,
+                calibState,
+                label: strings.zeroingProcess,
+                color: Colors.lightBlue,
+              ),
+              const SizedBox(height: 16),
             ],
 
-            // --- БЛОК 3: ПОЛНАЯ КАЛИБРОВКА ---
             if (calibState.phase != CalibrationPhase.zeroing) ...[
-              Text('Полная настройка', style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                strings.fullSetup,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: 8),
 
               if (calibState.phase == CalibrationPhase.idle)
                 FilledButton.icon(
                   onPressed: notifier.startFullCalibration,
                   icon: const Icon(Icons.build_circle_outlined),
-                  label: const Text('Запустить полную калибровку'),
+                  label: Text(strings.startFullCalibBtn),
                 )
               else if (calibState.phase == CalibrationPhase.stabilization)
                 _buildProgressIndicator(
-                  context, 
-                  calibState, 
-                  label: 'Термостабилизация...', 
-                  color: Colors.orange
+                  context,
+                  calibState,
+                  label: strings.stabilizationProcess,
+                  color: Colors.orange,
                 )
               else if (calibState.phase == CalibrationPhase.measuring)
                 _buildProgressIndicator(
-                  context, 
-                  calibState, 
-                  label: 'Сбор данных и усреднение...', 
-                  color: Colors.blue
+                  context,
+                  calibState,
+                  label: strings.measuringProcess,
+                  color: Colors.blue,
                 )
               else if (calibState.phase == CalibrationPhase.success)
-                _buildSuccessState(context, notifier)
+                _buildSuccessState(context, notifier, strings)
               else if (calibState.phase == CalibrationPhase.error)
-                _buildErrorState(context, notifier, calibState.errorMessage),
+                _buildErrorState(
+                  context,
+                  notifier,
+                  calibState.errorMessage,
+                  strings,
+                ),
             ],
 
-            // --- КНОПКА ОТМЕНЫ ---
             if (isBusy) ...[
               const SizedBox(height: 16),
               TextButton.icon(
                 onPressed: notifier.cancelOperation,
                 icon: const Icon(Icons.cancel_outlined),
-                label: const Text('Отменить операцию'),
+                label: Text(strings.cancelOperation),
                 style: TextButton.styleFrom(
                   foregroundColor: Theme.of(context).colorScheme.error,
                 ),
@@ -114,10 +123,11 @@ class CalibrationBottomSheet extends ConsumerWidget {
   }
 
   Widget _buildProgressIndicator(
-    BuildContext context, 
-    CalibrationState state, 
-    {required String label, required Color color}
-  ) {
+    BuildContext context,
+    CalibrationState state, {
+    required String label,
+    required Color color,
+  }) {
     return Card(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Padding(
@@ -143,15 +153,25 @@ class CalibrationBottomSheet extends ConsumerWidget {
     );
   }
 
-  Widget _buildSuccessState(BuildContext context, SensorCalibrationNotifier notifier) {
+  Widget _buildSuccessState(
+    BuildContext context,
+    SensorCalibrationNotifier notifier,
+    AppStrings strings,
+  ) {
     return Column(
       children: [
-        const Row(
+        Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.check_circle, color: Colors.green, size: 32),
-            SizedBox(width: 8),
-            Text('Калибровка завершена!', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+            const Icon(Icons.check_circle, color: Colors.green, size: 32),
+            const SizedBox(width: 8),
+            Text(
+              strings.calibSuccess,
+              style: const TextStyle(
+                color: Colors.green,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 16),
@@ -159,25 +179,30 @@ class CalibrationBottomSheet extends ConsumerWidget {
           onPressed: () {
             notifier.saveCalibration();
             Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Калибровка сохранена в память')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(strings.calibSavedNotify)));
           },
-          child: const Text('Сохранить в память'),
+          child: Text(strings.saveToMemoryBtn),
         ),
       ],
     );
   }
 
-  Widget _buildErrorState(BuildContext context, SensorCalibrationNotifier notifier, String? error) {
+  Widget _buildErrorState(
+    BuildContext context,
+    SensorCalibrationNotifier notifier,
+    String? error,
+    AppStrings strings,
+  ) {
     return Column(
       children: [
-        Text(error ?? 'Ошибка', style: TextStyle(color: Theme.of(context).colorScheme.error)),
-        const SizedBox(height: 8),
-        TextButton(
-          onPressed: notifier.reset,
-          child: const Text('Попробовать снова'),
+        Text(
+          error ?? strings.error,
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
         ),
+        const SizedBox(height: 8),
+        TextButton(onPressed: notifier.reset, child: Text(strings.retry)),
       ],
     );
   }
