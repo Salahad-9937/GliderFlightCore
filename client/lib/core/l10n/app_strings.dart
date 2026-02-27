@@ -1,6 +1,6 @@
-/// Контейнер для всех строк приложения.
+/// Контейнер для всех локализованных строк приложения.
 class AppStrings {
-  // Общие
+  // --- Общие ---
   final String appTitle;
   final String error;
   final String cancel;
@@ -8,7 +8,7 @@ class AppStrings {
   final String retry;
   final String ok;
 
-  // Подключение
+  // --- Подключение ---
   final String connectionTitle;
   final String connectionStep1;
   final String connectionStep2;
@@ -18,7 +18,7 @@ class AppStrings {
   final String connectionLost;
   final String disconnect;
 
-  // Телеметрия
+  // --- Телеметрия ---
   final String sensorsActive;
   final String telemetryTitle;
   final String temperature;
@@ -28,7 +28,7 @@ class AppStrings {
   final String sensorError;
   final String calibratingProgress;
 
-  // Диагностика системы
+  // --- Диагностика системы ---
   final String systemDiagTitle;
   final String deviceNotReady;
   final String diagError;
@@ -43,7 +43,7 @@ class AppStrings {
   final String unitMin;
   final String unitSec;
 
-  // Калибровка
+  // --- Калибровка ---
   final String calibrationTitle;
   final String operationalControl;
   final String zeroAltitudeBtn;
@@ -56,6 +56,13 @@ class AppStrings {
   final String saveToMemoryBtn;
   final String calibSavedNotify;
   final String cancelOperation;
+
+  // --- Панель управления ---
+  final String profileNotFound;
+  final String flightHistory;
+  final String sync;
+  final String noFlightData;
+  final String renameGlider;
 
   const AppStrings({
     required this.appTitle,
@@ -105,8 +112,14 @@ class AppStrings {
     required this.saveToMemoryBtn,
     required this.calibSavedNotify,
     required this.cancelOperation,
+    required this.profileNotFound,
+    required this.flightHistory,
+    required this.sync,
+    required this.noFlightData,
+    required this.renameGlider,
   });
 
+  /// Русская локализация.
   static const ru = AppStrings(
     appTitle: 'Glider Flight Core',
     error: 'Ошибка',
@@ -155,5 +168,10 @@ class AppStrings {
     saveToMemoryBtn: 'Сохранить в память',
     calibSavedNotify: 'Калибровка сохранена в память',
     cancelOperation: 'Отменить операцию',
+    profileNotFound: 'Профиль не найден',
+    flightHistory: 'История полетов',
+    sync: 'Синхронизировать',
+    noFlightData: 'Нет данных о полетах',
+    renameGlider: 'Переименовать планер',
   );
 }
