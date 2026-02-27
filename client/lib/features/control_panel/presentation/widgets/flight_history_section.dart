@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/core_providers.dart';
+import '../../../../core/theme/app_text_styles.dart';
 
 /// Секция для просмотра истории полетов.
 ///
@@ -18,16 +19,19 @@ class FlightHistorySection extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              strings.panel.flightHistory,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text(strings.panel.flightHistory, style: AppTextStyles.title),
             TextButton.icon(
               onPressed: () {
                 // Будущая реализация синхронизации
               },
               icon: const Icon(Icons.sync_rounded),
-              label: Text(strings.panel.sync),
+              label: Text(
+                strings.panel.sync,
+                style: AppTextStyles.body.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
@@ -35,7 +39,10 @@ class FlightHistorySection extends ConsumerWidget {
         Card(
           child: ListTile(
             leading: const Icon(Icons.history_rounded, color: Colors.grey),
-            title: Text(strings.panel.noFlightData),
+            title: Text(
+              strings.panel.noFlightData,
+              style: AppTextStyles.body.copyWith(color: Colors.grey),
+            ),
           ),
         ),
       ],

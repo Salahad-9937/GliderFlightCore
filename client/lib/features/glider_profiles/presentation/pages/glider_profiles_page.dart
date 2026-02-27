@@ -71,8 +71,9 @@ class _GliderProfileCard extends ConsumerWidget {
         ),
         trailing: PopupMenuButton<String>(
           onSelected: (value) {
-            if (value == 'delete')
+            if (value == 'delete') {
               showDeleteProfileDialog(context, ref, profile);
+            }
           },
           itemBuilder: (_) => [
             PopupMenuItem(

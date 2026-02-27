@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_providers.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../glider_profiles/presentation/providers/glider_profiles_providers.dart';
 import '../../../glider_profiles/presentation/widgets/edit_profile_dialog.dart';
 import '../../../flight_programs/presentation/widgets/flight_programs_list.dart';
@@ -19,7 +20,9 @@ import '../widgets/flight_history_section.dart';
 /// Выступает в роли композиционного узла, объединяя виджеты телеметрии,
 /// программ и истории для конкретного профиля.
 class ControlPanelPage extends ConsumerStatefulWidget {
+  /// Идентификатор профиля планера.
   final String gliderProfileId;
+
   const ControlPanelPage({super.key, required this.gliderProfileId});
 
   @override
@@ -83,13 +86,15 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
     if (profile == null) {
       return Scaffold(
         appBar: AppBar(),
-        body: Center(child: Text(strings.panel.profileNotFound)),
+        body: Center(
+          child: Text(strings.panel.profileNotFound, style: AppTextStyles.body),
+        ),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(profile.name),
+        title: Text(profile.name, style: AppTextStyles.title),
         actions: [
           IconButton(
             onPressed: () => showEditProfileDialog(
