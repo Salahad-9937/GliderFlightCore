@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/di/core_providers.dart';
+import '../../../../core/l10n/app_strings.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../device_communication/presentation/providers/program_upload_controller.dart';
 import '../../domain/entities/flight_program.dart';
 import '../pages/flight_program_editor_page.dart';
@@ -8,7 +11,6 @@ import '../providers/flight_programs_providers.dart';
 import 'add_program_dialog.dart';
 import 'delete_program_dialog.dart';
 
-/// Виджет, отображающий список полетных программ для данного профиля.
 class FlightProgramsList extends ConsumerWidget {
   final String profileId;
   const FlightProgramsList({super.key, required this.profileId});
@@ -16,6 +18,7 @@ class FlightProgramsList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final programsAsync = ref.watch(flightProgramsProvider(profileId));
+    final strings = ref.watch(l10nProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -23,109 +26,97 @@ class FlightProgramsList extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Полетные программы', style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              strings.programsTitle,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             IconButton(
-              onPressed: () {
-                showAddProgramDialog(context, ref, profileId);
-              },
+              onPressed: () => showAddProgramDialog(context, ref, profileId),
               icon: const Icon(Icons.add_circle_outline),
-              tooltip: 'Создать программу',
-            )
+              tooltip: strings.createProgram,
+            ),
           ],
         ),
         const SizedBox(height: 8),
         programsAsync.when(
-          data: (programs) {
-            if (programs.isEmpty) {
-              return const Card(
-                child: ListTile(
-                  leading: Icon(Icons.playlist_add_check_circle_outlined),
-                  title: Text('Нет созданных программ'),
-                  subtitle: Text('Нажмите "+", чтобы добавить'),
+          data: (programs) => programs.isEmpty
+              ? _EmptyCard(strings: strings)
+              : Column(
+                  children: [
+                    for (final p in programs)
+                      _ProgramCard(profileId: profileId, program: p),
+                  ],
                 ),
-              );
-            }
-            return Column(
-              children: [
-                for (final program in programs)
-                  _FlightProgramCard(profileId: profileId, program: program),
-              ],
-            );
-          },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, st) => Card(
+          error: (e, _) => Card(
             color: Theme.of(context).colorScheme.errorContainer,
-            child: ListTile(title: Text('Ошибка загрузки программ: $e')),
+            child: ListTile(title: Text('${strings.error}: $e')),
           ),
-        )
+        ),
       ],
     );
   }
 }
 
-/// Виджет-карточка для отображения одной полетной программы.
-class _FlightProgramCard extends ConsumerWidget {
-  const _FlightProgramCard({
-    required this.profileId,
-    required this.program,
-  });
-
+class _ProgramCard extends ConsumerWidget {
   final String profileId;
   final FlightProgram program;
+  const _ProgramCard({required this.profileId, required this.program});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = ref.watch(l10nProvider);
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
         title: Text(program.name),
-        subtitle: Text('Шагов: ${program.steps.length}'),
-        onTap: () {
-          Navigator.of(context).push(MaterialPageRoute(
+        subtitle: Text('${strings.stepNumber}ов: ${program.steps.length}'),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
             builder: (_) => FlightProgramEditorPage(
               profileId: profileId,
               programId: program.id,
             ),
-          ));
-        },
+          ),
+        ),
         trailing: PopupMenuButton<String>(
-          onSelected: (value) async {
-            if (value == 'upload') {
-              await _handleUpload(context, ref);
-            } else if (value == 'edit') {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => FlightProgramEditorPage(
-                  profileId: profileId,
-                  programId: program.id,
+          onSelected: (val) async {
+            if (val == 'upload') {
+              final res = await ref
+                  .read(programUploadControllerProvider)
+                  .uploadProgram(program);
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    res == UploadResult.success
+                        ? strings.uploadSuccess
+                        : strings.uploadError,
+                  ),
+                  backgroundColor: res == UploadResult.success
+                      ? AppColors.success
+                      : AppColors.error,
                 ),
-              ));
-            } else if (value == 'delete') {
+              );
+            } else if (val == 'delete') {
               showDeleteProgramDialog(context, ref, profileId, program);
             }
           },
           itemBuilder: (context) => [
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'upload',
               child: ListTile(
-                leading: Icon(Icons.upload_file_rounded),
-                title: Text('Загрузить на планер'),
-                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.upload),
+                title: Text(strings.uploadToDevice),
               ),
             ),
-            const PopupMenuItem(
-              value: 'edit',
-              child: ListTile(
-                leading: Icon(Icons.edit_note_rounded),
-                title: Text('Редактировать'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'delete',
               child: ListTile(
-                leading: Icon(Icons.delete_outline),
-                title: Text('Удалить'),
-                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.delete),
+                title: Text(strings.delete),
               ),
             ),
           ],
@@ -133,46 +124,17 @@ class _FlightProgramCard extends ConsumerWidget {
       ),
     );
   }
+}
 
-  Future<void> _handleUpload(BuildContext context, WidgetRef ref) async {
-    // UI просто вызывает метод контроллера, не зная о деталях реализации
-    final result = await ref
-        .read(programUploadControllerProvider)
-        .uploadProgram(program);
-
-    if (!context.mounted) return;
-
-    // UI отвечает только за отображение результата
-    switch (result) {
-      case UploadResult.success:
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Программа успешно загружена'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        break;
-      case UploadResult.failure:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Ошибка загрузки программы'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-        break;
-      case UploadResult.notConnected:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Сначала подключитесь к планеру'),
-            backgroundColor: Colors.orange,
-            action: SnackBarAction(
-              label: 'ОК',
-              textColor: Colors.white,
-              onPressed: () {},
-            ),
-          ),
-        );
-        break;
-    }
-  }
+class _EmptyCard extends StatelessWidget {
+  final AppStrings strings;
+  const _EmptyCard({required this.strings});
+  @override
+  Widget build(BuildContext context) => Card(
+    child: ListTile(
+      leading: const Icon(Icons.playlist_add_check_circle_outlined),
+      title: Text(strings.noPrograms),
+      subtitle: Text(strings.addFirstProgram),
+    ),
+  );
 }

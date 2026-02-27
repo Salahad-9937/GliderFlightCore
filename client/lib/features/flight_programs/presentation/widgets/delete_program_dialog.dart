@@ -1,46 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import '../../../../core/di/core_providers.dart';
 import '../../domain/entities/flight_program.dart';
 import '../providers/flight_programs_providers.dart';
 
-/// Показывает диалог для подтверждения удаления полетной программы.
 void showDeleteProgramDialog(
   BuildContext context,
   WidgetRef ref,
   String profileId,
   FlightProgram program,
 ) {
+  final strings = ref.read(l10nProvider);
+
   showDialog(
     context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text('Подтверждение'),
-        content: Text('Вы уверены, что хотите удалить программу "${program.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Отмена'),
+    builder: (context) => AlertDialog(
+      title: Text(strings.confirmation),
+      content: Text('${strings.deleteProgramConfirm} "${program.name}"?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(strings.cancel),
+        ),
+        FilledButton.tonal(
+          onPressed: () {
+            ref
+                .read(flightProgramsControllerProvider)
+                .deleteProgram(profileId, program.id);
+            Navigator.pop(context);
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(strings.programDeleted)));
+          },
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.errorContainer,
+            foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
           ),
-          FilledButton.tonal(
-            onPressed: () {
-              // Вызываем метод контроллера для удаления
-              ref
-                  .read(flightProgramsControllerProvider)
-                  .deleteProgram(profileId, program.id);
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Программа "${program.name}" удалена')),
-              );
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.errorContainer,
-              foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
-            ),
-            child: const Text('Удалить'),
-          ),
-        ],
-      );
-    },
+          child: Text(strings.delete),
+        ),
+      ],
+    ),
   );
 }

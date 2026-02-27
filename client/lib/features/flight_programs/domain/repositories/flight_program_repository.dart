@@ -1,13 +1,21 @@
+import '../../../../core/architecture/failure.dart';
+import '../../../../core/architecture/result.dart';
 import '../entities/flight_program.dart';
 
-/// Абстрактный репозиторий для управления полетными программами.
-abstract class FlightProgramRepository {
+/// Интерфейс репозитория для управления полетными программами.
+abstract interface class IFlightProgramRepository {
   /// Возвращает список программ для указанного профиля планера.
-  Future<List<FlightProgram>> getPrograms(String profileId);
+  Future<Result<List<FlightProgram>, Failure>> getPrograms(String profileId);
 
-  /// Сохраняет программу для указанного профиля планера.
-  Future<void> saveProgram(String profileId, FlightProgram program);
+  /// Сохраняет или обновляет программу для указанного профиля.
+  Future<Result<void, Failure>> saveProgram(
+    String profileId,
+    FlightProgram program,
+  );
 
-  /// Удаляет программу у указанного профиля планера.
-  Future<void> deleteProgram(String profileId, String programId);
+  /// Удаляет программу по ID для указанного профиля.
+  Future<Result<void, Failure>> deleteProgram(
+    String profileId,
+    String programId,
+  );
 }

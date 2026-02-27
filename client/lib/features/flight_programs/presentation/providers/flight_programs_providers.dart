@@ -2,81 +2,89 @@ import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../data/repositories/flight_program_repository_impl.dart';
+import '../../../../core/di/core_providers.dart';
 import '../../domain/entities/flight_program.dart';
-import '../../domain/repositories/flight_program_repository.dart';
+import '../../domain/usecases/delete_program_use_case.dart';
+import '../../domain/usecases/save_program_use_case.dart';
+import 'flight_program_usecase_providers.dart';
 import 'program_id_provider.dart';
 
-// --- ШАГ 1: ПРОВАЙДЕР ДЛЯ ЧТЕНИЯ ДАННЫХ ---
-
-/// Этот провайдер отвечает ТОЛЬКО за загрузку и отображение списка программ.
-/// `FutureProvider.family` - это простая и надежная конструкция для этого.
+/// Провайдер списка программ для конкретного профиля.
 final flightProgramsProvider =
-    FutureProvider.family<List<FlightProgram>, String>((ref, profileId) {
-  // Получаем репозиторий
-  final repository = ref.watch(flightProgramRepositoryProvider);
-  // Возвращаем Future, который загружает программы
-  return repository.getPrograms(profileId);
-});
+    FutureProvider.family<List<FlightProgram>, String>((ref, profileId) async {
+      final result = await ref
+          .watch(getProgramsUseCaseProvider)
+          .call(profileId);
 
+      return result.fold(
+        (programs) => programs,
+        (failure) => throw Exception(failure.message),
+      );
+    });
 
-// --- ШАГ 2: КОНТРОЛЛЕР ДЛЯ ИЗМЕНЕНИЯ ДАННЫХ ---
-
-/// Это обычный класс, а не Riverpod Notifier. Он содержит бизнес-логику.
+/// Контроллер управления полетными программами.
 class FlightProgramsController {
-  final Ref ref;
-  FlightProgramsController(this.ref);
+  final Ref _ref;
+  FlightProgramsController(this._ref);
 
-  FlightProgramRepository get _repository => ref.read(flightProgramRepositoryProvider);
-
-  /// Добавляет новую программу
+  /// Добавляет новую программу.
   Future<void> addProgram(String profileId, String name) async {
     final newProgram = FlightProgram(id: const Uuid().v4(), name: name);
-    await _repository.saveProgram(profileId, newProgram);
-    // Инвалидируем `FutureProvider`, чтобы он перезагрузил данные и UI обновился.
-    // Это ключевой момент для связи между изменением и чтением.
-    ref.invalidate(flightProgramsProvider(profileId));
+
+    final result = await _ref
+        .read(saveProgramUseCaseProvider)
+        .call(SaveProgramParams(profileId: profileId, program: newProgram));
+
+    result.fold(
+      (_) => _ref.invalidate(flightProgramsProvider(profileId)),
+      (failure) => _ref
+          .read(loggerServiceProvider)
+          .e('Ошибка создания программы: ${failure.message}'),
+    );
   }
 
-  /// Удаляет программу
+  /// Удаляет программу.
   Future<void> deleteProgram(String profileId, String programId) async {
-    await _repository.deleteProgram(profileId, programId);
-    ref.invalidate(flightProgramsProvider(profileId));
+    final result = await _ref
+        .read(deleteProgramUseCaseProvider)
+        .call(DeleteProgramParams(profileId: profileId, programId: programId));
+
+    result.fold(
+      (_) => _ref.invalidate(flightProgramsProvider(profileId)),
+      (failure) => _ref
+          .read(loggerServiceProvider)
+          .e('Ошибка удаления программы: ${failure.message}'),
+    );
   }
-  
-  /// Сохраняет полную программу (с измененными шагами)
+
+  /// Обновляет существующую программу.
   Future<void> updateProgram(String profileId, FlightProgram program) async {
-    await _repository.saveProgram(profileId, program);
-    // Инвалидируем провайдер списка, чтобы на предыдущем экране
-    // обновилось, например, количество шагов.
-    ref.invalidate(flightProgramsProvider(profileId));
+    final result = await _ref
+        .read(saveProgramUseCaseProvider)
+        .call(SaveProgramParams(profileId: profileId, program: program));
+
+    result.fold(
+      (_) => _ref.invalidate(flightProgramsProvider(profileId)),
+      (failure) => _ref
+          .read(loggerServiceProvider)
+          .e('Ошибка обновления программы: ${failure.message}'),
+    );
   }
 }
 
-// --- ШАГ 3: ПРОВАЙДЕР ДЛЯ ДОСТУПА К КОНТРОЛЛЕРУ ---
-
-/// Простой `Provider`, который создает экземпляр нашего контроллера.
-/// Мы будем использовать его для вызова методов `addProgram`, `deleteProgram`.
-final flightProgramsControllerProvider = Provider<FlightProgramsController>((ref) {
+final flightProgramsControllerProvider = Provider<FlightProgramsController>((
+  ref,
+) {
   return FlightProgramsController(ref);
 });
 
-// --- ПРОВАЙДЕР ДЛЯ ПОЛУЧЕНИЯ ОДНОЙ ПРОГРАММЫ ---
-
-/// Провайдер для получения одной программы по ее ID.
-///
-/// Использует [ProgramId] для передачи двух параметров.
-/// Зависит от основного списка программ и находит в нем нужную.
-final programByIdProvider =
-    Provider.family<FlightProgram?, ProgramId>((ref, programId) {
-  // Следим за состоянием списка программ для нужного профиля
-  final programsAsync = ref.watch(flightProgramsProvider(programId.profileId));
-  // Используем .asData для безопасного извлечения данных
-  final data = programsAsync.asData;
-  // Если данные есть (не загрузка и не ошибка), ищем программу по ID
-  if (data != null) {
-    return data.value.firstWhereOrNull((p) => p.id == programId.programId);
-  }
-  // В противном случае (загрузка/ошибка) возвращаем null
-  return null;
+/// Провайдер для получения одной программы по ID.
+final programByIdProvider = Provider.family<FlightProgram?, ProgramId>((
+  ref,
+  id,
+) {
+  final programsAsync = ref.watch(flightProgramsProvider(id.profileId));
+  return programsAsync.asData?.value.firstWhereOrNull(
+    (p) => p.id == id.programId,
+  );
 });

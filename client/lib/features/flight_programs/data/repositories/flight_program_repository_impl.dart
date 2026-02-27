@@ -4,60 +4,102 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../core/architecture/failure.dart';
+import '../../../../core/architecture/result.dart';
 import '../../domain/entities/flight_program.dart';
 import '../../domain/repositories/flight_program_repository.dart';
+import '../mappers/flight_program_mapper.dart';
+import '../models/flight_program_dto.dart';
 
-/// Провайдер для репозитория полетных программ.
-final flightProgramRepositoryProvider = Provider<FlightProgramRepository>((ref) {
+/// Провайдер реализации репозитория полетных программ.
+final flightProgramRepositoryProvider = Provider<IFlightProgramRepository>((
+  ref,
+) {
   return LocalFileFlightProgramRepository();
 });
 
-/// Реализация репозитория, хранящая программы в JSON-файлах.
-///
-/// Для каждого профиля планера создается свой файл `flight_programs_{profileId}.json`.
-class LocalFileFlightProgramRepository implements FlightProgramRepository {
+/// Реализация репозитория, хранящая программы в локальных JSON-файлах.
+class LocalFileFlightProgramRepository implements IFlightProgramRepository {
   Future<File> _getFile(String profileId) async {
     final directory = await getApplicationDocumentsDirectory();
     return File('${directory.path}/flight_programs_$profileId.json');
   }
 
   @override
-  Future<List<FlightProgram>> getPrograms(String profileId) async {
+  Future<Result<List<FlightProgram>, Failure>> getPrograms(
+    String profileId,
+  ) async {
     try {
       final file = await _getFile(profileId);
       if (!await file.exists()) {
-        return [];
+        return const Success([]);
       }
+
       final contents = await file.readAsString();
       final List<dynamic> jsonData = json.decode(contents);
-      return jsonData.map((item) => FlightProgram.fromMap(item)).toList();
+
+      final programs = jsonData
+          .map(
+            (item) => FlightProgramDto.fromJson(item as Map<String, dynamic>),
+          )
+          .map((dto) => FlightProgramMapper.toEntity(dto))
+          .toList();
+
+      return Success(programs);
     } catch (e) {
-      return [];
+      return Error(StorageFailure('Ошибка чтения программ: $e'));
     }
   }
 
-  Future<void> _writePrograms(String profileId, List<FlightProgram> programs) async {
-    final file = await _getFile(profileId);
-    final List<Map<String, dynamic>> jsonData = programs.map((p) => p.toMap()).toList();
-    await file.writeAsString(json.encode(jsonData));
-  }
+  Future<Result<void, Failure>> _writePrograms(
+    String profileId,
+    List<FlightProgram> programs,
+  ) async {
+    try {
+      final file = await _getFile(profileId);
+      final jsonData = programs
+          .map((p) => FlightProgramMapper.fromEntity(p).toJson())
+          .toList();
 
-  @override
-  Future<void> saveProgram(String profileId, FlightProgram program) async {
-    final programs = await getPrograms(profileId);
-    final index = programs.indexWhere((p) => p.id == program.id);
-    if (index != -1) {
-      programs[index] = program;
-    } else {
-      programs.add(program);
+      await file.writeAsString(json.encode(jsonData));
+      return const Success(null);
+    } catch (e) {
+      return Error(StorageFailure('Ошибка записи программ: $e'));
     }
-    await _writePrograms(profileId, programs);
   }
 
   @override
-  Future<void> deleteProgram(String profileId, String programId) async {
-    final programs = await getPrograms(profileId);
-    programs.removeWhere((p) => p.id == programId);
-    await _writePrograms(profileId, programs);
+  Future<Result<void, Failure>> saveProgram(
+    String profileId,
+    FlightProgram program,
+  ) async {
+    final result = await getPrograms(profileId);
+
+    return result.fold((programs) async {
+      final list = List<FlightProgram>.from(programs);
+      final index = list.indexWhere((p) => p.id == program.id);
+
+      if (index != -1) {
+        list[index] = program;
+      } else {
+        list.add(program);
+      }
+
+      return _writePrograms(profileId, list);
+    }, (failure) => Error(failure));
+  }
+
+  @override
+  Future<Result<void, Failure>> deleteProgram(
+    String profileId,
+    String programId,
+  ) async {
+    final result = await getPrograms(profileId);
+
+    return result.fold((programs) async {
+      final list = List<FlightProgram>.from(programs);
+      list.removeWhere((p) => p.id == programId);
+      return _writePrograms(profileId, list);
+    }, (failure) => Error(failure));
   }
 }

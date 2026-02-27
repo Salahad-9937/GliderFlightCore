@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/di/core_providers.dart';
+import '../../../../core/l10n/app_strings.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../device_communication/presentation/providers/program_upload_controller.dart';
 import '../../domain/entities/flight_program.dart';
 import '../../domain/entities/flight_program_step.dart';
@@ -8,7 +11,6 @@ import '../providers/flight_programs_providers.dart';
 import '../providers/program_id_provider.dart';
 import '../widgets/add_edit_step_dialog.dart';
 
-/// Страница редактирования шагов полетной программы.
 class FlightProgramEditorPage extends ConsumerStatefulWidget {
   final String profileId;
   final String programId;
@@ -27,8 +29,7 @@ class FlightProgramEditorPage extends ConsumerStatefulWidget {
 class _FlightProgramEditorPageState
     extends ConsumerState<FlightProgramEditorPage> {
   FlightProgram? _program;
-  bool _hasChanges =
-      false; // Отслеживание изменений для предупреждения при выходе
+  bool _hasChanges = false;
 
   @override
   void initState() {
@@ -39,40 +40,12 @@ class _FlightProgramEditorPageState
     );
     final initialProgram = ref.read(programByIdProvider(programIdObj));
     if (initialProgram != null) {
-      // Создаем копию программы для редактирования
-      _program = FlightProgram.fromMap(initialProgram.toMap());
+      _program = FlightProgram(
+        id: initialProgram.id,
+        name: initialProgram.name,
+        steps: List.from(initialProgram.steps),
+      );
     }
-  }
-
-  Future<void> _addStep() async {
-    final newStep = await showAddEditStepDialog(context);
-    if (newStep != null && _program != null) {
-      setState(() {
-        _program!.steps.add(newStep);
-        _hasChanges = true;
-      });
-    }
-  }
-
-  Future<void> _editStep(FlightProgramStep stepToEdit, int index) async {
-    final updatedStep = await showAddEditStepDialog(
-      context,
-      existingStep: stepToEdit,
-    );
-    if (updatedStep != null && _program != null) {
-      setState(() {
-        _program!.steps[index] = updatedStep;
-        _hasChanges = true;
-      });
-    }
-  }
-
-  void _deleteStep(int index) {
-    if (_program == null) return;
-    setState(() {
-      _program!.steps.removeAt(index);
-      _hasChanges = true;
-    });
   }
 
   void _saveChanges() {
@@ -81,95 +54,80 @@ class _FlightProgramEditorPageState
           .read(flightProgramsControllerProvider)
           .updateProgram(widget.profileId, _program!);
       setState(() => _hasChanges = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Программа сохранена локально')),
-      );
+      final strings = ref.read(l10nProvider);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(strings.saveLocalSuccess)));
     }
   }
 
-  /// Отправка программы на борт устройства по Wi-Fi.
   Future<void> _uploadToDevice() async {
     if (_program == null) return;
-
-    // Сначала сохраняем локально, чтобы данные были актуальны
     _saveChanges();
 
     final result = await ref
         .read(programUploadControllerProvider)
         .uploadProgram(_program!);
-
     if (!mounted) return;
 
+    final strings = ref.read(l10nProvider);
     switch (result) {
       case UploadResult.success:
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Программа успешно загружена на планер'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: Text(strings.uploadSuccess),
+            backgroundColor: AppColors.success,
           ),
         );
         break;
       case UploadResult.failure:
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ошибка загрузки. Проверьте связь.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: Text(strings.uploadError),
+            backgroundColor: AppColors.error,
           ),
         );
         break;
       case UploadResult.notConnected:
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Нет подключения к планеру'),
-            backgroundColor: Colors.orange,
+          SnackBar(
+            content: Text(strings.connectFirst),
+            backgroundColor: AppColors.warning,
           ),
         );
         break;
     }
   }
 
-  /// Показывает диалог подтверждения выхода при наличии изменений.
-  Future<bool> _onWillPop() async {
-    if (!_hasChanges) return true;
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Несохраненные изменения'),
-        content: const Text(
-          'Вы уверены, что хотите выйти? Изменения будут потеряны.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Выйти'),
-          ),
-        ],
-      ),
-    );
-    return result ?? false;
-  }
-
   @override
   Widget build(BuildContext context) {
+    final strings = ref.watch(l10nProvider);
     if (_program == null) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: const Center(child: Text('Программа не найдена')),
-      );
+      return Scaffold(body: Center(child: Text(strings.error)));
     }
 
     return PopScope(
       canPop: !_hasChanges,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        final shouldPop = await _onWillPop();
-        if (shouldPop && context.mounted) {
-          Navigator.of(context).pop();
-        }
+        final shouldPop = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(strings.unsavedChangesTitle),
+            content: Text(strings.unsavedChangesDesc),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(strings.cancel),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(strings.exit),
+              ),
+            ],
+          ),
+        );
+        if (shouldPop == true && context.mounted) Navigator.of(context).pop();
       },
       child: Scaffold(
         appBar: AppBar(
@@ -178,17 +136,17 @@ class _FlightProgramEditorPageState
             IconButton(
               onPressed: _uploadToDevice,
               icon: const Icon(Icons.upload_file_rounded),
-              tooltip: 'Загрузить на планер',
+              tooltip: strings.uploadToDevice,
             ),
             IconButton(
               onPressed: _saveChanges,
               icon: const Icon(Icons.save_outlined),
-              tooltip: 'Сохранить локально',
+              tooltip: strings.save,
             ),
           ],
         ),
         body: _program!.steps.isEmpty
-            ? const _EmptySteps()
+            ? _EmptySteps(strings: strings)
             : ListView.builder(
                 itemCount: _program!.steps.length,
                 itemBuilder: (context, index) {
@@ -196,13 +154,38 @@ class _FlightProgramEditorPageState
                   return _StepCard(
                     step: step,
                     stepNumber: index + 1,
-                    onTap: () => _editStep(step, index),
-                    onDelete: () => _deleteStep(index),
+                    strings: strings,
+                    onTap: () async {
+                      final updated = await showAddEditStepDialog(
+                        context,
+                        existingStep: step,
+                      );
+                      if (updated != null) {
+                        setState(() {
+                          _program!.steps[index] = updated;
+                          _hasChanges = true;
+                        });
+                      }
+                    },
+                    onDelete: () {
+                      setState(() {
+                        _program!.steps.removeAt(index);
+                        _hasChanges = true;
+                      });
+                    },
                   );
                 },
               ),
         floatingActionButton: FloatingActionButton(
-          onPressed: _addStep,
+          onPressed: () async {
+            final newStep = await showAddEditStepDialog(context);
+            if (newStep != null) {
+              setState(() {
+                _program!.steps.add(newStep);
+                _hasChanges = true;
+              });
+            }
+          },
           child: const Icon(Icons.add),
         ),
       ),
@@ -211,21 +194,22 @@ class _FlightProgramEditorPageState
 }
 
 class _StepCard extends StatelessWidget {
-  const _StepCard({
-    required this.step,
-    required this.stepNumber,
-    required this.onTap,
-    required this.onDelete,
-  });
   final FlightProgramStep step;
   final int stepNumber;
+  final AppStrings strings;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
+  const _StepCard({
+    required this.step,
+    required this.stepNumber,
+    required this.strings,
+    required this.onTap,
+    required this.onDelete,
+  });
+
   @override
   Widget build(BuildContext context) {
-    final delayStr = '${step.delaySec} с ${step.delayMs} мс';
-
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: ListTile(
@@ -234,12 +218,14 @@ class _StepCard extends StatelessWidget {
           child: Text('$stepNumber'),
         ),
         title: Text(
-          'Угол: ${step.angle}°',
+          '${strings.angle}: ${step.angle}°',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        subtitle: Text('Задержка: $delayStr'),
+        subtitle: Text(
+          '${step.delaySec} ${strings.unitSec} ${step.delayMs} мс',
+        ),
         trailing: IconButton(
-          icon: Icon(Icons.delete_outline, color: Colors.grey.shade600),
+          icon: const Icon(Icons.delete_outline),
           onPressed: onDelete,
         ),
         onTap: onTap,
@@ -249,7 +235,8 @@ class _StepCard extends StatelessWidget {
 }
 
 class _EmptySteps extends StatelessWidget {
-  const _EmptySteps();
+  final AppStrings strings;
+  const _EmptySteps({required this.strings});
 
   @override
   Widget build(BuildContext context) {
@@ -263,16 +250,11 @@ class _EmptySteps extends StatelessWidget {
             color: Colors.grey.shade700,
           ),
           const SizedBox(height: 16),
-          Text(
-            'Нет добавленных шагов',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text(strings.noSteps, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
           Text(
-            'Нажмите "+", чтобы добавить первый шаг',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+            strings.addFirstStep,
+            style: const TextStyle(color: Colors.grey),
           ),
         ],
       ),
