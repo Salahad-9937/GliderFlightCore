@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart'; // Добавлено
 import '../../../../core/l10n/app_strings.dart';
 import '../providers/device_connection_providers.dart';
 import 'calibration_bottom_sheet.dart';
@@ -50,18 +51,18 @@ class TelemetryDashboard extends ConsumerWidget {
                 children: [
                   Text(
                     altitude,
-                    style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+                    // Используем моноширинный стиль для стабильности цифр
+                    style: AppTextStyles.telemetryValue.copyWith(
                       color: altColor,
-                      fontSize: 64,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     strings.comm.altitudeUnit,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.headlineMedium?.copyWith(color: Colors.grey),
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: Colors.grey,
+                      fontFamily: 'Inter',
+                    ),
                   ),
                 ],
               ),
@@ -187,19 +188,17 @@ class TelemetryDashboard extends ConsumerWidget {
             const SizedBox(width: 4),
             Text(
               value,
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(color: color),
+              // Для малых цифр также используем моноширинный шрифт
+              style: const TextStyle(
+                fontFamily: 'RobotoMono',
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ).copyWith(color: color),
             ),
           ],
         ),
         const SizedBox(height: 2),
-        Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: Colors.grey, fontSize: 10),
-        ),
+        Text(label, style: AppTextStyles.telemetryLabel),
       ],
     );
   }
