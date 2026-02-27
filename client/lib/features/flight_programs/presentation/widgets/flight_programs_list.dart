@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_providers.dart';
-import '../../../../core/l10n/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/l10n/app_strings.dart';
 import '../../../device_communication/presentation/providers/program_upload_controller.dart';
 import '../../domain/entities/flight_program.dart';
 import '../pages/flight_program_editor_page.dart';
@@ -27,13 +27,13 @@ class FlightProgramsList extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              strings.programsTitle,
+              strings.prog.programsTitle,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             IconButton(
               onPressed: () => showAddProgramDialog(context, ref, profileId),
               icon: const Icon(Icons.add_circle_outline),
-              tooltip: strings.createProgram,
+              tooltip: strings.prog.createProgram,
             ),
           ],
         ),
@@ -50,7 +50,7 @@ class FlightProgramsList extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Card(
             color: Theme.of(context).colorScheme.errorContainer,
-            child: ListTile(title: Text('${strings.error}: $e')),
+            child: ListTile(title: Text('${strings.core.error}: $e')),
           ),
         ),
       ],
@@ -71,7 +71,7 @@ class _ProgramCard extends ConsumerWidget {
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
         title: Text(program.name),
-        subtitle: Text('${strings.stepNumber}ов: ${program.steps.length}'),
+        subtitle: Text('${strings.prog.stepNumber}ов: ${program.steps.length}'),
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
@@ -92,8 +92,8 @@ class _ProgramCard extends ConsumerWidget {
                 SnackBar(
                   content: Text(
                     res == UploadResult.success
-                        ? strings.uploadSuccess
-                        : strings.uploadError,
+                        ? strings.prog.uploadSuccess
+                        : strings.prog.uploadError,
                   ),
                   backgroundColor: res == UploadResult.success
                       ? AppColors.success
@@ -109,14 +109,14 @@ class _ProgramCard extends ConsumerWidget {
               value: 'upload',
               child: ListTile(
                 leading: const Icon(Icons.upload),
-                title: Text(strings.uploadToDevice),
+                title: Text(strings.prog.uploadToDevice),
               ),
             ),
             PopupMenuItem(
               value: 'delete',
               child: ListTile(
                 leading: const Icon(Icons.delete),
-                title: Text(strings.delete),
+                title: Text(strings.core.delete),
               ),
             ),
           ],
@@ -133,8 +133,8 @@ class _EmptyCard extends StatelessWidget {
   Widget build(BuildContext context) => Card(
     child: ListTile(
       leading: const Icon(Icons.playlist_add_check_circle_outlined),
-      title: Text(strings.noPrograms),
-      subtitle: Text(strings.addFirstProgram),
+      title: Text(strings.prog.noPrograms),
+      subtitle: Text(strings.prog.addFirstProgram),
     ),
   );
 }

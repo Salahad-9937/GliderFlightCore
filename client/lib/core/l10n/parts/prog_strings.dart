@@ -1,0 +1,103 @@
+/// Строки фичи flight_programs (редактор, список программ).
+class ProgStrings {
+  final String programsTitle;
+  final String createProgram;
+  final String editProgram;
+  final String newProgram;
+  final String programName;
+  final String nameEmptyError;
+  final String noPrograms;
+  final String addFirstProgram;
+  final String uploadToDevice;
+  final String edit;
+  final String deleteProgramConfirm;
+  final String programDeleted;
+  final String uploadSuccess;
+  final String uploadError;
+  final String connectFirst;
+  final String saveLocalSuccess;
+  final String unsavedChangesTitle;
+  final String unsavedChangesDesc;
+  final String exit;
+  final String stepNumber;
+  final String angle;
+  final String angleLabel;
+  final String angleHelper;
+  final String angleError;
+  final String delayBefore;
+  final String seconds;
+  final String milliseconds;
+  final String msMaxError;
+  final String delayDesc;
+  final String noSteps;
+  final String addFirstStep;
+
+  const ProgStrings({
+    required this.programsTitle,
+    required this.createProgram,
+    required this.editProgram,
+    required this.newProgram,
+    required this.programName,
+    required this.nameEmptyError,
+    required this.noPrograms,
+    required this.addFirstProgram,
+    required this.uploadToDevice,
+    required this.edit,
+    required this.deleteProgramConfirm,
+    required this.programDeleted,
+    required this.uploadSuccess,
+    required this.uploadError,
+    required this.connectFirst,
+    required this.saveLocalSuccess,
+    required this.unsavedChangesTitle,
+    required this.unsavedChangesDesc,
+    required this.exit,
+    required this.stepNumber,
+    required this.angle,
+    required this.angleLabel,
+    required this.angleHelper,
+    required this.angleError,
+    required this.delayBefore,
+    required this.seconds,
+    required this.milliseconds,
+    required this.msMaxError,
+    required this.delayDesc,
+    required this.noSteps,
+    required this.addFirstStep,
+  });
+
+  static const ru = ProgStrings(
+    programsTitle: 'Полетные программы',
+    createProgram: 'Создать программу',
+    editProgram: 'Редактировать программу',
+    newProgram: 'Новая программа полета',
+    programName: 'Название программы',
+    nameEmptyError: 'Название не может быть пустым',
+    noPrograms: 'Нет созданных программ',
+    addFirstProgram: 'Нажмите "+", чтобы добавить',
+    uploadToDevice: 'Загрузить на планер',
+    edit: 'Редактировать',
+    deleteProgramConfirm: 'Вы уверены, что хотите удалить программу',
+    programDeleted: 'Программа удалена',
+    uploadSuccess: 'Программа успешно загружена',
+    uploadError: 'Ошибка загрузки программы',
+    connectFirst: 'Сначала подключитесь к планеру',
+    saveLocalSuccess: 'Программа сохранена локально',
+    unsavedChangesTitle: 'Несохраненные изменения',
+    unsavedChangesDesc:
+        'Вы уверены, что хотите выйти? Изменения будут потеряны.',
+    exit: 'Выйти',
+    stepNumber: 'Шаг',
+    angle: 'Угол',
+    angleLabel: 'Угол (градусы)',
+    angleHelper: 'Обычно от 0 до 180',
+    angleError: 'Введите угол от 0 до 180',
+    delayBefore: 'Задержка перед поворотом',
+    seconds: 'Секунды',
+    milliseconds: 'Миллисекунды',
+    msMaxError: 'Макс. 999',
+    delayDesc: 'Время отсчитывается от завершения предыдущего шага.',
+    noSteps: 'Нет добавленных шагов',
+    addFirstStep: 'Нажмите "+", чтобы добавить первый шаг',
+  );
+}

@@ -83,7 +83,7 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
     if (profile == null) {
       return Scaffold(
         appBar: AppBar(),
-        body: Center(child: Text(strings.profileNotFound)),
+        body: Center(child: Text(strings.panel.profileNotFound)),
       );
     }
 
@@ -99,7 +99,7 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
               profile.name,
             ),
             icon: const Icon(Icons.edit_outlined),
-            tooltip: strings.renameGlider,
+            tooltip: strings.panel.renameGlider,
           ),
         ],
       ),

@@ -6,6 +6,7 @@ import '../../../../core/l10n/app_strings.dart';
 import '../../domain/entities/system_health.dart';
 import '../providers/system_health_provider.dart';
 
+/// Виджет отображения системных метрик устройства.
 class SystemHealthCard extends ConsumerWidget {
   final String profileId;
   const SystemHealthCard({super.key, required this.profileId});
@@ -26,7 +27,7 @@ class SystemHealthCard extends ConsumerWidget {
             const Divider(height: 24),
             systemAsync.when(
               data: (health) => health == null
-                  ? Text(strings.deviceNotReady)
+                  ? Text(strings.panel.deviceNotReady)
                   : _buildSystemInfo(context, health, strings),
               loading: () => const Center(
                 child: Padding(
@@ -35,7 +36,7 @@ class SystemHealthCard extends ConsumerWidget {
                 ),
               ),
               error: (e, __) => Text(
-                '${strings.diagError}: $e',
+                '${strings.panel.diagError}: $e',
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
@@ -55,15 +56,15 @@ class SystemHealthCard extends ConsumerWidget {
     if (health != null) {
       final diff = DateTime.now().difference(health.timestamp).inSeconds;
       timeAgo = diff < 60
-          ? '$diff ${strings.timeSecAgo}'
-          : '${diff ~/ 60} ${strings.timeMinAgo}';
+          ? '$diff ${strings.panel.timeSecAgo}'
+          : '${diff ~/ 60} ${strings.panel.timeMinAgo}';
     }
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          strings.systemDiagTitle,
+          strings.panel.systemDiagTitle,
           style: Theme.of(context).textTheme.titleMedium,
         ),
         Row(
@@ -80,7 +81,7 @@ class SystemHealthCard extends ConsumerWidget {
               onPressed: () => ref.invalidate(systemHealthProvider(profileId)),
               icon: const Icon(Icons.refresh, size: 20),
               visualDensity: VisualDensity.compact,
-              tooltip: strings.refresh,
+              tooltip: strings.panel.refresh,
             ),
           ],
         ),
@@ -100,16 +101,16 @@ class SystemHealthCard extends ConsumerWidget {
     final minutes = health.uptime ~/ 60;
     final seconds = health.uptime % 60;
     final uptimeString = minutes > 0
-        ? '$minutes ${strings.unitMin} $seconds ${strings.unitSec}'
-        : '$seconds ${strings.unitSec}';
+        ? '$minutes ${strings.panel.unitMin} $seconds ${strings.panel.unitSec}'
+        : '$seconds ${strings.panel.unitSec}';
 
     return Column(
       children: [
-        _buildRow(strings.firmwareVersion, health.version),
-        _buildRow(strings.uptime, uptimeString),
-        _buildRow(strings.freeRam, '$freeMemKb KB'),
-        _buildRow(strings.fsMemory, '$fsUsedMb / $fsTotalMb MB'),
-        _buildRow(strings.chipId, health.chipId.toUpperCase()),
+        _buildRow(strings.panel.firmwareVersion, health.version),
+        _buildRow(strings.panel.uptime, uptimeString),
+        _buildRow(strings.panel.freeRam, '$freeMemKb KB'),
+        _buildRow(strings.panel.fsMemory, '$fsUsedMb / $fsTotalMb MB'),
+        _buildRow(strings.panel.chipId, health.chipId.toUpperCase()),
       ],
     );
   }

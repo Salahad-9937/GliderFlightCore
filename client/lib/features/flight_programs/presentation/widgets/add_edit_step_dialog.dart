@@ -49,7 +49,9 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
 
     return AlertDialog(
       title: Text(
-        widget.existingStep == null ? strings.stepNumber : strings.edit,
+        widget.existingStep == null
+            ? strings.prog.stepNumber
+            : strings.prog.edit,
       ),
       content: Form(
         key: _formKey,
@@ -59,7 +61,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                strings.angleLabel,
+                strings.prog.angleLabel,
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 8),
@@ -67,7 +69,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                 controller: _angleController,
                 decoration: InputDecoration(
                   suffixText: '°',
-                  helperText: strings.angleHelper,
+                  helperText: strings.prog.angleHelper,
                 ),
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -75,14 +77,14 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                 validator: (v) {
                   final val = int.tryParse(v ?? '');
                   if (val == null || val < 0 || val > 180) {
-                    return strings.angleError;
+                    return strings.prog.angleError;
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 24),
               Text(
-                strings.delayBefore,
+                strings.prog.delayBefore,
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 8),
@@ -91,7 +93,9 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                   Expanded(
                     child: TextFormField(
                       controller: _secController,
-                      decoration: InputDecoration(labelText: strings.seconds),
+                      decoration: InputDecoration(
+                        labelText: strings.prog.seconds,
+                      ),
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     ),
@@ -101,13 +105,15 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                     child: TextFormField(
                       controller: _msController,
                       decoration: InputDecoration(
-                        labelText: strings.milliseconds,
+                        labelText: strings.prog.milliseconds,
                       ),
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       validator: (v) {
                         final ms = int.tryParse(v ?? '');
-                        if (ms != null && ms > 999) return strings.msMaxError;
+                        if (ms != null && ms > 999) {
+                          return strings.prog.msMaxError;
+                        }
                         return null;
                       },
                     ),
@@ -116,7 +122,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
               ),
               const SizedBox(height: 8),
               Text(
-                strings.delayDesc,
+                strings.prog.delayDesc,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: Colors.grey),
@@ -128,7 +134,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(strings.cancel),
+          child: Text(strings.core.cancel),
         ),
         FilledButton(
           onPressed: () {
@@ -143,7 +149,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
               );
             }
           },
-          child: Text(strings.save),
+          child: Text(strings.core.save),
         ),
       ],
     );

@@ -15,21 +15,22 @@ void showAddProgramDialog(
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
-      title: Text(strings.newProgram),
+      title: Text(strings.prog.newProgram),
       content: Form(
         key: formKey,
         child: TextFormField(
           controller: controller,
           autofocus: true,
-          decoration: InputDecoration(labelText: strings.programName),
-          validator: (v) =>
-              (v == null || v.trim().isEmpty) ? strings.nameEmptyError : null,
+          decoration: InputDecoration(labelText: strings.prog.programName),
+          validator: (v) => (v == null || v.trim().isEmpty)
+              ? strings.prog.nameEmptyError
+              : null,
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(strings.cancel),
+          child: Text(strings.core.cancel),
         ),
         FilledButton(
           onPressed: () {
@@ -40,7 +41,7 @@ void showAddProgramDialog(
               Navigator.pop(context);
             }
           },
-          child: Text(strings.ok),
+          child: Text(strings.core.ok),
         ),
       ],
     ),

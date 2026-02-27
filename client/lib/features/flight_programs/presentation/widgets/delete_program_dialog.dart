@@ -15,12 +15,12 @@ void showDeleteProgramDialog(
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
-      title: Text(strings.confirmation),
-      content: Text('${strings.deleteProgramConfirm} "${program.name}"?'),
+      title: Text(strings.core.confirmation),
+      content: Text('${strings.prog.deleteProgramConfirm} "${program.name}"?'),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(strings.cancel),
+          child: Text(strings.core.cancel),
         ),
         FilledButton.tonal(
           onPressed: () {
@@ -28,15 +28,15 @@ void showDeleteProgramDialog(
                 .read(flightProgramsControllerProvider)
                 .deleteProgram(profileId, program.id);
             Navigator.pop(context);
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(strings.programDeleted)));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(strings.prog.programDeleted)),
+            );
           },
           style: FilledButton.styleFrom(
             backgroundColor: Theme.of(context).colorScheme.errorContainer,
             foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
           ),
-          child: Text(strings.delete),
+          child: Text(strings.core.delete),
         ),
       ],
     ),

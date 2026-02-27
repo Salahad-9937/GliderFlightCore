@@ -5,7 +5,7 @@ import '../../../../core/di/core_providers.dart';
 import '../../../../core/l10n/app_strings.dart';
 import '../providers/sensor_calibration_providers.dart';
 
-/// Шторка (Bottom Sheet) для управления калибровкой датчиков.
+/// Шторка управления калибровкой датчиков.
 class CalibrationBottomSheet extends ConsumerWidget {
   const CalibrationBottomSheet({super.key});
 
@@ -29,7 +29,7 @@ class CalibrationBottomSheet extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              strings.calibrationTitle,
+              strings.comm.calibrationTitle,
               style: Theme.of(context).textTheme.headlineSmall,
               textAlign: TextAlign.center,
             ),
@@ -38,28 +38,28 @@ class CalibrationBottomSheet extends ConsumerWidget {
             if (calibState.phase == CalibrationPhase.idle ||
                 calibState.phase == CalibrationPhase.success) ...[
               Text(
-                strings.operationalControl,
+                strings.comm.operationalControl,
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: () => notifier.zeroAltitude(),
                 icon: const Icon(Icons.vertical_align_center),
-                label: Text(strings.zeroAltitudeBtn),
+                label: Text(strings.comm.zeroAltitudeBtn),
               ),
               const SizedBox(height: 24),
             ],
 
             if (calibState.phase == CalibrationPhase.zeroing) ...[
               Text(
-                strings.operationalControl,
+                strings.comm.operationalControl,
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 8),
               _buildProgressIndicator(
                 context,
                 calibState,
-                label: strings.zeroingProcess,
+                label: strings.comm.zeroingProcess,
                 color: Colors.lightBlue,
               ),
               const SizedBox(height: 16),
@@ -67,7 +67,7 @@ class CalibrationBottomSheet extends ConsumerWidget {
 
             if (calibState.phase != CalibrationPhase.zeroing) ...[
               Text(
-                strings.fullSetup,
+                strings.comm.fullSetup,
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 8),
@@ -76,20 +76,20 @@ class CalibrationBottomSheet extends ConsumerWidget {
                 FilledButton.icon(
                   onPressed: notifier.startFullCalibration,
                   icon: const Icon(Icons.build_circle_outlined),
-                  label: Text(strings.startFullCalibBtn),
+                  label: Text(strings.comm.startFullCalibBtn),
                 )
               else if (calibState.phase == CalibrationPhase.stabilization)
                 _buildProgressIndicator(
                   context,
                   calibState,
-                  label: strings.stabilizationProcess,
+                  label: strings.comm.stabilizationProcess,
                   color: Colors.orange,
                 )
               else if (calibState.phase == CalibrationPhase.measuring)
                 _buildProgressIndicator(
                   context,
                   calibState,
-                  label: strings.measuringProcess,
+                  label: strings.comm.measuringProcess,
                   color: Colors.blue,
                 )
               else if (calibState.phase == CalibrationPhase.success)
@@ -108,7 +108,7 @@ class CalibrationBottomSheet extends ConsumerWidget {
               TextButton.icon(
                 onPressed: notifier.cancelOperation,
                 icon: const Icon(Icons.cancel_outlined),
-                label: Text(strings.cancelOperation),
+                label: Text(strings.comm.cancelOperation),
                 style: TextButton.styleFrom(
                   foregroundColor: Theme.of(context).colorScheme.error,
                 ),
@@ -166,7 +166,7 @@ class CalibrationBottomSheet extends ConsumerWidget {
             const Icon(Icons.check_circle, color: Colors.green, size: 32),
             const SizedBox(width: 8),
             Text(
-              strings.calibSuccess,
+              strings.comm.calibSuccess,
               style: const TextStyle(
                 color: Colors.green,
                 fontWeight: FontWeight.bold,
@@ -179,11 +179,11 @@ class CalibrationBottomSheet extends ConsumerWidget {
           onPressed: () {
             notifier.saveCalibration();
             Navigator.pop(context);
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(strings.calibSavedNotify)));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(strings.comm.calibSavedNotify)),
+            );
           },
-          child: Text(strings.saveToMemoryBtn),
+          child: Text(strings.comm.saveToMemoryBtn),
         ),
       ],
     );
@@ -198,11 +198,11 @@ class CalibrationBottomSheet extends ConsumerWidget {
     return Column(
       children: [
         Text(
-          error ?? strings.error,
+          error ?? strings.core.error,
           style: TextStyle(color: Theme.of(context).colorScheme.error),
         ),
         const SizedBox(height: 8),
-        TextButton(onPressed: notifier.reset, child: Text(strings.retry)),
+        TextButton(onPressed: notifier.reset, child: Text(strings.core.retry)),
       ],
     );
   }

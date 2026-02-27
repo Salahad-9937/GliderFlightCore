@@ -58,7 +58,7 @@ class TelemetryDashboard extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    strings.altitudeUnit,
+                    strings.comm.altitudeUnit,
                     style: Theme.of(
                       context,
                     ).textTheme.headlineMedium?.copyWith(color: Colors.grey),
@@ -69,7 +69,7 @@ class TelemetryDashboard extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
-                    strings.calibratingProgress,
+                    strings.comm.calibratingProgress,
                     style: const TextStyle(
                       color: AppColors.warning,
                       fontWeight: FontWeight.w500,
@@ -89,19 +89,19 @@ class TelemetryDashboard extends ConsumerWidget {
               context,
               Icons.thermostat,
               '$temp°C',
-              strings.temperature,
+              strings.comm.temperature,
             ),
             _buildInfoItem(
               context,
               Icons.speed,
               '$pressure Pa',
-              strings.pressure,
+              strings.comm.pressure,
             ),
             _buildInfoItem(
               context,
               Icons.bolt,
               '$vcc V',
-              strings.power,
+              strings.comm.power,
               color: (device.vcc != null && device.vcc! < 3.0)
                   ? AppColors.error
                   : null,
@@ -122,7 +122,7 @@ class TelemetryDashboard extends ConsumerWidget {
             );
           },
           icon: const Icon(Icons.settings_input_component),
-          label: Text(strings.calibrationTitle),
+          label: Text(strings.comm.calibrationTitle),
         ),
       ],
     );
@@ -137,7 +137,7 @@ class TelemetryDashboard extends ConsumerWidget {
             const Icon(Icons.sensors, color: AppColors.success, size: 20),
             const SizedBox(width: 8),
             Text(
-              strings.sensorsActive,
+              strings.comm.sensorsActive,
               style: const TextStyle(
                 color: AppColors.success,
                 fontWeight: FontWeight.bold,
@@ -149,7 +149,7 @@ class TelemetryDashboard extends ConsumerWidget {
           onPressed: () =>
               ref.read(deviceConnectionNotifierProvider.notifier).disconnect(),
           icon: const Icon(Icons.link_off_rounded),
-          tooltip: strings.disconnect,
+          tooltip: strings.comm.disconnect,
         ),
       ],
     );
@@ -166,7 +166,7 @@ class TelemetryDashboard extends ConsumerWidget {
         children: [
           const Icon(Icons.warning_amber_rounded, color: AppColors.error),
           const SizedBox(width: 12),
-          Expanded(child: Text(strings.sensorError)),
+          Expanded(child: Text(strings.comm.sensorError)),
         ],
       ),
     );

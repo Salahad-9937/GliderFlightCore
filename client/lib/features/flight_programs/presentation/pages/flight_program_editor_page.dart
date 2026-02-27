@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_providers.dart';
-import '../../../../core/l10n/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/l10n/app_strings.dart';
 import '../../../device_communication/presentation/providers/program_upload_controller.dart';
 import '../../domain/entities/flight_program.dart';
 import '../../domain/entities/flight_program_step.dart';
@@ -57,7 +57,7 @@ class _FlightProgramEditorPageState
       final strings = ref.read(l10nProvider);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(strings.saveLocalSuccess)));
+      ).showSnackBar(SnackBar(content: Text(strings.prog.saveLocalSuccess)));
     }
   }
 
@@ -75,7 +75,7 @@ class _FlightProgramEditorPageState
       case UploadResult.success:
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(strings.uploadSuccess),
+            content: Text(strings.prog.uploadSuccess),
             backgroundColor: AppColors.success,
           ),
         );
@@ -83,7 +83,7 @@ class _FlightProgramEditorPageState
       case UploadResult.failure:
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(strings.uploadError),
+            content: Text(strings.prog.uploadError),
             backgroundColor: AppColors.error,
           ),
         );
@@ -91,7 +91,7 @@ class _FlightProgramEditorPageState
       case UploadResult.notConnected:
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(strings.connectFirst),
+            content: Text(strings.prog.connectFirst),
             backgroundColor: AppColors.warning,
           ),
         );
@@ -103,7 +103,7 @@ class _FlightProgramEditorPageState
   Widget build(BuildContext context) {
     final strings = ref.watch(l10nProvider);
     if (_program == null) {
-      return Scaffold(body: Center(child: Text(strings.error)));
+      return Scaffold(body: Center(child: Text(strings.core.error)));
     }
 
     return PopScope(
@@ -113,16 +113,16 @@ class _FlightProgramEditorPageState
         final shouldPop = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: Text(strings.unsavedChangesTitle),
-            content: Text(strings.unsavedChangesDesc),
+            title: Text(strings.prog.unsavedChangesTitle),
+            content: Text(strings.prog.unsavedChangesDesc),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: Text(strings.cancel),
+                child: Text(strings.core.cancel),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: Text(strings.exit),
+                child: Text(strings.prog.exit),
               ),
             ],
           ),
@@ -136,12 +136,12 @@ class _FlightProgramEditorPageState
             IconButton(
               onPressed: _uploadToDevice,
               icon: const Icon(Icons.upload_file_rounded),
-              tooltip: strings.uploadToDevice,
+              tooltip: strings.prog.uploadToDevice,
             ),
             IconButton(
               onPressed: _saveChanges,
               icon: const Icon(Icons.save_outlined),
-              tooltip: strings.save,
+              tooltip: strings.core.save,
             ),
           ],
         ),
@@ -218,11 +218,11 @@ class _StepCard extends StatelessWidget {
           child: Text('$stepNumber'),
         ),
         title: Text(
-          '${strings.angle}: ${step.angle}°',
+          '${strings.prog.angle}: ${step.angle}°',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          '${step.delaySec} ${strings.unitSec} ${step.delayMs} мс',
+          '${step.delaySec} ${strings.panel.unitSec} ${step.delayMs} мс',
         ),
         trailing: IconButton(
           icon: const Icon(Icons.delete_outline),
@@ -250,10 +250,13 @@ class _EmptySteps extends StatelessWidget {
             color: Colors.grey.shade700,
           ),
           const SizedBox(height: 16),
-          Text(strings.noSteps, style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            strings.prog.noSteps,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 8),
           Text(
-            strings.addFirstStep,
+            strings.prog.addFirstStep,
             style: const TextStyle(color: Colors.grey),
           ),
         ],

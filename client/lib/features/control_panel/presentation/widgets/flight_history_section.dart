@@ -19,7 +19,7 @@ class FlightHistorySection extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              strings.flightHistory,
+              strings.panel.flightHistory,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             TextButton.icon(
@@ -27,7 +27,7 @@ class FlightHistorySection extends ConsumerWidget {
                 // Будущая реализация синхронизации
               },
               icon: const Icon(Icons.sync_rounded),
-              label: Text(strings.sync),
+              label: Text(strings.panel.sync),
             ),
           ],
         ),
@@ -35,7 +35,7 @@ class FlightHistorySection extends ConsumerWidget {
         Card(
           child: ListTile(
             leading: const Icon(Icons.history_rounded, color: Colors.grey),
-            title: Text(strings.noFlightData),
+            title: Text(strings.panel.noFlightData),
           ),
         ),
       ],

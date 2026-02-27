@@ -5,7 +5,7 @@ import '../../../../core/di/core_providers.dart';
 import '../../domain/entities/device_status.dart';
 import '../providers/device_connection_providers.dart';
 
-/// Виджет с инструкцией по подключению.
+/// Виджет с инструкцией по подключению к Wi-Fi планера.
 class ConnectionInstructions extends ConsumerWidget {
   const ConnectionInstructions({super.key});
 
@@ -25,7 +25,7 @@ class ConnectionInstructions extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              strings.connectionTitle,
+              strings.comm.connectionTitle,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             if (device.status == DeviceStatus.error)
@@ -38,7 +38,7 @@ class ConnectionInstructions extends ConsumerWidget {
         const SizedBox(height: 16),
 
         Text(
-          '${strings.connectionStep1}\n${strings.connectionStep2}',
+          '${strings.comm.connectionStep1}\n${strings.comm.connectionStep2}',
           style: const TextStyle(height: 1.5, color: Colors.grey),
         ),
         const SizedBox(height: 24),
@@ -57,8 +57,8 @@ class ConnectionInstructions extends ConsumerWidget {
               : const Icon(Icons.wifi_find_rounded),
           label: Text(
             isConnecting
-                ? strings.connectionSearching
-                : strings.connectionCheck,
+                ? strings.comm.connectionSearching
+                : strings.comm.connectionCheck,
           ),
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -69,7 +69,7 @@ class ConnectionInstructions extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(top: 12.0),
             child: Text(
-              device.errorMessage ?? strings.connectionError,
+              device.errorMessage ?? strings.comm.connectionError,
               style: TextStyle(
                 color: Theme.of(context).colorScheme.error,
                 fontSize: 12,
