@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/system_health_provider.dart';
 import '../../domain/entities/system_health.dart';
+import '../providers/system_health_provider.dart';
 
 class SystemHealthCard extends ConsumerWidget {
   final String profileId;
@@ -10,7 +10,6 @@ class SystemHealthCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final systemAsync = ref.watch(systemHealthProvider(profileId));
-    // Таймер для обновления текста времени
     ref.watch(systemUpdateTimerProvider);
 
     return Card(
@@ -22,17 +21,19 @@ class SystemHealthCard extends ConsumerWidget {
             _buildHeader(context, ref, systemAsync.value),
             const Divider(height: 24),
             systemAsync.when(
-              data: (health) => health == null 
-                ? const Text('Устройство не готово') 
-                : _buildSystemInfo(context, health),
+              data: (health) => health == null
+                  ? const Text('Устройство не готово')
+                  : _buildSystemInfo(context, health),
               loading: () => const Center(
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: 20),
                   child: LinearProgressIndicator(),
                 ),
               ),
-              error: (e, __) => Text('Ошибка диагностики: $e', 
-                style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              error: (e, __) => Text(
+                'Ошибка диагностики: $e',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             ),
           ],
         ),
@@ -40,7 +41,11 @@ class SystemHealthCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, WidgetRef ref, SystemHealth? health) {
+  Widget _buildHeader(
+    BuildContext context,
+    WidgetRef ref,
+    SystemHealth? health,
+  ) {
     String timeAgo = '';
     if (health != null) {
       final diff = DateTime.now().difference(health.timestamp).inSeconds;
@@ -50,11 +55,19 @@ class SystemHealthCard extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text('Диагностика системы', style: Theme.of(context).textTheme.titleMedium),
+        Text(
+          'Диагностика системы',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         Row(
           children: [
             if (timeAgo.isNotEmpty)
-              Text(timeAgo, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey)),
+              Text(
+                timeAgo,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+              ),
             const SizedBox(width: 8),
             IconButton(
               onPressed: () => ref.invalidate(systemHealthProvider(profileId)),
@@ -73,10 +86,11 @@ class SystemHealthCard extends ConsumerWidget {
     final fsUsedMb = (health.fsUsed / 1024 / 1024).toStringAsFixed(2);
     final fsTotalMb = (health.fsTotal / 1024 / 1024).toStringAsFixed(2);
 
-    // Форматирование Uptime
     final minutes = health.uptime ~/ 60;
     final seconds = health.uptime % 60;
-    final uptimeString = minutes > 0 ? '$minutes мин. $seconds сек.' : '$seconds сек.';
+    final uptimeString = minutes > 0
+        ? '$minutes мин. $seconds сек.'
+        : '$seconds сек.';
 
     return Column(
       children: [
@@ -96,7 +110,10 @@ class SystemHealthCard extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+          ),
         ],
       ),
     );

@@ -1,143 +1,93 @@
-import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
-
-import '../../../../features/flight_programs/domain/entities/flight_program.dart';
+import '../../../../core/architecture/failure.dart';
+import '../../../../core/architecture/result.dart';
+import '../../../../core/di/core_providers.dart';
+import '../../../../core/network/i_network_client.dart';
+import '../../../flight_programs/domain/entities/flight_program.dart';
 import '../../domain/entities/device.dart';
-import '../../domain/entities/device_status.dart';
 import '../../domain/entities/system_health.dart';
 import '../../domain/repositories/device_repository.dart';
+import '../mappers/device_mapper.dart';
+import '../models/device_status_dto.dart';
+import '../models/system_health_dto.dart';
 
-/// Провайдер для репозитория устройства.
-final deviceRepositoryProvider = Provider<DeviceRepository>((ref) {
-  return DeviceRepositoryImpl();
+/// Провайдер реализации репозитория устройства.
+final deviceRepositoryProvider = Provider<IDeviceRepository>((ref) {
+  final networkClient = ref.watch(networkClientProvider);
+  return DeviceRepositoryImpl(networkClient);
 });
 
-/// Реализация репозитория для взаимодействия с устройством по HTTP.
-class DeviceRepositoryImpl implements DeviceRepository {
-  static const String _apIpAddress = '192.168.4.1';
+/// Реализация репозитория для взаимодействия с ESP8266 по HTTP.
+class DeviceRepositoryImpl implements IDeviceRepository {
+  final INetworkClient _network;
+
+  DeviceRepositoryImpl(this._network);
 
   @override
-  Future<Device> connectToDeviceAP() async {
-    try {
-      final url = Uri.http(_apIpAddress, '/status');
-      final response = await http.get(url).timeout(const Duration(milliseconds: 1500));
+  Future<Result<Device, Failure>> getDeviceStatus() async {
+    final result = await _network.get('/status');
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> json = jsonDecode(response.body);
-        
-        return Device(
-          status: DeviceStatus.connected,
-          ipAddress: _apIpAddress,
-          isHardwareOk: json['hw_ok'] ?? false,
-          isCalibrating: json['calibrating'] ?? false,
-          isCalibrated: json['calibrated'] ?? false,
-          isMonitoring: json['monitoring'] ?? false,
-          isLogging: json['logging'] ?? false,
-          storedBasePressure: (json['stored_base'] as num?)?.toDouble(),
-          currentPressure: (json['current_p'] as num?)?.toDouble(),
-          altitude: (json['alt'] as num?)?.toDouble(),
-          temperature: (json['temp'] as num?)?.toDouble(),
-          vcc: (json['vcc'] as num?)?.toDouble(),
-          isStable: json['stable'] ?? false,
-          basePressure: (json['base'] as num?)?.toDouble(),
-          calibrationPhase: json['calib_phase'],
-          calibrationProgress: (json['calib_progress'] as num?)?.toInt(),
-        );
-      } else {
-        return Device(
-          status: DeviceStatus.error,
-          errorMessage: 'Ошибка устройства: ${response.statusCode}',
-        );
-      }
-    } catch (e) {
-      return Device(
-        status: DeviceStatus.error,
-        errorMessage: 'Нет связи с $_apIpAddress',
-      );
-    }
+    return result.fold(
+      (json) => Success(
+        DeviceMapper.toEntity(
+          DeviceStatusDto.fromJson(json),
+          ipAddress: '192.168.4.1', // Базовый IP для AP режима
+        ),
+      ),
+      (failure) => Error(failure),
+    );
   }
 
   @override
-  Future<SystemHealth> getSystemHealth(String ipAddress) async {
-    final url = Uri.http(ipAddress, '/system');
-    final response = await http.get(url).timeout(const Duration(seconds: 3));
+  Future<Result<SystemHealth, Failure>> getSystemHealth() async {
+    final result = await _network.get('/system');
 
-    if (response.statusCode == 200) {
-      return SystemHealth.fromJson(jsonDecode(response.body));
-    } else {
-      throw Exception('Ошибка получения диагностики: ${response.statusCode}');
-    }
+    return result.fold(
+      (json) => Success(
+        DeviceMapper.toSystemHealthEntity(SystemHealthDto.fromJson(json)),
+      ),
+      (failure) => Error(failure),
+    );
   }
 
   @override
-  Future<bool> uploadProgram(String ipAddress, FlightProgram program) async {
-    try {
-      final url = Uri.http(ipAddress, '/program');
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: program.toJson(),
-      ).timeout(const Duration(seconds: 5));
+  Future<Result<void, Failure>> uploadProgram(FlightProgram program) async {
+    // Используем toMap() сущности (пока маппер для программ не создан)
+    final result = await _network.post('/program', body: program.toMap());
 
-      return response.statusCode == 200;
-    } catch (e) {
-      return false;
-    }
+    return result.fold((_) => const Success(null), (failure) => Error(failure));
   }
 
   @override
-  Future<bool> zeroAltitude(String ipAddress) async {
-    try {
-      final url = Uri.http(ipAddress, '/zero');
-      final response = await http.get(url).timeout(const Duration(seconds: 3));
-      return response.statusCode == 200 || response.statusCode == 202;
-    } catch (e) {
-      return false;
-    }
+  Future<Result<void, Failure>> zeroAltitude() async {
+    final result = await _network.get('/zero');
+    return result.fold((_) => const Success(null), (f) => Error(f));
   }
 
   @override
-  Future<bool> startCalibration(String ipAddress) async {
-    try {
-      final url = Uri.http(ipAddress, '/calibrate');
-      final response = await http.get(url).timeout(const Duration(seconds: 3));
-      return response.statusCode == 200 || response.statusCode == 202;
-    } catch (e) {
-      return false;
-    }
+  Future<Result<void, Failure>> startCalibration() async {
+    final result = await _network.get('/calibrate');
+    return result.fold((_) => const Success(null), (f) => Error(f));
   }
 
   @override
-  Future<bool> cancelCalibration(String ipAddress) async {
-    try {
-      final url = Uri.http(ipAddress, '/cancel');
-      final response = await http.get(url).timeout(const Duration(seconds: 3));
-      return response.statusCode == 200;
-    } catch (e) {
-      return false;
-    }
+  Future<Result<void, Failure>> cancelOperation() async {
+    final result = await _network.get('/cancel');
+    return result.fold((_) => const Success(null), (f) => Error(f));
   }
 
   @override
-  Future<bool> saveCalibration(String ipAddress) async {
-    try {
-      final url = Uri.http(ipAddress, '/calibrate/save');
-      final response = await http.get(url).timeout(const Duration(seconds: 3));
-      return response.statusCode == 200;
-    } catch (e) {
-      return false;
-    }
+  Future<Result<void, Failure>> saveCalibration() async {
+    final result = await _network.get('/calibrate/save');
+    return result.fold((_) => const Success(null), (f) => Error(f));
   }
 
   @override
-  Future<bool> setSensorMonitoring(String ipAddress, bool enable) async {
-    try {
-      final url = Uri.http(ipAddress, '/baro', {'enable': enable ? '1' : '0'});
-      final response = await http.get(url).timeout(const Duration(seconds: 3));
-      return response.statusCode == 200;
-    } catch (e) {
-      return false;
-    }
+  Future<Result<void, Failure>> setSensorMonitoring(bool enable) async {
+    final result = await _network.get(
+      '/baro',
+      queryParameters: {'enable': enable ? '1' : '0'},
+    );
+    return result.fold((_) => const Success(null), (f) => Error(f));
   }
 }

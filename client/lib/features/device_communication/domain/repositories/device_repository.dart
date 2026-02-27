@@ -1,30 +1,34 @@
-import '../../../../features/flight_programs/domain/entities/flight_program.dart';
+import '../../../../core/architecture/failure.dart';
+import '../../../../core/architecture/result.dart';
+import '../../../flight_programs/domain/entities/flight_program.dart';
 import '../entities/device.dart';
 import '../entities/system_health.dart';
 
-/// Абстрактный репозиторий для взаимодействия с устройством.
-abstract class DeviceRepository {
-  /// Пытается подключиться к устройству в режиме точки доступа.
-  Future<Device> connectToDeviceAP();
+/// Абстрактный репозиторий для взаимодействия с бортовым устройством.
+///
+/// Все методы возвращают [Result] для явной обработки ошибок.
+abstract interface class IDeviceRepository {
+  /// Получает текущий статус и телеметрию устройства.
+  Future<Result<Device, Failure>> getDeviceStatus();
 
-  /// Получает расширенную диагностику системы.
-  Future<SystemHealth> getSystemHealth(String ipAddress);
+  /// Получает расширенную диагностику системы (uptime, heap, FS).
+  Future<Result<SystemHealth, Failure>> getSystemHealth();
 
-  /// Загружает полетную программу на устройство.
-  Future<bool> uploadProgram(String ipAddress, FlightProgram program);
+  /// Загружает полетную программу в память устройства.
+  Future<Result<void, Failure>> uploadProgram(FlightProgram program);
 
-  /// Обнуляет текущую высоту (Zero).
-  Future<bool> zeroAltitude(String ipAddress);
+  /// Обнуляет текущую высоту (установка текущего давления как 0м).
+  Future<Result<void, Failure>> zeroAltitude();
 
-  /// Запускает процесс калибровки (Calibrate).
-  Future<bool> startCalibration(String ipAddress);
+  /// Запускает полную процедуру калибровки датчика.
+  Future<Result<void, Failure>> startCalibration();
 
-  /// Отменяет текущую операцию (Zero или Calibrate).
-  Future<bool> cancelCalibration(String ipAddress);
+  /// Прерывает текущую операцию (обнуление или калибровку).
+  Future<Result<void, Failure>> cancelOperation();
 
-  /// Сохраняет калибровку в энергонезависимую память (Save).
-  Future<bool> saveCalibration(String ipAddress);
+  /// Сохраняет текущую калибровку в энергонезависимую память устройства.
+  Future<Result<void, Failure>> saveCalibration();
 
-  /// Включает или выключает мониторинг датчиков (Baro).
-  Future<bool> setSensorMonitoring(String ipAddress, bool enable);
+  /// Включает или выключает активный мониторинг датчиков.
+  Future<Result<void, Failure>> setSensorMonitoring(bool enable);
 }

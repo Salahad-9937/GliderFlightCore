@@ -24,7 +24,6 @@ class DeviceStatusCard extends ConsumerWidget {
         padding: const EdgeInsets.all(16.0),
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
-          // Переключаемся между "Приборной панелью" и "Инструкцией"
           child: device.status == DeviceStatus.connected
               ? const TelemetryDashboard()
               : const ConnectionInstructions(),

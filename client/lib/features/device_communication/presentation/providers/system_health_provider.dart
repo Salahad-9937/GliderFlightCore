@@ -1,33 +1,35 @@
-import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/system_health.dart';
-import '../../data/repositories/device_repository_impl.dart';
-import 'device_connection_providers.dart';
+
+import '../../../../core/architecture/use_case.dart';
 import '../../domain/entities/device_status.dart';
+import '../../domain/entities/system_health.dart';
+import 'device_connection_providers.dart';
+import 'device_usecase_providers.dart';
 
-/// Провайдер для получения данных системной диагностики.
-final systemHealthProvider = FutureProvider.family<SystemHealth?, String>((ref, profileId) async {
-  // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем select, чтобы следить ТОЛЬКО за статусом.
-  // Теперь провайдер НЕ будет перезапускаться при изменении высоты или давления.
+/// Провайдер данных системной диагностики.
+///
+/// Обновляется только при изменении статуса подключения.
+final systemHealthProvider = FutureProvider.family<SystemHealth?, String>((
+  ref,
+  profileId,
+) async {
   final connectionStatus = ref.watch(
-    deviceConnectionNotifierProvider.select((s) => s.status)
+    deviceConnectionNotifierProvider.select((s) => s.status),
   );
-  
-  if (connectionStatus != DeviceStatus.connected) {
-    return null;
-  }
 
-  // IP адрес берем через read, так как он не меняется в процессе сессии
-  final ipAddress = ref.read(deviceConnectionNotifierProvider).ipAddress;
-  if (ipAddress == null) return null;
-  
-  final repository = ref.read(deviceRepositoryProvider);
-  
-  // Делаем запрос
-  return await repository.getSystemHealth(ipAddress);
+  if (connectionStatus != DeviceStatus.connected) return null;
+
+  final result = await ref
+      .read(getSystemHealthUseCaseProvider)
+      .call(const NoParams());
+
+  return result.fold(
+    (health) => health,
+    (failure) => throw Exception(failure.message),
+  );
 });
 
-/// Провайдер для текстового счетчика "Прошло времени"
+/// Провайдер таймера для UI (время с момента последнего обновления).
 final systemUpdateTimerProvider = StreamProvider.autoDispose((ref) {
   return Stream.periodic(const Duration(seconds: 1), (i) => i);
 });

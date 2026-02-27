@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../glider_profiles/glider_profiles.dart';
+import '../../../glider_profiles/presentation/providers/glider_profiles_providers.dart';
 import '../../../glider_profiles/presentation/widgets/edit_profile_dialog.dart';
-import '../../../flight_programs/flight_programs.dart';
-import '../../../device_communication/device_communication.dart'; 
-import '../../../device_communication/presentation/providers/sensor_settings_controller.dart';
-import '../../../device_communication/presentation/providers/device_connection_providers.dart';
+import '../../../flight_programs/presentation/widgets/flight_programs_list.dart';
+
+// Прямые импорты из device_communication вместо barrel-файла
 import '../../../device_communication/domain/entities/device_status.dart';
+import '../../../device_communication/presentation/providers/device_connection_providers.dart';
+import '../../../device_communication/presentation/providers/sensor_settings_controller.dart';
+import '../../../device_communication/presentation/widgets/device_status_card.dart';
 import '../../../device_communication/presentation/widgets/system_health_card.dart';
+
 import '../widgets/flight_history_section.dart';
 
 /// Страница управления планером.
-/// 
-/// Реализует автоматическое управление сессией связи и питанием датчиков.
 class ControlPanelPage extends ConsumerStatefulWidget {
   final String gliderProfileId;
   const ControlPanelPage({super.key, required this.gliderProfileId});
@@ -22,11 +23,10 @@ class ControlPanelPage extends ConsumerStatefulWidget {
   ConsumerState<ControlPanelPage> createState() => _ControlPanelPageState();
 }
 
-class _ControlPanelPageState extends ConsumerState<ControlPanelPage> with WidgetsBindingObserver {
-  
+class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
+    with WidgetsBindingObserver {
   late DeviceConnectionNotifier _connectionNotifier;
   late SensorSettingsController _settingsController;
-  
   bool _isBackgrounded = false;
 
   @override
@@ -34,10 +34,8 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage> with Widget
     super.initState();
     _connectionNotifier = ref.read(deviceConnectionNotifierProvider.notifier);
     _settingsController = ref.read(sensorSettingsControllerProvider);
-    
     WidgetsBinding.instance.addObserver(this);
 
-    // Инициируем подключение при входе на страницу
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _connectionNotifier.connect();
     });
@@ -46,8 +44,7 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage> with Widget
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // Полный разрыв сессии при уходе со страницы
-    _connectionNotifier.disconnect(); 
+    _connectionNotifier.disconnect();
     super.dispose();
   }
 
@@ -56,7 +53,8 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage> with Widget
     final device = ref.read(deviceConnectionNotifierProvider);
     if (device.status != DeviceStatus.connected) return;
 
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       if (!_isBackgrounded) {
         _isBackgrounded = true;
         _connectionNotifier.pausePolling();
@@ -88,29 +86,25 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage> with Widget
         title: Text(profile.name),
         actions: [
           IconButton(
-            onPressed: () => showEditProfileDialog(context, ref, widget.gliderProfileId, profile.name),
+            onPressed: () => showEditProfileDialog(
+              context,
+              ref,
+              widget.gliderProfileId,
+              profile.name,
+            ),
             icon: const Icon(Icons.edit_outlined),
-          )
+          ),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          // Основная телеметрия (высота, давление, темп, VCC)
           DeviceStatusCard(profileId: widget.gliderProfileId),
           const SizedBox(height: 16),
-          
-          // Системная диагностика (uptime, heap, FS)
           SystemHealthCard(profileId: widget.gliderProfileId),
-          
           const SizedBox(height: 24),
-          
-          // Список полетных программ
           FlightProgramsList(profileId: widget.gliderProfileId),
-          
           const SizedBox(height: 24),
-          
-          // Секция истории полетов (заглушка)
           const FlightHistorySection(),
         ],
       ),

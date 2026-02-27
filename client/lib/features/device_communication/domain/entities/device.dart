@@ -1,17 +1,14 @@
 import 'device_status.dart';
 
 /// Сущность, представляющая бортовое устройство и его телеметрию.
+///
+/// Чистая доменная модель без знаний о JSON или HTTP.
 class Device {
-  /// Текущий статус подключения (сетевой слой).
   final DeviceStatus status;
-
-  /// IP-адрес устройства.
   final String? ipAddress;
-
-  /// Сообщение об ошибке.
   final String? errorMessage;
 
-  // --- Флаги состояния устройства (Hardware) ---
+  // Состояние оборудования
   final bool isHardwareOk;
   final bool isCalibrating;
   final bool isCalibrated;
@@ -19,20 +16,20 @@ class Device {
   final bool isLogging;
   final bool isStable;
 
-  // --- Телеметрия ---
+  // Телеметрия
   final double? altitude;
   final double? temperature;
-  final double? currentPressure; // Текущее давление (live)
-  final double? basePressure;    // Базовое давление (активное)
-  final double? storedBasePressure; // Сохраненное в памяти давление
-  final double? vcc;             // Напряжение питания (Вольты)
+  final double? currentPressure;
+  final double? basePressure;
+  final double? storedBasePressure;
+  final double? vcc;
 
-  // --- Данные процесса калибровки (Real-time) ---
-  final String? calibrationPhase; // "stabilization", "measuring", "zeroing", "idle"
-  final int? calibrationProgress; // 0..100
+  // Процесс калибровки
+  final String? calibrationPhase;
+  final int? calibrationProgress;
 
   const Device({
-    this.status = DeviceStatus.disconnected,
+    required this.status,
     this.ipAddress,
     this.errorMessage,
     this.isHardwareOk = false,
@@ -51,7 +48,6 @@ class Device {
     this.calibrationProgress,
   });
 
-  /// Создает копию объекта с измененными полями.
   Device copyWith({
     DeviceStatus? status,
     String? ipAddress,

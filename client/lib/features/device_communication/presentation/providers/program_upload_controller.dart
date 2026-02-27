@@ -1,54 +1,48 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../features/flight_programs/domain/entities/flight_program.dart';
-import '../../data/repositories/device_repository_impl.dart';
+import '../../../flight_programs/domain/entities/flight_program.dart';
 import '../../domain/entities/device_status.dart';
-import '../../domain/repositories/device_repository.dart';
 import 'device_connection_providers.dart';
+import 'device_usecase_providers.dart';
 
-/// Результат попытки загрузки программы.
-enum UploadResult {
-  success,
-  failure,
-  notConnected,
-}
+enum UploadResult { success, failure, notConnected }
 
-/// Контроллер, отвечающий за процесс загрузки программы на устройство.
+/// Контроллер процесса прошивки полетной программы.
 class ProgramUploadController {
-  final Ref ref;
+  final Ref _ref;
 
-  ProgramUploadController(this.ref);
+  ProgramUploadController(this._ref);
 
-  DeviceRepository get _repository => ref.read(deviceRepositoryProvider);
-
-  /// Загружает полетную программу на устройство.
-  /// Возвращает детализированный результат операции.
+  /// Загружает программу на устройство, приостанавливая телеметрию.
   Future<UploadResult> uploadProgram(FlightProgram program) async {
-    final deviceState = ref.read(deviceConnectionNotifierProvider);
-    final connectionNotifier = ref.read(deviceConnectionNotifierProvider.notifier);
+    final deviceState = _ref.read(deviceConnectionNotifierProvider);
+    final connectionNotifier = _ref.read(
+      deviceConnectionNotifierProvider.notifier,
+    );
 
-    // 1. Проверка подключения (Бизнес-правило: нельзя грузить без связи)
-    if (deviceState.status != DeviceStatus.connected || deviceState.ipAddress == null) {
+    if (deviceState.status != DeviceStatus.connected) {
       return UploadResult.notConnected;
     }
 
-    // 2. Приостановка опроса
     connectionNotifier.pausePolling();
 
-    try {
-      // 3. Выполнение загрузки
-      final success = await _repository.uploadProgram(deviceState.ipAddress!, program);
-      return success ? UploadResult.success : UploadResult.failure;
-    } catch (e) {
-      return UploadResult.failure;
-    } finally {
-      // 4. Возобновление опроса
-      connectionNotifier.resumePolling();
-    }
+    final result = await _ref.read(uploadProgramUseCaseProvider).call(program);
+
+    return result.fold(
+      (_) {
+        connectionNotifier.resumePolling();
+        return UploadResult.success;
+      },
+      (failure) {
+        connectionNotifier.resumePolling();
+        return UploadResult.failure;
+      },
+    );
   }
 }
 
-/// Провайдер для контроллера загрузки.
-final programUploadControllerProvider = Provider<ProgramUploadController>((ref) {
+final programUploadControllerProvider = Provider<ProgramUploadController>((
+  ref,
+) {
   return ProgramUploadController(ref);
 });

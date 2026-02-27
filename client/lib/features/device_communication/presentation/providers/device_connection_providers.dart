@@ -1,14 +1,15 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/repositories/device_repository_impl.dart';
+import '../../../../core/architecture/use_case.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../domain/entities/device.dart';
 import '../../domain/entities/device_status.dart';
-import '../../domain/repositories/device_repository.dart';
+import 'device_usecase_providers.dart';
 import 'sensor_settings_controller.dart';
 
+/// Нотификатор управления сессией связи с устройством.
 class DeviceConnectionNotifier extends Notifier<Device> {
-  DeviceRepository get _repository => ref.read(deviceRepositoryProvider);
   Timer? _pollingTimer;
 
   @override
@@ -17,6 +18,7 @@ class DeviceConnectionNotifier extends Notifier<Device> {
     return const Device(status: DeviceStatus.disconnected);
   }
 
+  /// Инициирует подключение к устройству.
   Future<void> connect() async {
     if (state.status == DeviceStatus.connecting) return;
 
@@ -28,27 +30,36 @@ class DeviceConnectionNotifier extends Notifier<Device> {
 
     state = state.copyWith(status: DeviceStatus.connecting);
 
-    final result = await _repository.connectToDeviceAP();
+    final result = await ref
+        .read(getDeviceStatusUseCaseProvider)
+        .call(const NoParams());
 
-    if (result.status == DeviceStatus.connected) {
-      state = result;
-      await ref.read(sensorSettingsControllerProvider).toggleMonitoring(true);
-      _startPolling();
-    } else {
-      state = result;
-    }
+    result.fold(
+      (device) async {
+        state = device;
+        await ref.read(sensorSettingsControllerProvider).toggleMonitoring(true);
+        _startPolling();
+      },
+      (failure) {
+        state = Device(
+          status: DeviceStatus.error,
+          errorMessage: failure.message,
+        );
+      },
+    );
   }
 
+  /// Разрывает соединение и останавливает опрос.
   void disconnect() {
     _stopPolling();
 
-    final lastIp = state.ipAddress;
     final wasConnected = state.status == DeviceStatus.connected;
 
-    if (wasConnected && lastIp != null) {
-      _repository.setSensorMonitoring(lastIp, false);
+    if (wasConnected) {
+      ref.read(toggleMonitoringUseCaseProvider).call(false);
     }
 
+    // Используем Timer.run для избежания конфликтов в жизненном цикле Riverpod
     Timer.run(() {
       state = const Device(status: DeviceStatus.disconnected);
     });
@@ -64,29 +75,28 @@ class DeviceConnectionNotifier extends Notifier<Device> {
 
   void _startPolling() {
     _stopPolling();
-    _pollingTimer = Timer.periodic(const Duration(milliseconds: 500), (
-      _,
-    ) async {
-      if (state.status != DeviceStatus.connected) {
-        _stopPolling();
-        return;
-      }
+    _pollingTimer = Timer.periodic(
+      const Duration(milliseconds: AppConstants.telemetryPollingIntervalMs),
+      (_) => _pollStatus(),
+    );
+  }
 
-      try {
-        final result = await _repository.connectToDeviceAP();
-        if (result.status == DeviceStatus.connected) {
-          state = result;
-        } else {
-          _stopPolling();
-          state = result;
-        }
-      } catch (e) {
-        _stopPolling();
-        state = const Device(
-          status: DeviceStatus.error,
-          errorMessage: 'Связь потеряна',
-        );
-      }
+  Future<void> _pollStatus() async {
+    if (state.status != DeviceStatus.connected) {
+      _stopPolling();
+      return;
+    }
+
+    final result = await ref
+        .read(getDeviceStatusUseCaseProvider)
+        .call(const NoParams());
+
+    result.fold((device) => state = device, (failure) {
+      _stopPolling();
+      state = Device(
+        status: DeviceStatus.error,
+        errorMessage: 'Связь потеряна: ${failure.message}',
+      );
     });
   }
 
