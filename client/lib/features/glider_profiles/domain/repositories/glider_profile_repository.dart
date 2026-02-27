@@ -1,16 +1,18 @@
+import '../../../../core/architecture/failure.dart';
+import '../../../../core/architecture/result.dart';
 import '../entities/glider_profile.dart';
 
-/// Абстрактный репозиторий для управления профилями планеров.
-abstract class GliderProfileRepository {
+/// Интерфейс репозитория для управления профилями планеров.
+abstract interface class IGliderProfileRepository {
   /// Возвращает список всех профилей.
-  Future<List<GliderProfile>> getGliderProfiles();
+  Future<Result<List<GliderProfile>, Failure>> getGliderProfiles();
 
   /// Сохраняет (добавляет или обновляет) профиль.
-  Future<void> saveGliderProfile(GliderProfile profile);
+  Future<Result<void, Failure>> saveGliderProfile(GliderProfile profile);
 
   /// Удаляет профиль по его ID.
-  Future<void> deleteGliderProfile(String id);
-  
+  Future<Result<void, Failure>> deleteGliderProfile(String id);
+
   /// Обновляет имя профиля.
-  Future<void> updateProfileName(String id, String newName);
+  Future<Result<void, Failure>> updateProfileName(String id, String newName);
 }

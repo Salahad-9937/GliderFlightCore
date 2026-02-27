@@ -1,50 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import '../../../../core/di/core_providers.dart';
 import '../providers/glider_profiles_providers.dart';
 
-/// Показывает диалоговое окно для добавления нового профиля планера.
 void showAddProfileDialog(BuildContext context, WidgetRef ref) {
   final controller = TextEditingController();
   final formKey = GlobalKey<FormState>();
+  final strings = ref.read(l10nProvider);
 
   showDialog(
     context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text('Новый профиль планера'),
-        content: Form(
-          key: formKey,
-          child: TextFormField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(labelText: 'Название планера'),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Название не может быть пустым';
-              }
-              return null;
-            },
-          ),
+    builder: (context) => AlertDialog(
+      title: Text(strings.profiles.newGliderProfile),
+      content: Form(
+        key: formKey,
+        child: TextFormField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(labelText: strings.profiles.gliderName),
+          validator: (v) => (v == null || v.trim().isEmpty)
+              ? strings.profiles.nameNotEmpty
+              : null,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                ref
-                    .read(gliderProfilesNotifierProvider.notifier)
-                    .addProfile(controller.text.trim());
-                Navigator.of(context).pop();
-              }
-            },
-            child: const Text('Создать'),
-          ),
-        ],
-      );
-    },
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(strings.core.cancel),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (formKey.currentState!.validate()) {
+              ref
+                  .read(gliderProfilesNotifierProvider.notifier)
+                  .addProfile(controller.text.trim());
+              Navigator.pop(context);
+            }
+          },
+          child: Text(strings.core.ok),
+        ),
+      ],
+    ),
   );
 }

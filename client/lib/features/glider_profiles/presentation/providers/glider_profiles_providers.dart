@@ -2,60 +2,74 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:collection/collection.dart';
 
-import '../../data/repositories/glider_profile_repository_impl.dart';
+import '../../../../core/architecture/use_case.dart';
+import '../../../../core/di/core_providers.dart';
 import '../../domain/entities/glider_profile.dart';
-import '../../domain/repositories/glider_profile_repository.dart';
+import '../../domain/usecases/update_profile_name_use_case.dart';
+import 'glider_profile_usecase_providers.dart';
 
-/// Notifier для управления списком профилей планеров.
+/// Управление списком профилей через UseCases.
 class GliderProfilesNotifier extends AsyncNotifier<List<GliderProfile>> {
-  GliderProfileRepository get _repository => ref.read(gliderProfileRepositoryProvider);
-
   @override
   Future<List<GliderProfile>> build() async {
-    return _repository.getGliderProfiles();
+    final result = await ref
+        .watch(getGliderProfilesUseCaseProvider)
+        .call(const NoParams());
+    return result.fold(
+      (list) => list,
+      (failure) => throw Exception(failure.message),
+    );
   }
 
-  /// Добавляет новый профиль.
   Future<void> addProfile(String name) async {
-    state = const AsyncValue.loading();
+    state = const AsyncLoading();
     final newProfile = GliderProfile(id: const Uuid().v4(), name: name);
-    state = await AsyncValue.guard(() async {
-      await _repository.saveGliderProfile(newProfile);
-      return _repository.getGliderProfiles();
-    });
+
+    final result = await ref
+        .read(saveGliderProfileUseCaseProvider)
+        .call(newProfile);
+
+    result.fold(
+      (_) => ref.invalidateSelf(),
+      (failure) => ref
+          .read(loggerServiceProvider)
+          .e('Ошибка добавления профиля: ${failure.message}'),
+    );
   }
 
-  /// Удаляет профиль.
   Future<void> deleteProfile(String id) async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      await _repository.deleteGliderProfile(id);
-      return _repository.getGliderProfiles();
-    });
+    state = const AsyncLoading();
+    final result = await ref.read(deleteGliderProfileUseCaseProvider).call(id);
+
+    result.fold(
+      (_) => ref.invalidateSelf(),
+      (failure) => ref
+          .read(loggerServiceProvider)
+          .e('Ошибка удаления профиля: ${failure.message}'),
+    );
   }
 
-  /// Обновляет имя существующего профиля.
   Future<void> updateProfileName(String id, String newName) async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      await _repository.updateProfileName(id, newName);
-      return _repository.getGliderProfiles();
-    });
+    state = const AsyncLoading();
+    final result = await ref
+        .read(updateProfileNameUseCaseProvider)
+        .call(UpdateProfileNameParams(id: id, newName: newName));
+
+    result.fold(
+      (_) => ref.invalidateSelf(),
+      (failure) => ref
+          .read(loggerServiceProvider)
+          .e('Ошибка переименования профиля: ${failure.message}'),
+    );
   }
 }
 
-/// Провайдер для Notifier-а списка профилей.
 final gliderProfilesNotifierProvider =
     AsyncNotifierProvider<GliderProfilesNotifier, List<GliderProfile>>(
-  GliderProfilesNotifier.new,
-);
+      GliderProfilesNotifier.new,
+    );
 
-/// Провайдер для получения одного профиля по его ID.
 final profileByIdProvider = Provider.family<GliderProfile?, String>((ref, id) {
-  final profilesAsyncValue = ref.watch(gliderProfilesNotifierProvider);
-  final data = profilesAsyncValue.asData;
-  if (data != null) {
-    return data.value.firstWhereOrNull((p) => p.id == id);
-  }
-  return null;
+  final profilesAsync = ref.watch(gliderProfilesNotifierProvider);
+  return profilesAsync.asData?.value.firstWhereOrNull((p) => p.id == id);
 });

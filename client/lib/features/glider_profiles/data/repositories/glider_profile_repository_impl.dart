@@ -4,78 +4,110 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../core/architecture/failure.dart';
+import '../../../../core/architecture/result.dart';
 import '../../domain/entities/glider_profile.dart';
 import '../../domain/repositories/glider_profile_repository.dart';
+import '../mappers/glider_profile_mapper.dart';
+import '../models/glider_profile_dto.dart';
 
-/// Провайдер для репозитория профилей планеров.
-final gliderProfileRepositoryProvider = Provider<GliderProfileRepository>((ref) {
+/// Провайдер реализации репозитория профилей.
+final gliderProfileRepositoryProvider = Provider<IGliderProfileRepository>((
+  ref,
+) {
   return LocalFileGliderProfileRepository();
 });
 
 /// Реализация репозитория, работающая с локальным JSON-файлом.
-class LocalFileGliderProfileRepository implements GliderProfileRepository {
+class LocalFileGliderProfileRepository implements IGliderProfileRepository {
   static const _fileName = 'glider_profiles.json';
 
-  /// Получает путь к файлу в директории документов приложения.
   Future<File> _getLocalFile() async {
     final directory = await getApplicationDocumentsDirectory();
     return File('${directory.path}/$_fileName');
   }
 
   @override
-  Future<List<GliderProfile>> getGliderProfiles() async {
+  Future<Result<List<GliderProfile>, Failure>> getGliderProfiles() async {
     try {
       final file = await _getLocalFile();
       if (!await file.exists()) {
-        return [];
+        return const Success([]);
       }
       final contents = await file.readAsString();
       final List<dynamic> jsonData = json.decode(contents);
-      return jsonData.map((item) => GliderProfile.fromMap(item)).toList();
+
+      final profiles = jsonData
+          .map(
+            (item) => GliderProfileDto.fromJson(item as Map<String, dynamic>),
+          )
+          .map((dto) => GliderProfileMapper.toEntity(dto))
+          .toList();
+
+      return Success(profiles);
     } catch (e) {
-      return [];
+      return Error(StorageFailure('Ошибка чтения профилей: $e'));
     }
   }
-  
-  /// Записывает актуальный список профилей в файл.
-  Future<void> _writeProfiles(List<GliderProfile> profiles) async {
-    final file = await _getLocalFile();
-    final List<Map<String, dynamic>> jsonData =
-        profiles.map((p) => p.toMap()).toList();
-    await file.writeAsString(json.encode(jsonData));
+
+  Future<Result<void, Failure>> _writeProfiles(
+    List<GliderProfile> profiles,
+  ) async {
+    try {
+      final file = await _getLocalFile();
+      final jsonData = profiles
+          .map((p) => GliderProfileMapper.fromEntity(p).toJson())
+          .toList();
+      await file.writeAsString(json.encode(jsonData));
+      return const Success(null);
+    } catch (e) {
+      return Error(StorageFailure('Ошибка записи профилей: $e'));
+    }
   }
 
   @override
-  Future<void> saveGliderProfile(GliderProfile profile) async {
-    final profiles = await getGliderProfiles();
-    final index = profiles.indexWhere((p) => p.id == profile.id);
-    if (index != -1) {
-      profiles[index] = profile;
-    } else {
-      profiles.add(profile);
-    }
-    await _writeProfiles(profiles);
+  Future<Result<void, Failure>> saveGliderProfile(GliderProfile profile) async {
+    final result = await getGliderProfiles();
+    return result.fold((profiles) {
+      final list = List<GliderProfile>.from(profiles);
+      final index = list.indexWhere((p) => p.id == profile.id);
+      if (index != -1) {
+        list[index] = profile;
+      } else {
+        list.add(profile);
+      }
+      return _writeProfiles(list);
+    }, (failure) => Error(failure));
   }
 
   @override
-  Future<void> deleteGliderProfile(String id) async {
-    final profiles = await getGliderProfiles();
-    profiles.removeWhere((p) => p.id == id);
-    await _writeProfiles(profiles);
+  Future<Result<void, Failure>> deleteGliderProfile(String id) async {
+    final result = await getGliderProfiles();
+    return result.fold((profiles) {
+      final list = List<GliderProfile>.from(profiles);
+      list.removeWhere((p) => p.id == id);
+      return _writeProfiles(list);
+    }, (failure) => Error(failure));
   }
 
   @override
-  Future<void> updateProfileName(String id, String newName) async {
-    final profiles = await getGliderProfiles();
-    final index = profiles.indexWhere((p) => p.id == id);
-    if (index != -1) {
-      // Создаем новый объект профиля с измененным именем
-      profiles[index] = GliderProfile(
-        id: profiles[index].id,
-        name: newName,
-        photoPath: profiles[index].photoPath,
-      );
-      await _writeProfiles(profiles);
-    }
+  Future<Result<void, Failure>> updateProfileName(
+    String id,
+    String newName,
+  ) async {
+    final result = await getGliderProfiles();
+    return result.fold((profiles) {
+      final list = List<GliderProfile>.from(profiles);
+      final index = list.indexWhere((p) => p.id == id);
+      if (index != -1) {
+        list[index] = GliderProfile(
+          id: list[index].id,
+          name: newName,
+          photoPath: list[index].photoPath,
+        );
+        return _writeProfiles(list);
+      }
+      return const Error(StorageFailure('Профиль не найден'));
+    }, (failure) => Error(failure));
   }
 }

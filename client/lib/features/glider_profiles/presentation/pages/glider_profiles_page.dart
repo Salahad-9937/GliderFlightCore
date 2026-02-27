@@ -1,41 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// Импортируем экран из другой фичи
+import '../../../../core/di/core_providers.dart';
 import '../../../control_panel/presentation/pages/control_panel_page.dart';
 import '../../domain/entities/glider_profile.dart';
 import '../providers/glider_profiles_providers.dart';
 import '../widgets/add_profile_dialog.dart';
 import '../widgets/delete_profile_dialog.dart';
 
-/// Главный экран приложения, отображающий список профилей планеров.
 class GliderProfilesPage extends ConsumerWidget {
   const GliderProfilesPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final profilesAsyncValue = ref.watch(gliderProfilesNotifierProvider);
+    final profilesAsync = ref.watch(gliderProfilesNotifierProvider);
+    final strings = ref.watch(l10nProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Мои планеры'),
-      ),
-      body: profilesAsyncValue.when(
-        data: (profiles) {
-          if (profiles.isEmpty) {
-            return const _EmptyState();
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(8.0),
-            itemCount: profiles.length,
-            itemBuilder: (context, index) {
-              final profile = profiles[index];
-              return _GliderProfileCard(profile: profile);
-            },
-          );
-        },
+      appBar: AppBar(title: Text(strings.profiles.myGliders)),
+      body: profilesAsync.when(
+        data: (profiles) => profiles.isEmpty
+            ? _EmptyState(strings: strings.profiles)
+            : ListView.builder(
+                padding: const EdgeInsets.all(8.0),
+                itemCount: profiles.length,
+                itemBuilder: (context, index) =>
+                    _GliderProfileCard(profile: profiles[index]),
+              ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Ошибка: $err')),
+        error: (err, _) => Center(child: Text('${strings.core.error}: $err')),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => showAddProfileDialog(context, ref),
@@ -45,43 +38,49 @@ class GliderProfilesPage extends ConsumerWidget {
   }
 }
 
-/// Виджет-карточка для отображения одного профиля планера.
 class _GliderProfileCard extends ConsumerWidget {
-  const _GliderProfileCard({required this.profile});
   final GliderProfile profile;
+  const _GliderProfileCard({required this.profile});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = ref.watch(l10nProvider);
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
       child: ListTile(
-        contentPadding: const EdgeInsets.only(left: 20, right: 8, top: 10, bottom: 10),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 10,
+        ),
         leading: CircleAvatar(
           radius: 24,
-          child: Text(profile.name.isNotEmpty ? profile.name[0].toUpperCase() : ''),
+          child: Text(
+            profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
+          ),
         ),
-        title: Text(profile.name, style: Theme.of(context).textTheme.titleLarge),
-        // При нажатии на ListTile происходит переход на следующий экран
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => ControlPanelPage(gliderProfileId: profile.id),
-            ),
-          );
-        },
-        // Добавляем меню с опциями для карточки
+        title: Text(
+          profile.name,
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ControlPanelPage(gliderProfileId: profile.id),
+          ),
+        ),
         trailing: PopupMenuButton<String>(
           onSelected: (value) {
-            if (value == 'delete') {
+            if (value == 'delete')
               showDeleteProfileDialog(context, ref, profile);
-            }
           },
-          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-            const PopupMenuItem<String>(
+          itemBuilder: (_) => [
+            PopupMenuItem(
               value: 'delete',
               child: ListTile(
-                leading: Icon(Icons.delete_outline),
-                title: Text('Удалить'),
+                leading: const Icon(Icons.delete_outline),
+                title: Text(strings.core.delete),
+                contentPadding: EdgeInsets.zero,
               ),
             ),
           ],
@@ -91,10 +90,9 @@ class _GliderProfileCard extends ConsumerWidget {
   }
 }
 
-
-/// Виджет для отображения пустого состояния, когда нет профилей.
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  final dynamic strings;
+  const _EmptyState({required this.strings});
 
   @override
   Widget build(BuildContext context) {
@@ -102,16 +100,20 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.airplanemode_inactive_outlined, size: 80, color: Colors.grey.shade700),
+          Icon(
+            Icons.airplanemode_inactive_outlined,
+            size: 80,
+            color: Colors.grey.shade700,
+          ),
           const SizedBox(height: 16),
           Text(
-            'Нет добавленных планеров',
+            strings.noGliders,
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 8),
           Text(
-            'Нажмите "+", чтобы создать первый профиль',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+            strings.addFirstProfile,
+            style: const TextStyle(color: Colors.grey),
           ),
         ],
       ),
