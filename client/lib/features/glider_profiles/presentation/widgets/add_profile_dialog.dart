@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/core_providers.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../providers/glider_profiles_providers.dart';
 
 void showAddProfileDialog(BuildContext context, WidgetRef ref) {
@@ -11,13 +12,20 @@ void showAddProfileDialog(BuildContext context, WidgetRef ref) {
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
-      title: Text(strings.profiles.newGliderProfile),
+      title: Text(
+        strings.profiles.newGliderProfile,
+        style: AppTextStyles.title,
+      ),
       content: Form(
         key: formKey,
         child: TextFormField(
           controller: controller,
           autofocus: true,
-          decoration: InputDecoration(labelText: strings.profiles.gliderName),
+          style: AppTextStyles.body,
+          decoration: InputDecoration(
+            labelText: strings.profiles.gliderName,
+            labelStyle: AppTextStyles.telemetryLabel,
+          ),
           validator: (v) => (v == null || v.trim().isEmpty)
               ? strings.profiles.nameNotEmpty
               : null,
@@ -26,7 +34,7 @@ void showAddProfileDialog(BuildContext context, WidgetRef ref) {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(strings.core.cancel),
+          child: Text(strings.core.cancel, style: AppTextStyles.body),
         ),
         FilledButton(
           onPressed: () {
@@ -37,7 +45,10 @@ void showAddProfileDialog(BuildContext context, WidgetRef ref) {
               Navigator.pop(context);
             }
           },
-          child: Text(strings.core.ok),
+          child: Text(
+            strings.core.ok,
+            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+          ),
         ),
       ],
     ),

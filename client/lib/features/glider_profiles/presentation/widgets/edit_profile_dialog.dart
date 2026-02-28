@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/core_providers.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../providers/glider_profiles_providers.dart';
 
 void showEditProfileDialog(
@@ -16,13 +17,17 @@ void showEditProfileDialog(
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
-      title: Text(strings.profiles.renameGlider),
+      title: Text(strings.profiles.renameGlider, style: AppTextStyles.title),
       content: Form(
         key: formKey,
         child: TextFormField(
           controller: controller,
           autofocus: true,
-          decoration: InputDecoration(labelText: strings.profiles.gliderName),
+          style: AppTextStyles.body,
+          decoration: InputDecoration(
+            labelText: strings.profiles.gliderName,
+            labelStyle: AppTextStyles.telemetryLabel,
+          ),
           validator: (v) => (v == null || v.trim().isEmpty)
               ? strings.profiles.nameNotEmpty
               : null,
@@ -31,7 +36,7 @@ void showEditProfileDialog(
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(strings.core.cancel),
+          child: Text(strings.core.cancel, style: AppTextStyles.body),
         ),
         FilledButton(
           onPressed: () {
@@ -42,7 +47,10 @@ void showEditProfileDialog(
               Navigator.pop(context);
             }
           },
-          child: Text(strings.core.save),
+          child: Text(
+            strings.core.save,
+            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+          ),
         ),
       ],
     ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_providers.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../control_panel/presentation/pages/control_panel_page.dart';
 import '../../domain/entities/glider_profile.dart';
 import '../providers/glider_profiles_providers.dart';
@@ -17,7 +18,9 @@ class GliderProfilesPage extends ConsumerWidget {
     final strings = ref.watch(l10nProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(strings.profiles.myGliders)),
+      appBar: AppBar(
+        title: Text(strings.profiles.myGliders, style: AppTextStyles.title),
+      ),
       body: profilesAsync.when(
         data: (profiles) => profiles.isEmpty
             ? _EmptyState(strings: strings.profiles)
@@ -28,7 +31,14 @@ class GliderProfilesPage extends ConsumerWidget {
                     _GliderProfileCard(profile: profiles[index]),
               ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text('${strings.core.error}: $err')),
+        error: (err, _) => Center(
+          child: Text(
+            '${strings.core.error}: $err',
+            style: AppTextStyles.body.copyWith(
+              color: Theme.of(context).colorScheme.error,
+            ),
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => showAddProfileDialog(context, ref),
@@ -57,11 +67,15 @@ class _GliderProfileCard extends ConsumerWidget {
           radius: 24,
           child: Text(
             profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
+            style: AppTextStyles.title.copyWith(fontSize: 20),
           ),
         ),
         title: Text(
           profile.name,
-          style: Theme.of(context).textTheme.titleLarge,
+          style: AppTextStyles.body.copyWith(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
         onTap: () => Navigator.push(
           context,
@@ -79,8 +93,16 @@ class _GliderProfileCard extends ConsumerWidget {
             PopupMenuItem(
               value: 'delete',
               child: ListTile(
-                leading: const Icon(Icons.delete_outline),
-                title: Text(strings.core.delete),
+                leading: Icon(
+                  Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                title: Text(
+                  strings.core.delete,
+                  style: AppTextStyles.body.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
@@ -107,14 +129,11 @@ class _EmptyState extends StatelessWidget {
             color: Colors.grey.shade700,
           ),
           const SizedBox(height: 16),
-          Text(
-            strings.noGliders,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text(strings.noGliders, style: AppTextStyles.title),
           const SizedBox(height: 8),
           Text(
             strings.addFirstProfile,
-            style: const TextStyle(color: Colors.grey),
+            style: AppTextStyles.body.copyWith(color: Colors.grey),
           ),
         ],
       ),

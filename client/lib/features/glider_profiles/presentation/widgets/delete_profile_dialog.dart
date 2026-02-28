@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/core_providers.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/entities/glider_profile.dart';
 import '../providers/glider_profiles_providers.dart';
 
@@ -14,14 +15,15 @@ void showDeleteProfileDialog(
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
-      title: Text(strings.core.confirmation),
+      title: Text(strings.core.confirmation, style: AppTextStyles.title),
       content: Text(
         '${strings.profiles.deleteProfileConfirm} "${profile.name}"?',
+        style: AppTextStyles.body,
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(strings.core.cancel),
+          child: Text(strings.core.cancel, style: AppTextStyles.body),
         ),
         FilledButton.tonal(
           onPressed: () {
@@ -30,14 +32,22 @@ void showDeleteProfileDialog(
                 .deleteProfile(profile.id);
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(strings.profiles.profileDeleted)),
+              SnackBar(
+                content: Text(
+                  strings.profiles.profileDeleted,
+                  style: AppTextStyles.body,
+                ),
+              ),
             );
           },
           style: FilledButton.styleFrom(
             backgroundColor: Theme.of(context).colorScheme.errorContainer,
             foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
           ),
-          child: Text(strings.core.delete),
+          child: Text(
+            strings.core.delete,
+            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+          ),
         ),
       ],
     ),
