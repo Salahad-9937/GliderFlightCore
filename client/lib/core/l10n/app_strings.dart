@@ -2,7 +2,8 @@ import 'parts/core_strings.dart';
 import 'parts/comm_strings.dart';
 import 'parts/prog_strings.dart';
 import 'parts/panel_strings.dart';
-import 'parts/profile_strings.dart'; // Добавлено
+import 'parts/profile_strings.dart';
+import 'parts/onboarding_strings.dart'; // Добавлено
 
 /// Главный контейнер локализации.
 class AppStrings {
@@ -12,7 +13,8 @@ class AppStrings {
   final CommStrings comm;
   final ProgStrings prog;
   final PanelStrings panel;
-  final ProfileStrings profiles; // Добавлено
+  final ProfileStrings profiles;
+  final OnboardingStrings onboarding; // Добавлено
 
   const AppStrings({
     required this.appTitle,
@@ -20,7 +22,8 @@ class AppStrings {
     required this.comm,
     required this.prog,
     required this.panel,
-    required this.profiles, // Добавлено
+    required this.profiles,
+    required this.onboarding, // Добавлено
   });
 
   static const ru = AppStrings(
@@ -29,6 +32,7 @@ class AppStrings {
     comm: CommStrings.ru,
     prog: ProgStrings.ru,
     panel: PanelStrings.ru,
-    profiles: ProfileStrings.ru, // Добавлено
+    profiles: ProfileStrings.ru,
+    onboarding: OnboardingStrings.ru, // Добавлено
   );
 }
