@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_providers.dart';
 import '../../../../core/l10n/app_strings.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/entities/system_health.dart';
 import '../providers/system_health_provider.dart';
 
@@ -27,7 +28,10 @@ class SystemHealthCard extends ConsumerWidget {
             const Divider(height: 24),
             systemAsync.when(
               data: (health) => health == null
-                  ? Text(strings.panel.deviceNotReady)
+                  ? Text(
+                      strings.panel.deviceNotReady,
+                      style: AppTextStyles.body,
+                    )
                   : _buildSystemInfo(context, health, strings),
               loading: () => const Center(
                 child: Padding(
@@ -37,7 +41,9 @@ class SystemHealthCard extends ConsumerWidget {
               ),
               error: (e, __) => Text(
                 '${strings.panel.diagError}: $e',
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                style: AppTextStyles.body.copyWith(
+                  color: Theme.of(context).colorScheme.error,
+                ),
               ),
             ),
           ],
@@ -63,19 +69,11 @@ class SystemHealthCard extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          strings.panel.systemDiagTitle,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        Text(strings.panel.systemDiagTitle, style: AppTextStyles.title),
         Row(
           children: [
             if (timeAgo.isNotEmpty)
-              Text(
-                timeAgo,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: Colors.grey),
-              ),
+              Text(timeAgo, style: AppTextStyles.telemetryLabel),
             const SizedBox(width: 8),
             IconButton(
               onPressed: () => ref.invalidate(systemHealthProvider(profileId)),
@@ -121,10 +119,14 @@ class SystemHealthCard extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          Text(label, style: AppTextStyles.telemetryLabel),
           Text(
             value,
-            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+            style: AppTextStyles.body.copyWith(
+              fontWeight: FontWeight.w600,
+              fontFamily: 'RobotoMono',
+              fontSize: 13,
+            ),
           ),
         ],
       ),

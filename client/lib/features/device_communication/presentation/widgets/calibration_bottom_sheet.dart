@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_providers.dart';
 import '../../../../core/l10n/app_strings.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../providers/sensor_calibration_providers.dart';
 
 /// Шторка управления калибровкой датчиков.
@@ -30,7 +31,7 @@ class CalibrationBottomSheet extends ConsumerWidget {
           children: [
             Text(
               strings.comm.calibrationTitle,
-              style: Theme.of(context).textTheme.headlineSmall,
+              style: AppTextStyles.title.copyWith(fontSize: 22),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -39,13 +40,16 @@ class CalibrationBottomSheet extends ConsumerWidget {
                 calibState.phase == CalibrationPhase.success) ...[
               Text(
                 strings.comm.operationalControl,
-                style: Theme.of(context).textTheme.titleSmall,
+                style: AppTextStyles.title.copyWith(fontSize: 14),
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: () => notifier.zeroAltitude(),
                 icon: const Icon(Icons.vertical_align_center),
-                label: Text(strings.comm.zeroAltitudeBtn),
+                label: Text(
+                  strings.comm.zeroAltitudeBtn,
+                  style: AppTextStyles.body,
+                ),
               ),
               const SizedBox(height: 24),
             ],
@@ -53,7 +57,7 @@ class CalibrationBottomSheet extends ConsumerWidget {
             if (calibState.phase == CalibrationPhase.zeroing) ...[
               Text(
                 strings.comm.operationalControl,
-                style: Theme.of(context).textTheme.titleSmall,
+                style: AppTextStyles.title.copyWith(fontSize: 14),
               ),
               const SizedBox(height: 8),
               _buildProgressIndicator(
@@ -68,7 +72,7 @@ class CalibrationBottomSheet extends ConsumerWidget {
             if (calibState.phase != CalibrationPhase.zeroing) ...[
               Text(
                 strings.comm.fullSetup,
-                style: Theme.of(context).textTheme.titleSmall,
+                style: AppTextStyles.title.copyWith(fontSize: 14),
               ),
               const SizedBox(height: 8),
 
@@ -76,7 +80,10 @@ class CalibrationBottomSheet extends ConsumerWidget {
                 FilledButton.icon(
                   onPressed: notifier.startFullCalibration,
                   icon: const Icon(Icons.build_circle_outlined),
-                  label: Text(strings.comm.startFullCalibBtn),
+                  label: Text(
+                    strings.comm.startFullCalibBtn,
+                    style: AppTextStyles.body,
+                  ),
                 )
               else if (calibState.phase == CalibrationPhase.stabilization)
                 _buildProgressIndicator(
@@ -108,7 +115,10 @@ class CalibrationBottomSheet extends ConsumerWidget {
               TextButton.icon(
                 onPressed: notifier.cancelOperation,
                 icon: const Icon(Icons.cancel_outlined),
-                label: Text(strings.comm.cancelOperation),
+                label: Text(
+                  strings.comm.cancelOperation,
+                  style: AppTextStyles.body,
+                ),
                 style: TextButton.styleFrom(
                   foregroundColor: Theme.of(context).colorScheme.error,
                 ),
@@ -135,7 +145,10 @@ class CalibrationBottomSheet extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              label,
+              style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             LinearProgressIndicator(
               value: state.progress,
@@ -145,7 +158,10 @@ class CalibrationBottomSheet extends ConsumerWidget {
             const SizedBox(height: 4),
             Align(
               alignment: Alignment.centerRight,
-              child: Text('${(state.progress * 100).toInt()}%'),
+              child: Text(
+                '${(state.progress * 100).toInt()}%',
+                style: const TextStyle(fontFamily: 'RobotoMono', fontSize: 12),
+              ),
             ),
           ],
         ),
@@ -167,7 +183,7 @@ class CalibrationBottomSheet extends ConsumerWidget {
             const SizedBox(width: 8),
             Text(
               strings.comm.calibSuccess,
-              style: const TextStyle(
+              style: AppTextStyles.body.copyWith(
                 color: Colors.green,
                 fontWeight: FontWeight.bold,
               ),
@@ -180,10 +196,15 @@ class CalibrationBottomSheet extends ConsumerWidget {
             notifier.saveCalibration();
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(strings.comm.calibSavedNotify)),
+              SnackBar(
+                content: Text(
+                  strings.comm.calibSavedNotify,
+                  style: AppTextStyles.body,
+                ),
+              ),
             );
           },
-          child: Text(strings.comm.saveToMemoryBtn),
+          child: Text(strings.comm.saveToMemoryBtn, style: AppTextStyles.body),
         ),
       ],
     );
@@ -199,10 +220,15 @@ class CalibrationBottomSheet extends ConsumerWidget {
       children: [
         Text(
           error ?? strings.core.error,
-          style: TextStyle(color: Theme.of(context).colorScheme.error),
+          style: AppTextStyles.body.copyWith(
+            color: Theme.of(context).colorScheme.error,
+          ),
         ),
         const SizedBox(height: 8),
-        TextButton(onPressed: notifier.reset, child: Text(strings.core.retry)),
+        TextButton(
+          onPressed: notifier.reset,
+          child: Text(strings.core.retry, style: AppTextStyles.body),
+        ),
       ],
     );
   }

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart'; // Добавлено
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/l10n/app_strings.dart';
 import '../providers/device_connection_providers.dart';
 import 'calibration_bottom_sheet.dart';
@@ -51,7 +51,7 @@ class TelemetryDashboard extends ConsumerWidget {
                 children: [
                   Text(
                     altitude,
-                    // Используем моноширинный стиль для стабильности цифр
+                    // Моноширинный шрифт для стабильности цифр
                     style: AppTextStyles.telemetryValue.copyWith(
                       color: altColor,
                     ),
@@ -59,9 +59,9 @@ class TelemetryDashboard extends ConsumerWidget {
                   const SizedBox(width: 8),
                   Text(
                     strings.comm.altitudeUnit,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    style: AppTextStyles.title.copyWith(
                       color: Colors.grey,
-                      fontFamily: 'Inter',
+                      fontSize: 24,
                     ),
                   ),
                 ],
@@ -71,9 +71,9 @@ class TelemetryDashboard extends ConsumerWidget {
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
                     strings.comm.calibratingProgress,
-                    style: const TextStyle(
+                    style: AppTextStyles.body.copyWith(
                       color: AppColors.warning,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -123,7 +123,10 @@ class TelemetryDashboard extends ConsumerWidget {
             );
           },
           icon: const Icon(Icons.settings_input_component),
-          label: Text(strings.comm.calibrationTitle),
+          label: Text(
+            strings.comm.calibrationTitle,
+            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+          ),
         ),
       ],
     );
@@ -139,7 +142,7 @@ class TelemetryDashboard extends ConsumerWidget {
             const SizedBox(width: 8),
             Text(
               strings.comm.sensorsActive,
-              style: const TextStyle(
+              style: AppTextStyles.body.copyWith(
                 color: AppColors.success,
                 fontWeight: FontWeight.bold,
               ),
@@ -167,7 +170,9 @@ class TelemetryDashboard extends ConsumerWidget {
         children: [
           const Icon(Icons.warning_amber_rounded, color: AppColors.error),
           const SizedBox(width: 12),
-          Expanded(child: Text(strings.comm.sensorError)),
+          Expanded(
+            child: Text(strings.comm.sensorError, style: AppTextStyles.body),
+          ),
         ],
       ),
     );
@@ -188,11 +193,11 @@ class TelemetryDashboard extends ConsumerWidget {
             const SizedBox(width: 4),
             Text(
               value,
-              // Для малых цифр также используем моноширинный шрифт
+              // Моноширинный шрифт для малых цифр
               style: const TextStyle(
                 fontFamily: 'RobotoMono',
                 fontSize: 14,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ).copyWith(color: color),
             ),
           ],
