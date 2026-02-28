@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/l10n/app_strings.dart';
 import '../../../device_communication/presentation/providers/program_upload_controller.dart';
 import '../../domain/entities/flight_program.dart';
@@ -55,9 +56,14 @@ class _FlightProgramEditorPageState
           .updateProgram(widget.profileId, _program!);
       setState(() => _hasChanges = false);
       final strings = ref.read(l10nProvider);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(strings.prog.saveLocalSuccess)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            strings.prog.saveLocalSuccess,
+            style: AppTextStyles.body,
+          ),
+        ),
+      );
     }
   }
 
@@ -75,7 +81,10 @@ class _FlightProgramEditorPageState
       case UploadResult.success:
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(strings.prog.uploadSuccess),
+            content: Text(
+              strings.prog.uploadSuccess,
+              style: AppTextStyles.body,
+            ),
             backgroundColor: AppColors.success,
           ),
         );
@@ -83,7 +92,7 @@ class _FlightProgramEditorPageState
       case UploadResult.failure:
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(strings.prog.uploadError),
+            content: Text(strings.prog.uploadError, style: AppTextStyles.body),
             backgroundColor: AppColors.error,
           ),
         );
@@ -91,7 +100,7 @@ class _FlightProgramEditorPageState
       case UploadResult.notConnected:
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(strings.prog.connectFirst),
+            content: Text(strings.prog.connectFirst, style: AppTextStyles.body),
             backgroundColor: AppColors.warning,
           ),
         );
@@ -103,7 +112,11 @@ class _FlightProgramEditorPageState
   Widget build(BuildContext context) {
     final strings = ref.watch(l10nProvider);
     if (_program == null) {
-      return Scaffold(body: Center(child: Text(strings.core.error)));
+      return Scaffold(
+        body: Center(
+          child: Text(strings.core.error, style: AppTextStyles.body),
+        ),
+      );
     }
 
     return PopScope(
@@ -113,16 +126,28 @@ class _FlightProgramEditorPageState
         final shouldPop = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: Text(strings.prog.unsavedChangesTitle),
-            content: Text(strings.prog.unsavedChangesDesc),
+            title: Text(
+              strings.prog.unsavedChangesTitle,
+              style: AppTextStyles.title,
+            ),
+            content: Text(
+              strings.prog.unsavedChangesDesc,
+              style: AppTextStyles.body,
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: Text(strings.core.cancel),
+                child: Text(strings.core.cancel, style: AppTextStyles.body),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: Text(strings.prog.exit),
+                child: Text(
+                  strings.prog.exit,
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.error,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),
@@ -131,7 +156,7 @@ class _FlightProgramEditorPageState
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_program!.name),
+          title: Text(_program!.name, style: AppTextStyles.title),
           actions: [
             IconButton(
               onPressed: _uploadToDevice,
@@ -215,14 +240,31 @@ class _StepCard extends StatelessWidget {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          child: Text('$stepNumber'),
+          child: Text(
+            '$stepNumber',
+            style: const TextStyle(
+              fontFamily: 'RobotoMono',
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
-        title: Text(
-          '${strings.prog.angle}: ${step.angle}°',
-          style: const TextStyle(fontWeight: FontWeight.bold),
+        title: Row(
+          children: [
+            Text('${strings.prog.angle}: ', style: AppTextStyles.body),
+            Text(
+              '${step.angle}°',
+              style: AppTextStyles.body.copyWith(
+                fontFamily: 'RobotoMono',
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
         subtitle: Text(
           '${step.delaySec} ${strings.panel.unitSec} ${step.delayMs} мс',
+          style: AppTextStyles.telemetryLabel.copyWith(
+            fontFamily: 'RobotoMono',
+          ),
         ),
         trailing: IconButton(
           icon: const Icon(Icons.delete_outline),
@@ -250,14 +292,11 @@ class _EmptySteps extends StatelessWidget {
             color: Colors.grey.shade700,
           ),
           const SizedBox(height: 16),
-          Text(
-            strings.prog.noSteps,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text(strings.prog.noSteps, style: AppTextStyles.title),
           const SizedBox(height: 8),
           Text(
             strings.prog.addFirstStep,
-            style: const TextStyle(color: Colors.grey),
+            style: AppTextStyles.body.copyWith(color: Colors.grey),
           ),
         ],
       ),

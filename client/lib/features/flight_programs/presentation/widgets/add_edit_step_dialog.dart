@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_providers.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/entities/flight_program_step.dart';
 
 Future<FlightProgramStep?> showAddEditStepDialog(
@@ -52,6 +53,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
         widget.existingStep == null
             ? strings.prog.stepNumber
             : strings.prog.edit,
+        style: AppTextStyles.title,
       ),
       content: Form(
         key: _formKey,
@@ -62,14 +64,16 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
             children: [
               Text(
                 strings.prog.angleLabel,
-                style: Theme.of(context).textTheme.titleSmall,
+                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _angleController,
+                style: const TextStyle(fontFamily: 'RobotoMono'),
                 decoration: InputDecoration(
                   suffixText: '°',
                   helperText: strings.prog.angleHelper,
+                  helperStyle: AppTextStyles.telemetryLabel,
                 ),
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -85,7 +89,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
               const SizedBox(height: 24),
               Text(
                 strings.prog.delayBefore,
-                style: Theme.of(context).textTheme.titleSmall,
+                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Row(
@@ -93,8 +97,10 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                   Expanded(
                     child: TextFormField(
                       controller: _secController,
+                      style: const TextStyle(fontFamily: 'RobotoMono'),
                       decoration: InputDecoration(
                         labelText: strings.prog.seconds,
+                        labelStyle: AppTextStyles.telemetryLabel,
                       ),
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -104,8 +110,10 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                   Expanded(
                     child: TextFormField(
                       controller: _msController,
+                      style: const TextStyle(fontFamily: 'RobotoMono'),
                       decoration: InputDecoration(
                         labelText: strings.prog.milliseconds,
+                        labelStyle: AppTextStyles.telemetryLabel,
                       ),
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -121,12 +129,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                 ],
               ),
               const SizedBox(height: 8),
-              Text(
-                strings.prog.delayDesc,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: Colors.grey),
-              ),
+              Text(strings.prog.delayDesc, style: AppTextStyles.telemetryLabel),
             ],
           ),
         ),
@@ -134,7 +137,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(strings.core.cancel),
+          child: Text(strings.core.cancel, style: AppTextStyles.body),
         ),
         FilledButton(
           onPressed: () {
@@ -149,7 +152,10 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
               );
             }
           },
-          child: Text(strings.core.save),
+          child: Text(
+            strings.core.save,
+            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+          ),
         ),
       ],
     );

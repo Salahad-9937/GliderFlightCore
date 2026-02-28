@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/l10n/app_strings.dart';
 import '../../../device_communication/presentation/providers/program_upload_controller.dart';
 import '../../domain/entities/flight_program.dart';
@@ -26,10 +27,7 @@ class FlightProgramsList extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              strings.prog.programsTitle,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text(strings.prog.programsTitle, style: AppTextStyles.title),
             IconButton(
               onPressed: () => showAddProgramDialog(context, ref, profileId),
               icon: const Icon(Icons.add_circle_outline),
@@ -50,7 +48,12 @@ class FlightProgramsList extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Card(
             color: Theme.of(context).colorScheme.errorContainer,
-            child: ListTile(title: Text('${strings.core.error}: $e')),
+            child: ListTile(
+              title: Text(
+                '${strings.core.error}: $e',
+                style: AppTextStyles.body,
+              ),
+            ),
           ),
         ),
       ],
@@ -70,8 +73,14 @@ class _ProgramCard extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
-        title: Text(program.name),
-        subtitle: Text('${strings.prog.stepNumber}ов: ${program.steps.length}'),
+        title: Text(
+          program.name,
+          style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          '${strings.prog.stepNumber}ов: ${program.steps.length}',
+          style: AppTextStyles.telemetryLabel,
+        ),
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
@@ -94,6 +103,7 @@ class _ProgramCard extends ConsumerWidget {
                     res == UploadResult.success
                         ? strings.prog.uploadSuccess
                         : strings.prog.uploadError,
+                    style: AppTextStyles.body,
                   ),
                   backgroundColor: res == UploadResult.success
                       ? AppColors.success
@@ -109,14 +119,22 @@ class _ProgramCard extends ConsumerWidget {
               value: 'upload',
               child: ListTile(
                 leading: const Icon(Icons.upload),
-                title: Text(strings.prog.uploadToDevice),
+                title: Text(
+                  strings.prog.uploadToDevice,
+                  style: AppTextStyles.body,
+                ),
+                contentPadding: EdgeInsets.zero,
               ),
             ),
             PopupMenuItem(
               value: 'delete',
               child: ListTile(
-                leading: const Icon(Icons.delete),
-                title: Text(strings.core.delete),
+                leading: const Icon(Icons.delete, color: AppColors.error),
+                title: Text(
+                  strings.core.delete,
+                  style: AppTextStyles.body.copyWith(color: AppColors.error),
+                ),
+                contentPadding: EdgeInsets.zero,
               ),
             ),
           ],
@@ -133,8 +151,14 @@ class _EmptyCard extends StatelessWidget {
   Widget build(BuildContext context) => Card(
     child: ListTile(
       leading: const Icon(Icons.playlist_add_check_circle_outlined),
-      title: Text(strings.prog.noPrograms),
-      subtitle: Text(strings.prog.addFirstProgram),
+      title: Text(
+        strings.prog.noPrograms,
+        style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+      ),
+      subtitle: Text(
+        strings.prog.addFirstProgram,
+        style: AppTextStyles.telemetryLabel,
+      ),
     ),
   );
 }
