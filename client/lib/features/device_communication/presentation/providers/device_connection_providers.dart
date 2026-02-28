@@ -3,14 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/architecture/use_case.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../../../../core/di/core_providers.dart'; // Добавлено
+import '../../../../core/di/core_providers.dart';
 import '../../domain/entities/device.dart';
 import '../../domain/entities/device_status.dart';
 import 'device_usecase_providers.dart';
 import 'sensor_settings_controller.dart';
 
+/// Нотификатор управления сессией связи с устройством.
 class DeviceConnectionNotifier extends Notifier<Device> {
   Timer? _pollingTimer;
+  int _consecutiveFailures = 0; // Счетчик последовательных ошибок
 
   @override
   Device build() {
@@ -28,6 +30,7 @@ class DeviceConnectionNotifier extends Notifier<Device> {
     }
 
     state = state.copyWith(status: DeviceStatus.connecting);
+    _consecutiveFailures = 0;
 
     final result = await ref
         .read(getDeviceStatusUseCaseProvider)
@@ -40,7 +43,6 @@ class DeviceConnectionNotifier extends Notifier<Device> {
         _startPolling();
       },
       (failure) {
-        // Логируем ошибку через сервис из core
         ref
             .read(loggerServiceProvider)
             .e('Ошибка подключения: ${failure.message}');
@@ -83,16 +85,30 @@ class DeviceConnectionNotifier extends Notifier<Device> {
         .read(getDeviceStatusUseCaseProvider)
         .call(const NoParams());
 
-    result.fold((device) => state = device, (failure) {
-      ref
-          .read(loggerServiceProvider)
-          .w('Потеря связи при опросе: ${failure.message}');
-      _stopPolling();
-      state = Device(
-        status: DeviceStatus.error,
-        errorMessage: 'Связь потеряна: ${failure.message}',
-      );
-    });
+    result.fold(
+      (device) {
+        _consecutiveFailures = 0; // Сбрасываем счетчик при успехе
+        state = device;
+      },
+      (failure) {
+        _consecutiveFailures++;
+        ref
+            .read(loggerServiceProvider)
+            .w(
+              'Сбой опроса ($_consecutiveFailures/${AppConstants.maxConsecutiveFailures}): ${failure.message}',
+            );
+
+        // Разрываем соединение только если превышен лимит попыток
+        if (_consecutiveFailures >= AppConstants.maxConsecutiveFailures) {
+          final strings = ref.read(l10nProvider);
+          _stopPolling();
+          state = Device(
+            status: DeviceStatus.error,
+            errorMessage: '${strings.comm.connectionLost}: ${failure.message}',
+          );
+        }
+      },
+    );
   }
 
   void _stopPolling() {
