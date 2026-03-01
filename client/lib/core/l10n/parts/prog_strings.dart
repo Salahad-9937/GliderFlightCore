@@ -32,6 +32,25 @@ class ProgStrings {
   final String noSteps;
   final String addFirstStep;
 
+  // Новые строки для тактического UI
+  final String missionSequenceEditor;
+  final String totalMissionTime;
+  final String sequenceStatus;
+  final String modified;
+  final String synced;
+  final String unsavedData;
+  final String abortEditing;
+  final String stepConfig;
+  final String servoAngle;
+  final String confirm;
+  final String newMissionProgram;
+  final String eraseProgram;
+  final String confirmErase;
+  final String noMissionSteps;
+  final String unitDeg;
+  final String unitSecShort;
+  final String missionDataSaved;
+
   const ProgStrings({
     required this.programsTitle,
     required this.createProgram,
@@ -64,6 +83,23 @@ class ProgStrings {
     required this.delayDesc,
     required this.noSteps,
     required this.addFirstStep,
+    required this.missionSequenceEditor,
+    required this.totalMissionTime,
+    required this.sequenceStatus,
+    required this.modified,
+    required this.synced,
+    required this.unsavedData,
+    required this.abortEditing,
+    required this.stepConfig,
+    required this.servoAngle,
+    required this.confirm,
+    required this.newMissionProgram,
+    required this.eraseProgram,
+    required this.confirmErase,
+    required this.noMissionSteps,
+    required this.unitDeg,
+    required this.unitSecShort,
+    required this.missionDataSaved,
   });
 
   static const ru = ProgStrings(
@@ -99,5 +135,22 @@ class ProgStrings {
     delayDesc: 'Время отсчитывается от завершения предыдущего шага.',
     noSteps: 'Нет добавленных шагов',
     addFirstStep: 'Нажмите "+", чтобы добавить первый шаг',
+    missionSequenceEditor: 'РЕДАКТОР ПОЛЕТНОЙ ПОСЛЕДОВАТЕЛЬНОСТИ',
+    totalMissionTime: 'ОБЩЕЕ ВРЕМЯ МИССИИ',
+    sequenceStatus: 'СТАТУС ЦИКЛА',
+    modified: 'ИЗМЕНЕНО*',
+    synced: 'СИНХРОНИЗИРОВАНО',
+    unsavedData: 'НЕСОХРАНЕННЫЕ ДАННЫЕ',
+    abortEditing: 'ПРЕРВАТЬ РЕДАКТИРОВАНИЕ И СБРОСИТЬ ИЗМЕНЕНИЯ?',
+    stepConfig: 'КОНФИГУРАЦИЯ ШАГА',
+    servoAngle: 'УГОЛ СЕРВО (0-180)',
+    confirm: 'ПОДТВЕРДИТЬ',
+    newMissionProgram: 'НОВАЯ ПОЛЕТНАЯ ПРОГРАММА',
+    eraseProgram: 'УДАЛЕНИЕ ПРОГРАММЫ',
+    confirmErase: 'ПОДТВЕРДИТЕ УДАЛЕНИЕ МИССИИ:',
+    noMissionSteps: 'ШАГИ МИССИИ НЕ ОПРЕДЕЛЕНЫ',
+    unitDeg: 'ГРАД',
+    unitSecShort: 'СЕК',
+    missionDataSaved: 'ДАННЫЕ МИССИИ СОХРАНЕНЫ',
   );
 }

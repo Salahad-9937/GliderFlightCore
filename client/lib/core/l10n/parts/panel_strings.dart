@@ -19,6 +19,12 @@ class PanelStrings {
   final String noFlightData;
   final String renameGlider;
 
+  // Новые строки для тактического UI
+  final String missionControl;
+  final String hangarManagement;
+  final String slot;
+  final String idLabel;
+
   const PanelStrings({
     required this.systemDiagTitle,
     required this.deviceNotReady,
@@ -38,6 +44,10 @@ class PanelStrings {
     required this.sync,
     required this.noFlightData,
     required this.renameGlider,
+    required this.missionControl,
+    required this.hangarManagement,
+    required this.slot,
+    required this.idLabel,
   });
 
   static const ru = PanelStrings(
@@ -59,5 +69,9 @@ class PanelStrings {
     sync: 'Синхронизировать',
     noFlightData: 'Нет данных о полетах',
     renameGlider: 'Переименовать планер',
+    missionControl: 'УПРАВЛЕНИЕ МИССИЕЙ',
+    hangarManagement: 'УПРАВЛЕНИЕ АНГАРОМ',
+    slot: 'СЛОТ',
+    idLabel: 'ID',
   );
 }

@@ -23,7 +23,6 @@ class OnboardingPage extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Spacer(),
-              // Анимированный логотип/иконка
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -70,7 +69,6 @@ class OnboardingPage extends ConsumerWidget {
                 ),
               ),
               const Spacer(),
-              // Тактическая кнопка
               SizedBox(
                 width: double.infinity,
                 height: 60,
@@ -94,7 +92,7 @@ class OnboardingPage extends ConsumerWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                "SYSTEM VERSION 1.2.0 // READY",
+                strings.onboarding.systemVersion,
                 style: AppTextStyles.instrumentLabel.copyWith(fontSize: 9),
               ),
             ],

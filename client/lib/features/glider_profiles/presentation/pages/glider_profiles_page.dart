@@ -31,11 +31,13 @@ class GliderProfilesPage extends ConsumerWidget {
               strings.profiles.myGliders.toUpperCase(),
               style: AppTextStyles.sectionTitle,
             ),
-            Text('HANGAR MANAGEMENT', style: AppTextStyles.instrumentLabel),
+            Text(
+              strings.panel.hangarManagement,
+              style: AppTextStyles.instrumentLabel,
+            ),
           ],
         ),
       ),
-      // SafeArea защищает контент от системных кнопок снизу
       body: SafeArea(
         child: profilesAsync.when(
           data: (profiles) => profiles.isEmpty
@@ -48,6 +50,7 @@ class GliderProfilesPage extends ConsumerWidget {
                     child: _GliderProfileCard(
                       profile: profiles[index],
                       index: index + 1,
+                      strings: strings,
                     ),
                   ),
                 ),
@@ -80,15 +83,18 @@ class GliderProfilesPage extends ConsumerWidget {
 class _GliderProfileCard extends ConsumerWidget {
   final GliderProfile profile;
   final int index;
+  final dynamic strings;
 
-  const _GliderProfileCard({required this.profile, required this.index});
+  const _GliderProfileCard({
+    required this.profile,
+    required this.index,
+    required this.strings,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final strings = ref.watch(l10nProvider);
-
     return InstrumentCard(
-      label: 'SLOT ${index.toString().padLeft(2, '0')}',
+      label: '${strings.panel.slot} ${index.toString().padLeft(2, '0')}',
       actions: [
         PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert, size: 18, color: AppColors.primary),
@@ -162,7 +168,7 @@ class _GliderProfileCard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'ID: ${profile.id.substring(0, 8).toUpperCase()}',
+                    '${strings.panel.idLabel}: ${profile.id.substring(0, 8).toUpperCase()}',
                     style: AppTextStyles.instrumentLabel.copyWith(fontSize: 9),
                   ),
                 ],

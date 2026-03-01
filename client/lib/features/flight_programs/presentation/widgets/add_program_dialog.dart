@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../providers/flight_programs_providers.dart';
@@ -11,6 +12,7 @@ void showAddProgramDialog(
 ) {
   final controller = TextEditingController();
   final formKey = GlobalKey<FormState>();
+  final strings = ref.read(l10nProvider);
 
   showDialog(
     context: context,
@@ -19,7 +21,10 @@ void showAddProgramDialog(
       shape: const RoundedRectangleBorder(
         side: BorderSide(color: AppColors.primary),
       ),
-      title: Text('NEW MISSION PROGRAM', style: AppTextStyles.sectionTitle),
+      title: Text(
+        strings.prog.newMissionProgram,
+        style: AppTextStyles.sectionTitle,
+      ),
       content: Form(
         key: formKey,
         child: TextFormField(
@@ -27,7 +32,7 @@ void showAddProgramDialog(
           autofocus: true,
           style: AppTextStyles.telemetryValueMedium.copyWith(fontSize: 18),
           decoration: InputDecoration(
-            labelText: 'PROGRAM NAME',
+            labelText: strings.prog.programName.toUpperCase(),
             labelStyle: AppTextStyles.instrumentLabel,
             enabledBorder: const UnderlineInputBorder(
               borderSide: BorderSide(color: AppColors.border),
@@ -36,14 +41,18 @@ void showAddProgramDialog(
               borderSide: BorderSide(color: AppColors.primary),
             ),
           ),
-          validator: (v) =>
-              (v == null || v.trim().isEmpty) ? 'NAME REQUIRED' : null,
+          validator: (v) => (v == null || v.trim().isEmpty)
+              ? strings.prog.nameEmptyError.toUpperCase()
+              : null,
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('CANCEL', style: AppTextStyles.instrumentLabel),
+          child: Text(
+            strings.core.cancel.toUpperCase(),
+            style: AppTextStyles.instrumentLabel,
+          ),
         ),
         FilledButton(
           onPressed: () {
@@ -61,7 +70,10 @@ void showAddProgramDialog(
               borderRadius: BorderRadius.all(Radius.circular(4)),
             ),
           ),
-          child: Text('CREATE', style: AppTextStyles.button),
+          child: Text(
+            strings.core.ok.toUpperCase(),
+            style: AppTextStyles.button,
+          ),
         ),
       ],
     ),

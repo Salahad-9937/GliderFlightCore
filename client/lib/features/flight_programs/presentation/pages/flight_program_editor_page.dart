@@ -65,9 +65,10 @@ class _FlightProgramEditorPageState
           .read(flightProgramsControllerProvider)
           .updateProgram(widget.profileId, _program!);
       setState(() => _hasChanges = false);
+      final strings = ref.read(l10nProvider);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('MISSION DATA SAVED'),
+        SnackBar(
+          content: Text(strings.prog.missionDataSaved.toUpperCase()),
           backgroundColor: AppColors.success,
         ),
       );
@@ -102,7 +103,7 @@ class _FlightProgramEditorPageState
                 style: AppTextStyles.sectionTitle,
               ),
               Text(
-                'MISSION SEQUENCE EDITOR',
+                strings.prog.missionSequenceEditor,
                 style: AppTextStyles.instrumentLabel,
               ),
             ],
@@ -117,7 +118,6 @@ class _FlightProgramEditorPageState
             ),
           ],
         ),
-        // SafeArea защищает список шагов и Mission Summary
         body: SafeArea(
           child: Column(
             children: [
@@ -131,6 +131,7 @@ class _FlightProgramEditorPageState
                         itemBuilder: (context, index) => _StepCard(
                           step: _program!.steps[index],
                           index: index,
+                          strings: strings,
                           onTap: () => _editStep(index),
                           onDelete: () => _deleteStep(index),
                         ),
@@ -165,10 +166,13 @@ class _FlightProgramEditorPageState
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('TOTAL MISSION TIME', style: AppTextStyles.instrumentLabel),
+              Text(
+                strings.prog.totalMissionTime,
+                style: AppTextStyles.instrumentLabel,
+              ),
               InstrumentValue(
                 value: _totalDurationSec.toStringAsFixed(2),
-                unit: 'SEC',
+                unit: strings.prog.unitSecShort,
                 valueStyle: AppTextStyles.telemetryValueMedium.copyWith(
                   color: AppColors.primary,
                 ),
@@ -178,9 +182,12 @@ class _FlightProgramEditorPageState
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('SEQUENCE STATUS', style: AppTextStyles.instrumentLabel),
               Text(
-                _hasChanges ? 'MODIFIED*' : 'SYNCED',
+                strings.prog.sequenceStatus,
+                style: AppTextStyles.instrumentLabel,
+              ),
+              Text(
+                _hasChanges ? strings.prog.modified : strings.prog.synced,
                 style: AppTextStyles.button.copyWith(
                   color: _hasChanges ? AppColors.warning : AppColors.success,
                 ),
@@ -231,22 +238,25 @@ class _FlightProgramEditorPageState
           side: BorderSide(color: AppColors.warning),
         ),
         title: Text(
-          'UNSAVED DATA',
+          strings.prog.unsavedData,
           style: AppTextStyles.sectionTitle.copyWith(color: AppColors.warning),
         ),
         content: Text(
-          'ABORT EDITING AND DISCARD CHANGES?',
+          strings.prog.abortEditing,
           style: AppTextStyles.instrumentLabel.copyWith(color: Colors.white),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('CANCEL', style: AppTextStyles.instrumentLabel),
+            child: Text(
+              strings.core.cancel.toUpperCase(),
+              style: AppTextStyles.instrumentLabel,
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(
-              'ABORT',
+              strings.prog.exit.toUpperCase(),
               style: AppTextStyles.instrumentLabel.copyWith(
                 color: AppColors.error,
               ),
@@ -261,12 +271,14 @@ class _FlightProgramEditorPageState
 class _StepCard extends StatelessWidget {
   final FlightProgramStep step;
   final int index;
+  final dynamic strings;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
   const _StepCard({
     required this.step,
     required this.index,
+    required this.strings,
     required this.onTap,
     required this.onDelete,
   });
@@ -276,7 +288,8 @@ class _StepCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: InstrumentCard(
-        label: 'STEP ${(index + 1).toString().padLeft(2, '0')}',
+        label:
+            '${strings.prog.stepNumber.toUpperCase()} ${(index + 1).toString().padLeft(2, '0')}',
         actions: [
           IconButton(
             onPressed: onDelete,
@@ -296,12 +309,12 @@ class _StepCard extends StatelessWidget {
                   children: [
                     InstrumentValue(
                       value: '${step.angle}',
-                      unit: 'DEG',
+                      unit: strings.prog.unitDeg,
                       color: AppColors.primary,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'DELAY: ${step.delaySec}.${step.delayMs.toString().padLeft(3, '0')}s',
+                      '${strings.prog.delayBefore.toUpperCase()}: ${step.delaySec}.${step.delayMs.toString().padLeft(3, '0')}s',
                       style: AppTextStyles.instrumentLabel,
                     ),
                   ],
@@ -337,9 +350,7 @@ class _ServoVisualizer extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Невидимый блок для смещения центра вращения
                 const SizedBox(width: 14),
-                // Видимое "плечо" сервопривода
                 Container(
                   width: 14,
                   height: 2,
@@ -357,7 +368,6 @@ class _ServoVisualizer extends StatelessWidget {
               ],
             ),
           ),
-          // Центральная точка (ось)
           Container(
             width: 4,
             height: 4,
@@ -378,7 +388,7 @@ class _EmptySteps extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
     child: Text(
-      'NO MISSION STEPS DEFINED',
+      strings.prog.noMissionSteps,
       style: AppTextStyles.instrumentLabel.copyWith(
         color: AppColors.borderBright,
       ),

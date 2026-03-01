@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/entities/flight_program_step.dart';
@@ -45,12 +46,14 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = ref.read(l10nProvider);
+
     return AlertDialog(
       backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         side: BorderSide(color: AppColors.primary),
       ),
-      title: Text('STEP CONFIGURATION', style: AppTextStyles.sectionTitle),
+      title: Text(strings.prog.stepConfig, style: AppTextStyles.sectionTitle),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -59,7 +62,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
             children: [
               _buildField(
                 controller: _angleController,
-                label: 'SERVO ANGLE (0-180)',
+                label: strings.prog.servoAngle,
                 icon: Icons.rotate_right,
                 max: 180,
               ),
@@ -69,7 +72,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                   Expanded(
                     child: _buildField(
                       controller: _secController,
-                      label: 'SECONDS',
+                      label: strings.prog.seconds.toUpperCase(),
                       icon: Icons.timer_outlined,
                     ),
                   ),
@@ -77,7 +80,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                   Expanded(
                     child: _buildField(
                       controller: _msController,
-                      label: 'MILLISEC',
+                      label: strings.prog.milliseconds.toUpperCase(),
                       icon: Icons.speed,
                       max: 999,
                     ),
@@ -91,7 +94,10 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('CANCEL', style: AppTextStyles.instrumentLabel),
+          child: Text(
+            strings.core.cancel.toUpperCase(),
+            style: AppTextStyles.instrumentLabel,
+          ),
         ),
         FilledButton(
           onPressed: _submit,
@@ -102,7 +108,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
               borderRadius: BorderRadius.all(Radius.circular(4)),
             ),
           ),
-          child: Text('CONFIRM', style: AppTextStyles.button),
+          child: Text(strings.prog.confirm, style: AppTextStyles.button),
         ),
       ],
     );
