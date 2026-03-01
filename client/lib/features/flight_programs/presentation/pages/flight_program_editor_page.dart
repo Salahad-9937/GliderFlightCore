@@ -334,15 +334,30 @@ class _ServoVisualizer extends StatelessWidget {
         children: [
           Transform.rotate(
             angle: (angle - 90) * math.pi / 180,
-            child: Container(
-              width: 24,
-              height: 2,
-              decoration: const BoxDecoration(
-                color: AppColors.primary,
-                boxShadow: [BoxShadow(color: AppColors.primary, blurRadius: 4)],
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Невидимый блок для смещения центра вращения
+                const SizedBox(width: 14),
+                // Видимое "плечо" сервопривода
+                Container(
+                  width: 14,
+                  height: 2,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.5),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
+          // Центральная точка (ось)
           Container(
             width: 4,
             height: 4,
