@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_providers.dart';
-import '../../../../core/l10n/app_strings.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../providers/sensor_calibration_providers.dart';
 
-/// Шторка управления калибровкой датчиков.
+/// Терминал калибровки датчиков.
 class CalibrationBottomSheet extends ConsumerWidget {
   const CalibrationBottomSheet({super.key});
 
@@ -16,218 +16,187 @@ class CalibrationBottomSheet extends ConsumerWidget {
     final notifier = ref.read(sensorCalibrationProvider.notifier);
     final strings = ref.watch(l10nProvider);
 
-    final isBusy =
-        calibState.phase == CalibrationPhase.zeroing ||
-        calibState.phase == CalibrationPhase.stabilization ||
-        calibState.phase == CalibrationPhase.measuring;
-
-    return SafeArea(
-      child: Container(
-        padding: const EdgeInsets.all(24.0),
-        width: double.infinity,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              strings.comm.calibrationTitle,
-              style: AppTextStyles.title.copyWith(fontSize: 22),
-              textAlign: TextAlign.center,
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.background,
+        border: Border(top: BorderSide(color: AppColors.primary, width: 2)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-            const SizedBox(height: 24),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            strings.comm.calibrationTitle.toUpperCase(),
+            style: AppTextStyles.sectionTitle.copyWith(fontSize: 20),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 32),
 
-            if (calibState.phase == CalibrationPhase.idle ||
-                calibState.phase == CalibrationPhase.success) ...[
-              Text(
-                strings.comm.operationalControl,
-                style: AppTextStyles.title.copyWith(fontSize: 14),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: () => notifier.zeroAltitude(),
-                icon: const Icon(Icons.vertical_align_center),
-                label: Text(
-                  strings.comm.zeroAltitudeBtn,
-                  style: AppTextStyles.body,
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
+          // Быстрое обнуление
+          if (calibState.phase == CalibrationPhase.idle ||
+              calibState.phase == CalibrationPhase.success)
+            _buildActionButton(
+              label: strings.comm.zeroAltitudeBtn,
+              icon: Icons.exposure_zero,
+              onPressed: notifier.zeroAltitude,
+              color: AppColors.accent,
+            ),
 
-            if (calibState.phase == CalibrationPhase.zeroing) ...[
-              Text(
-                strings.comm.operationalControl,
-                style: AppTextStyles.title.copyWith(fontSize: 14),
-              ),
-              const SizedBox(height: 8),
-              _buildProgressIndicator(
-                context,
-                calibState,
-                label: strings.comm.zeroingProcess,
-                color: Colors.lightBlue,
-              ),
-              const SizedBox(height: 16),
-            ],
+          if (calibState.phase == CalibrationPhase.zeroing)
+            _buildProgress(
+              strings.comm.zeroingProcess,
+              calibState.progress,
+              AppColors.accent,
+            ),
 
-            if (calibState.phase != CalibrationPhase.zeroing) ...[
-              Text(
-                strings.comm.fullSetup,
-                style: AppTextStyles.title.copyWith(fontSize: 14),
-              ),
-              const SizedBox(height: 8),
+          const SizedBox(height: 16),
+          const Divider(color: AppColors.border),
+          const SizedBox(height: 16),
 
-              if (calibState.phase == CalibrationPhase.idle)
-                FilledButton.icon(
-                  onPressed: notifier.startFullCalibration,
-                  icon: const Icon(Icons.build_circle_outlined),
-                  label: Text(
-                    strings.comm.startFullCalibBtn,
-                    style: AppTextStyles.body,
-                  ),
-                )
-              else if (calibState.phase == CalibrationPhase.stabilization)
-                _buildProgressIndicator(
-                  context,
-                  calibState,
-                  label: strings.comm.stabilizationProcess,
-                  color: Colors.orange,
-                )
-              else if (calibState.phase == CalibrationPhase.measuring)
-                _buildProgressIndicator(
-                  context,
-                  calibState,
-                  label: strings.comm.measuringProcess,
-                  color: Colors.blue,
-                )
-              else if (calibState.phase == CalibrationPhase.success)
-                _buildSuccessState(context, notifier, strings)
-              else if (calibState.phase == CalibrationPhase.error)
-                _buildErrorState(
-                  context,
-                  notifier,
-                  calibState.errorMessage,
-                  strings,
-                ),
-            ],
+          // Полная калибровка
+          if (calibState.phase == CalibrationPhase.idle)
+            _buildActionButton(
+              label: strings.comm.startFullCalibBtn,
+              icon: Icons.settings_backup_restore,
+              onPressed: notifier.startFullCalibration,
+              color: AppColors.primary,
+            )
+          else if (calibState.phase == CalibrationPhase.stabilization)
+            _buildProgress(
+              strings.comm.stabilizationProcess,
+              calibState.progress,
+              AppColors.warning,
+            )
+          else if (calibState.phase == CalibrationPhase.measuring)
+            _buildProgress(
+              strings.comm.measuringProcess,
+              calibState.progress,
+              AppColors.primary,
+            )
+          else if (calibState.phase == CalibrationPhase.success)
+            _buildSuccess(notifier, strings)
+          else if (calibState.phase == CalibrationPhase.error)
+            _buildError(notifier, calibState.errorMessage, strings),
 
-            if (isBusy) ...[
-              const SizedBox(height: 16),
-              TextButton.icon(
+          if (calibState.phase != CalibrationPhase.idle &&
+              calibState.phase != CalibrationPhase.success)
+            Padding(
+              padding: const EdgeInsets.only(top: 24),
+              child: TextButton(
                 onPressed: notifier.cancelOperation,
-                icon: const Icon(Icons.cancel_outlined),
-                label: Text(
-                  strings.comm.cancelOperation,
-                  style: AppTextStyles.body,
-                ),
-                style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
+                child: Text(
+                  strings.comm.cancelOperation.toUpperCase(),
+                  style: AppTextStyles.button.copyWith(color: AppColors.error),
                 ),
               ),
-            ],
-
-            const SizedBox(height: 16),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
 
-  Widget _buildProgressIndicator(
-    BuildContext context,
-    CalibrationState state, {
+  Widget _buildActionButton({
     required String label,
+    required IconData icon,
+    required VoidCallback onPressed,
     required Color color,
   }) {
-    return Card(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(
-              value: state.progress,
-              color: color,
-              backgroundColor: Colors.grey.withValues(alpha: 0.2),
-            ),
-            const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                '${(state.progress * 100).toInt()}%',
-                style: const TextStyle(fontFamily: 'RobotoMono', fontSize: 12),
-              ),
-            ),
-          ],
-        ),
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 20),
+      label: Text(label.toUpperCase(), style: AppTextStyles.button),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: color,
+        side: BorderSide(color: color.withValues(alpha: 0.5)),
+        padding: const EdgeInsets.symmetric(vertical: 16),
       ),
     );
   }
 
-  Widget _buildSuccessState(
-    BuildContext context,
-    SensorCalibrationNotifier notifier,
-    AppStrings strings,
-  ) {
+  Widget _buildProgress(String label, double progress, Color color) {
     return Column(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 32),
-            const SizedBox(width: 8),
-            Text(
-              strings.comm.calibSuccess,
-              style: AppTextStyles.body.copyWith(
-                color: Colors.green,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+        Text(
+          label.toUpperCase(),
+          style: AppTextStyles.instrumentLabel.copyWith(color: color),
         ),
-        const SizedBox(height: 16),
-        FilledButton(
-          onPressed: () {
-            notifier.saveCalibration();
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  strings.comm.calibSavedNotify,
-                  style: AppTextStyles.body,
-                ),
-              ),
-            );
-          },
-          child: Text(strings.comm.saveToMemoryBtn, style: AppTextStyles.body),
+        const SizedBox(height: 12),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(2),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 8,
+            color: color,
+            backgroundColor: AppColors.surface,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '${(progress * 100).toInt()}%',
+          style: AppTextStyles.instrumentLabel,
         ),
       ],
     );
   }
 
-  Widget _buildErrorState(
-    BuildContext context,
-    SensorCalibrationNotifier notifier,
-    String? error,
-    AppStrings strings,
-  ) {
+  Widget _buildSuccess(dynamic notifier, dynamic strings) {
     return Column(
       children: [
+        const Icon(
+          Icons.check_circle_outline,
+          color: AppColors.success,
+          size: 48,
+        ),
+        const SizedBox(height: 16),
         Text(
-          error ?? strings.core.error,
-          style: AppTextStyles.body.copyWith(
-            color: Theme.of(context).colorScheme.error,
+          strings.comm.calibSuccess.toUpperCase(),
+          style: AppTextStyles.instrumentLabel.copyWith(
+            color: AppColors.success,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 24),
+        FilledButton(
+          onPressed: () {
+            notifier.saveCalibration();
+          },
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.success,
+            foregroundColor: Colors.black,
+          ),
+          child: Text(
+            strings.comm.saveToMemoryBtn.toUpperCase(),
+            style: AppTextStyles.button,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildError(dynamic notifier, String? error, dynamic strings) {
+    return Column(
+      children: [
+        const Icon(Icons.error_outline, color: AppColors.error, size: 48),
+        const SizedBox(height: 16),
+        Text(
+          error?.toUpperCase() ?? 'CALIB_ERROR',
+          style: AppTextStyles.instrumentLabel.copyWith(color: AppColors.error),
+        ),
+        const SizedBox(height: 16),
         TextButton(
           onPressed: notifier.reset,
-          child: Text(strings.core.retry, style: AppTextStyles.body),
+          child: Text(strings.core.retry.toUpperCase()),
         ),
       ],
     );

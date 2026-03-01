@@ -1,40 +1,52 @@
 import 'package:flutter/material.dart';
+import 'app_colors.dart';
 
-/// Профессиональная система типографики приложения.
-///
-/// Использует Inter для текстов и RobotoMono для телеметрии.
+/// Система типографики, ориентированная на мгновенное считывание данных.
 class AppTextStyles {
   static const String _fontFamily = 'Inter';
   static const String _dataFontFamily = 'RobotoMono';
 
-  /// Стиль для крупных значений телеметрии (высота, давление).
-  static const TextStyle telemetryValue = TextStyle(
+  /// Огромные значения телеметрии (Высота)
+  static const TextStyle telemetryValueLarge = TextStyle(
     fontFamily: _dataFontFamily,
-    fontSize: 64,
-    fontWeight: FontWeight.w500,
-    letterSpacing: -2,
+    fontSize: 72,
+    fontWeight: FontWeight.w700,
+    color: Colors.white,
+    letterSpacing: -3,
   );
 
-  /// Стиль для подписей к данным телеметрии.
-  static const TextStyle telemetryLabel = TextStyle(
+  /// Средние значения (Температура, Давление)
+  static const TextStyle telemetryValueMedium = TextStyle(
+    fontFamily: _dataFontFamily,
+    fontSize: 24,
+    fontWeight: FontWeight.w600,
+    color: Colors.white,
+  );
+
+  /// Подписи к приборам (Label)
+  static const TextStyle instrumentLabel = TextStyle(
     fontFamily: _fontFamily,
-    fontSize: 12,
-    fontWeight: FontWeight.w400,
-    color: Colors.grey,
+    fontSize: 11,
+    fontWeight: FontWeight.w800,
+    color: Color(0xFF888888),
+    letterSpacing: 1.2,
+    height: 1.0,
+  );
+
+  /// Заголовки блоков
+  static const TextStyle sectionTitle = TextStyle(
+    fontFamily: _fontFamily,
+    fontSize: 14,
+    fontWeight: FontWeight.w900,
+    color: AppColors.primary,
     letterSpacing: 0.5,
   );
 
-  /// Стиль заголовков разделов.
-  static const TextStyle title = TextStyle(
+  /// Текст кнопок
+  static const TextStyle button = TextStyle(
     fontFamily: _fontFamily,
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: FontWeight.w700,
-  );
-
-  /// Основной текст интерфейса.
-  static const TextStyle body = TextStyle(
-    fontFamily: _fontFamily,
-    fontSize: 14,
-    fontWeight: FontWeight.w400,
+    letterSpacing: 0.5,
   );
 }

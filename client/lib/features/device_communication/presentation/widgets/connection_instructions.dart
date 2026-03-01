@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_providers.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/presentation/widgets/instrument_card.dart';
 import '../../domain/entities/device_status.dart';
 import '../providers/device_connection_providers.dart';
 
-/// Виджет с инструкцией по подключению к Wi-Fi планера.
+/// Виджет ожидания связи в стиле системного лога.
 class ConnectionInstructions extends ConsumerWidget {
   const ConnectionInstructions({super.key});
 
@@ -17,65 +19,53 @@ class ConnectionInstructions extends ConsumerWidget {
     final strings = ref.watch(l10nProvider);
 
     final isConnecting = device.status == DeviceStatus.connecting;
+    final isError = device.status == DeviceStatus.error;
 
-    return Column(
-      key: const ValueKey('disconnected_state'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(strings.comm.connectionTitle, style: AppTextStyles.title),
-            if (device.status == DeviceStatus.error)
-              Icon(
-                Icons.error_outline,
-                color: Theme.of(context).colorScheme.error,
-              ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        Text(
-          '${strings.comm.connectionStep1}\n${strings.comm.connectionStep2}',
-          style: AppTextStyles.body.copyWith(height: 1.6, color: Colors.grey),
-        ),
-        const SizedBox(height: 24),
-
-        FilledButton.icon(
-          onPressed: isConnecting ? null : notifier.connect,
-          icon: isConnecting
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white70,
-                  ),
-                )
-              : const Icon(Icons.wifi_find_rounded),
-          label: Text(
-            isConnecting
-                ? strings.comm.connectionSearching
-                : strings.comm.connectionCheck,
-            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+    return InstrumentCard(
+      label: 'SYSTEM STATUS: OFFLINE',
+      borderColor: isError ? AppColors.error : AppColors.border,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            '${strings.comm.connectionStep1}\n${strings.comm.connectionStep2}'
+                .toUpperCase(),
+            style: AppTextStyles.instrumentLabel.copyWith(height: 1.8),
           ),
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-          ),
-        ),
-
-        if (device.status == DeviceStatus.error)
-          Padding(
-            padding: const EdgeInsets.only(top: 12.0),
-            child: Text(
-              device.errorMessage ?? strings.comm.connectionError,
-              style: AppTextStyles.telemetryLabel.copyWith(
-                color: Theme.of(context).colorScheme.error,
-              ),
-              textAlign: TextAlign.center,
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: isConnecting ? null : notifier.connect,
+            style: FilledButton.styleFrom(
+              backgroundColor: isError ? AppColors.error : AppColors.primary,
+              foregroundColor: Colors.black,
             ),
+            child: isConnecting
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.black,
+                    ),
+                  )
+                : Text(
+                    strings.comm.connectionCheck.toUpperCase(),
+                    style: AppTextStyles.button,
+                  ),
           ),
-      ],
+          if (isError)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                'ERROR: ${device.errorMessage}'.toUpperCase(),
+                style: AppTextStyles.instrumentLabel.copyWith(
+                  color: AppColors.error,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

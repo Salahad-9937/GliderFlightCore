@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_providers.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../glider_profiles/presentation/providers/glider_profiles_providers.dart';
 import '../../../glider_profiles/presentation/widgets/edit_profile_dialog.dart';
@@ -15,12 +16,8 @@ import '../../../device_communication/presentation/widgets/system_health_card.da
 
 import '../widgets/flight_history_section.dart';
 
-/// Страница управления планером.
-///
-/// Выступает в роли композиционного узла, объединяя виджеты телеметрии,
-/// программ и истории для конкретного профиля.
+/// Страница управления планером в стиле тактического терминала.
 class ControlPanelPage extends ConsumerStatefulWidget {
-  /// Идентификатор профиля планера.
   final String gliderProfileId;
 
   const ControlPanelPage({super.key, required this.gliderProfileId});
@@ -42,7 +39,6 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
     _settingsController = ref.read(sensorSettingsControllerProvider);
     WidgetsBinding.instance.addObserver(this);
 
-    // Инициируем подключение при входе на страницу
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _connectionNotifier.connect();
     });
@@ -51,7 +47,6 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // Полный разрыв сессии при уходе со страницы
     _connectionNotifier.disconnect();
     super.dispose();
   }
@@ -85,16 +80,27 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
 
     if (profile == null) {
       return Scaffold(
-        appBar: AppBar(),
+        backgroundColor: AppColors.background,
         body: Center(
-          child: Text(strings.panel.profileNotFound, style: AppTextStyles.body),
+          child: Text(
+            strings.panel.profileNotFound.toUpperCase(),
+            style: AppTextStyles.instrumentLabel,
+          ),
         ),
       );
     }
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(profile.name, style: AppTextStyles.title),
+        backgroundColor: AppColors.background,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(profile.name.toUpperCase(), style: AppTextStyles.sectionTitle),
+            Text('MISSION CONTROL', style: AppTextStyles.instrumentLabel),
+          ],
+        ),
         actions: [
           IconButton(
             onPressed: () => showEditProfileDialog(
@@ -103,13 +109,13 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
               widget.gliderProfileId,
               profile.name,
             ),
-            icon: const Icon(Icons.edit_outlined),
+            icon: const Icon(Icons.edit_note, color: AppColors.primary),
             tooltip: strings.panel.renameGlider,
           ),
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
         children: [
           // Основная телеметрия
           DeviceStatusCard(profileId: widget.gliderProfileId),
@@ -117,16 +123,15 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
 
           // Системная диагностика
           SystemHealthCard(profileId: widget.gliderProfileId),
-
           const SizedBox(height: 24),
 
           // Список полетных программ
           FlightProgramsList(profileId: widget.gliderProfileId),
-
           const SizedBox(height: 24),
 
           // Секция истории полетов
           const FlightHistorySection(),
+          const SizedBox(height: 40),
         ],
       ),
     );

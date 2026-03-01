@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/l10n/app_strings.dart';
+import '../../../../core/presentation/widgets/instrument_card.dart';
 import '../../../device_communication/presentation/providers/program_upload_controller.dart';
 import '../../domain/entities/flight_program.dart';
 import '../pages/flight_program_editor_page.dart';
@@ -12,6 +12,7 @@ import '../providers/flight_programs_providers.dart';
 import 'add_program_dialog.dart';
 import 'delete_program_dialog.dart';
 
+/// Список программ в стиле банка данных.
 class FlightProgramsList extends ConsumerWidget {
   final String profileId;
   const FlightProgramsList({super.key, required this.profileId});
@@ -27,32 +28,45 @@ class FlightProgramsList extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(strings.prog.programsTitle, style: AppTextStyles.title),
+            Text(
+              strings.prog.programsTitle.toUpperCase(),
+              style: AppTextStyles.sectionTitle,
+            ),
             IconButton(
               onPressed: () => showAddProgramDialog(context, ref, profileId),
-              icon: const Icon(Icons.add_circle_outline),
-              tooltip: strings.prog.createProgram,
+              icon: const Icon(
+                Icons.add_circle_outline,
+                color: AppColors.primary,
+                size: 20,
+              ),
+              visualDensity: VisualDensity.compact,
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         programsAsync.when(
           data: (programs) => programs.isEmpty
               ? _EmptyCard(strings: strings)
               : Column(
                   children: [
-                    for (final p in programs)
-                      _ProgramCard(profileId: profileId, program: p),
+                    for (int i = 0; i < programs.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: _ProgramCard(
+                          profileId: profileId,
+                          program: programs[i],
+                          index: i + 1,
+                        ),
+                      ),
                   ],
                 ),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Card(
-            color: Theme.of(context).colorScheme.errorContainer,
-            child: ListTile(
-              title: Text(
-                '${strings.core.error}: $e',
-                style: AppTextStyles.body,
-              ),
+          loading: () => const LinearProgressIndicator(
+            backgroundColor: Colors.transparent,
+          ),
+          error: (e, _) => Text(
+            'PROG_BANK_ERR: $e',
+            style: AppTextStyles.instrumentLabel.copyWith(
+              color: AppColors.error,
             ),
           ),
         ),
@@ -64,33 +78,27 @@ class FlightProgramsList extends ConsumerWidget {
 class _ProgramCard extends ConsumerWidget {
   final String profileId;
   final FlightProgram program;
-  const _ProgramCard({required this.profileId, required this.program});
+  final int index;
+
+  const _ProgramCard({
+    required this.profileId,
+    required this.program,
+    required this.index,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final strings = ref.watch(l10nProvider);
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      child: ListTile(
-        title: Text(
-          program.name,
-          style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(
-          '${strings.prog.stepNumber}ов: ${program.steps.length}',
-          style: AppTextStyles.telemetryLabel,
-        ),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => FlightProgramEditorPage(
-              profileId: profileId,
-              programId: program.id,
-            ),
+    return InstrumentCard(
+      label: 'PROGRAM ${index.toString().padLeft(2, '0')}',
+      actions: [
+        PopupMenuButton<String>(
+          icon: const Icon(
+            Icons.more_horiz,
+            size: 16,
+            color: AppColors.primary,
           ),
-        ),
-        trailing: PopupMenuButton<String>(
           onSelected: (val) async {
             if (val == 'upload') {
               final res = await ref
@@ -103,7 +111,6 @@ class _ProgramCard extends ConsumerWidget {
                     res == UploadResult.success
                         ? strings.prog.uploadSuccess
                         : strings.prog.uploadError,
-                    style: AppTextStyles.body,
                   ),
                   backgroundColor: res == UploadResult.success
                       ? AppColors.success
@@ -114,51 +121,94 @@ class _ProgramCard extends ConsumerWidget {
               showDeleteProgramDialog(context, ref, profileId, program);
             }
           },
+          color: AppColors.surfaceLight,
           itemBuilder: (context) => [
             PopupMenuItem(
               value: 'upload',
-              child: ListTile(
-                leading: const Icon(Icons.upload),
-                title: Text(
-                  strings.prog.uploadToDevice,
-                  style: AppTextStyles.body,
-                ),
-                contentPadding: EdgeInsets.zero,
-              ),
+              child: _buildPopupItem(Icons.upload, strings.prog.uploadToDevice),
             ),
             PopupMenuItem(
               value: 'delete',
-              child: ListTile(
-                leading: const Icon(Icons.delete, color: AppColors.error),
-                title: Text(
-                  strings.core.delete,
-                  style: AppTextStyles.body.copyWith(color: AppColors.error),
-                ),
-                contentPadding: EdgeInsets.zero,
+              child: _buildPopupItem(
+                Icons.delete_outline,
+                strings.core.delete,
+                isError: true,
               ),
+            ),
+          ],
+        ),
+      ],
+      child: InkWell(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FlightProgramEditorPage(
+              profileId: profileId,
+              programId: program.id,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.terminal, color: AppColors.primary, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    program.name.toUpperCase(),
+                    style: AppTextStyles.button.copyWith(color: Colors.white),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${strings.prog.stepNumber.toUpperCase()}S: ${program.steps.length.toString().padLeft(2, '0')}',
+                    style: AppTextStyles.instrumentLabel.copyWith(fontSize: 9),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 12,
+              color: AppColors.borderBright,
             ),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildPopupItem(IconData icon, String label, {bool isError = false}) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: isError ? AppColors.error : Colors.white),
+        const SizedBox(width: 12),
+        Text(
+          label.toUpperCase(),
+          style: AppTextStyles.instrumentLabel.copyWith(
+            color: isError ? AppColors.error : Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _EmptyCard extends StatelessWidget {
-  final AppStrings strings;
+  final dynamic strings;
   const _EmptyCard({required this.strings});
   @override
-  Widget build(BuildContext context) => Card(
-    child: ListTile(
-      leading: const Icon(Icons.playlist_add_check_circle_outlined),
-      title: Text(
-        strings.prog.noPrograms,
-        style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
-      ),
-      subtitle: Text(
-        strings.prog.addFirstProgram,
-        style: AppTextStyles.telemetryLabel,
-      ),
+  Widget build(BuildContext context) => InstrumentCard(
+    child: Row(
+      children: [
+        const Icon(Icons.layers_clear, color: AppColors.border, size: 20),
+        const SizedBox(width: 12),
+        Text(
+          strings.prog.noPrograms.toUpperCase(),
+          style: AppTextStyles.instrumentLabel,
+        ),
+      ],
     ),
   );
 }

@@ -1,45 +1,52 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
-/// Конфигурация визуальной темы приложения.
-///
-/// Исправлена ошибка типизации CardThemeData и настроены локальные шрифты.
+/// Конфигурация темы "Бортовой компьютер".
 class AppTheme {
   static ThemeData get dark => ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-
-    // Установка основного шрифта для всего приложения
     fontFamily: 'Inter',
-
-    colorSchemeSeed: AppColors.primary,
     scaffoldBackgroundColor: AppColors.background,
 
-    // Использование CardThemeData вместо CardTheme
-    cardTheme: CardThemeData(
-      color: AppColors.surface,
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    colorScheme: const ColorScheme.dark(
+      primary: AppColors.primary,
+      secondary: AppColors.accent,
+      surface: AppColors.surface,
+      error: AppColors.error,
     ),
 
-    appBarTheme: const AppBarTheme(
-      backgroundColor: AppColors.surface,
-      centerTitle: true,
+    // Кастомный стиль карточек (инструментальный вид)
+    cardTheme: CardThemeData(
+      color: AppColors.surface,
       elevation: 0,
-      titleTextStyle: TextStyle(
-        fontFamily: 'Inter',
-        fontSize: 18,
-        fontWeight: FontWeight.w700,
-        color: Colors.white,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(4),
+        side: const BorderSide(color: AppColors.border, width: 1),
       ),
     ),
 
-    // Настройка базового TextTheme
-    textTheme: const TextTheme(
-      displayLarge: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700),
-      titleLarge: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700),
-      bodyMedium: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w400),
-      labelSmall: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w400),
+    // Стиль AppBar
+    appBarTheme: const AppBarTheme(
+      backgroundColor: AppColors.background,
+      elevation: 0,
+      centerTitle: false,
+      titleTextStyle: TextStyle(
+        fontFamily: 'Inter',
+        fontSize: 16,
+        fontWeight: FontWeight.w900,
+        color: Colors.white,
+        letterSpacing: 1.0,
+      ),
+    ),
+
+    // Стиль кнопок
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      ),
     ),
   );
 }

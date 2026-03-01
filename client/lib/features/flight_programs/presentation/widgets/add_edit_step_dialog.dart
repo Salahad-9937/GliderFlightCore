@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../../core/di/core_providers.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/entities/flight_program_step.dart';
 
@@ -25,111 +24,66 @@ class _StepDialog extends ConsumerStatefulWidget {
 }
 
 class _StepDialogState extends ConsumerState<_StepDialog> {
+  late TextEditingController _angleController;
+  late TextEditingController _secController;
+  late TextEditingController _msController;
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _angleController;
-  late final TextEditingController _secController;
-  late final TextEditingController _msController;
 
   @override
   void initState() {
     super.initState();
     _angleController = TextEditingController(
-      text: widget.existingStep?.angle.toString() ?? '',
+      text: widget.existingStep?.angle.toString() ?? '90',
     );
     _secController = TextEditingController(
-      text: widget.existingStep?.delaySec.toString() ?? '',
+      text: widget.existingStep?.delaySec.toString() ?? '0',
     );
     _msController = TextEditingController(
-      text: widget.existingStep?.delayMs.toString() ?? '',
+      text: widget.existingStep?.delayMs.toString() ?? '0',
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final strings = ref.watch(l10nProvider);
-
     return AlertDialog(
-      title: Text(
-        widget.existingStep == null
-            ? strings.prog.stepNumber
-            : strings.prog.edit,
-        style: AppTextStyles.title,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        side: BorderSide(color: AppColors.primary),
       ),
+      title: Text('STEP CONFIGURATION', style: AppTextStyles.sectionTitle),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                strings.prog.angleLabel,
-                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
+              _buildField(
                 controller: _angleController,
-                style: const TextStyle(fontFamily: 'RobotoMono'),
-                decoration: InputDecoration(
-                  suffixText: '°',
-                  helperText: strings.prog.angleHelper,
-                  helperStyle: AppTextStyles.telemetryLabel,
-                ),
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                autofocus: true,
-                validator: (v) {
-                  final val = int.tryParse(v ?? '');
-                  if (val == null || val < 0 || val > 180) {
-                    return strings.prog.angleError;
-                  }
-                  return null;
-                },
+                label: 'SERVO ANGLE (0-180)',
+                icon: Icons.rotate_right,
+                max: 180,
               ),
-              const SizedBox(height: 24),
-              Text(
-                strings.prog.delayBefore,
-                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 20),
               Row(
                 children: [
                   Expanded(
-                    child: TextFormField(
+                    child: _buildField(
                       controller: _secController,
-                      style: const TextStyle(fontFamily: 'RobotoMono'),
-                      decoration: InputDecoration(
-                        labelText: strings.prog.seconds,
-                        labelStyle: AppTextStyles.telemetryLabel,
-                      ),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      label: 'SECONDS',
+                      icon: Icons.timer_outlined,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: TextFormField(
+                    child: _buildField(
                       controller: _msController,
-                      style: const TextStyle(fontFamily: 'RobotoMono'),
-                      decoration: InputDecoration(
-                        labelText: strings.prog.milliseconds,
-                        labelStyle: AppTextStyles.telemetryLabel,
-                      ),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      validator: (v) {
-                        final ms = int.tryParse(v ?? '');
-                        if (ms != null && ms > 999) {
-                          return strings.prog.msMaxError;
-                        }
-                        return null;
-                      },
+                      label: 'MILLISEC',
+                      icon: Icons.speed,
+                      max: 999,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Text(strings.prog.delayDesc, style: AppTextStyles.telemetryLabel),
             ],
           ),
         ),
@@ -137,27 +91,68 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(strings.core.cancel, style: AppTextStyles.body),
+          child: Text('CANCEL', style: AppTextStyles.instrumentLabel),
         ),
         FilledButton(
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              Navigator.pop(
-                context,
-                FlightProgramStep(
-                  angle: int.parse(_angleController.text),
-                  delaySec: int.tryParse(_secController.text) ?? 0,
-                  delayMs: int.tryParse(_msController.text) ?? 0,
-                ),
-              );
-            }
-          },
-          child: Text(
-            strings.core.save,
-            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+          onPressed: _submit,
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.black,
+            shape: const BeveledRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(4)),
+            ),
           ),
+          child: Text('CONFIRM', style: AppTextStyles.button),
         ),
       ],
     );
+  }
+
+  Widget _buildField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    int? max,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      style: AppTextStyles.telemetryValueMedium.copyWith(
+        fontSize: 20,
+        color: AppColors.primary,
+      ),
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon, size: 16, color: AppColors.borderBright),
+        labelText: label,
+        labelStyle: AppTextStyles.instrumentLabel,
+        enabledBorder: const OutlineInputBorder(
+          borderSide: BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderSide: BorderSide(color: AppColors.primary),
+        ),
+      ),
+      validator: (v) {
+        if (v == null || v.isEmpty) return 'ERR';
+        final val = int.tryParse(v);
+        if (val == null) return 'ERR';
+        if (max != null && val > max) return 'MAX $max';
+        return null;
+      },
+    );
+  }
+
+  void _submit() {
+    if (_formKey.currentState!.validate()) {
+      Navigator.pop(
+        context,
+        FlightProgramStep(
+          angle: int.parse(_angleController.text),
+          delaySec: int.parse(_secController.text),
+          delayMs: int.parse(_msController.text),
+        ),
+      );
+    }
   }
 }

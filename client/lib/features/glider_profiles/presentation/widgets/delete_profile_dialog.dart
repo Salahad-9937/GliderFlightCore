@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/core_providers.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/entities/glider_profile.dart';
 import '../providers/glider_profiles_providers.dart';
@@ -15,38 +16,47 @@ void showDeleteProfileDialog(
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
-      title: Text(strings.core.confirmation, style: AppTextStyles.title),
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        side: BorderSide(color: AppColors.error, width: 1),
+        borderRadius: BorderRadius.zero,
+      ),
+      title: Text(
+        strings.core.confirmation.toUpperCase(),
+        style: AppTextStyles.sectionTitle.copyWith(color: AppColors.error),
+      ),
       content: Text(
-        '${strings.profiles.deleteProfileConfirm} "${profile.name}"?',
-        style: AppTextStyles.body,
+        '${strings.profiles.deleteProfileConfirm.toUpperCase()}\n"${profile.name.toUpperCase()}"?',
+        style: AppTextStyles.instrumentLabel.copyWith(
+          color: Colors.white,
+          height: 1.5,
+        ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(strings.core.cancel, style: AppTextStyles.body),
+          child: Text(
+            strings.core.cancel.toUpperCase(),
+            style: AppTextStyles.instrumentLabel,
+          ),
         ),
-        FilledButton.tonal(
+        FilledButton(
           onPressed: () {
             ref
                 .read(gliderProfilesNotifierProvider.notifier)
                 .deleteProfile(profile.id);
             Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  strings.profiles.profileDeleted,
-                  style: AppTextStyles.body,
-                ),
-              ),
-            );
           },
           style: FilledButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.errorContainer,
-            foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
+            backgroundColor: AppColors.error,
+            foregroundColor: Colors.white,
+            shape: const BeveledRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(4)),
+            ),
           ),
           child: Text(
-            strings.core.delete,
-            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+            strings.core.delete.toUpperCase(),
+            style: AppTextStyles.button,
           ),
         ),
       ],

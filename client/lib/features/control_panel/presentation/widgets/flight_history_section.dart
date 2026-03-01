@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/core_providers.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/presentation/widgets/instrument_card.dart';
 
-/// Секция для просмотра истории полетов.
-///
-/// На данный момент является заглушкой для будущей фичи flight_history.
+/// Секция истории полетов в инструментальном стиле.
 class FlightHistorySection extends ConsumerWidget {
   const FlightHistorySection({super.key});
 
@@ -13,39 +13,40 @@ class FlightHistorySection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final strings = ref.watch(l10nProvider);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return InstrumentCard(
+      label: strings.panel.flightHistory,
+      actions: [
+        TextButton.icon(
+          onPressed: () {}, // Будущая реализация
+          icon: const Icon(Icons.sync, size: 14, color: AppColors.primary),
+          label: Text(
+            strings.panel.sync.toUpperCase(),
+            style: AppTextStyles.instrumentLabel.copyWith(
+              color: AppColors.primary,
+            ),
+          ),
+          style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+        ),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Row(
           children: [
-            Text(strings.panel.flightHistory, style: AppTextStyles.title),
-            TextButton.icon(
-              onPressed: () {
-                // Будущая реализация синхронизации
-              },
-              icon: const Icon(Icons.sync_rounded),
-              label: Text(
-                strings.panel.sync,
-                style: AppTextStyles.body.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                ),
+            const Icon(
+              Icons.history_toggle_off,
+              color: AppColors.borderBright,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              strings.panel.noFlightData.toUpperCase(),
+              style: AppTextStyles.instrumentLabel.copyWith(
+                color: AppColors.borderBright,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.history_rounded, color: Colors.grey),
-            title: Text(
-              strings.panel.noFlightData,
-              style: AppTextStyles.body.copyWith(color: Colors.grey),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
