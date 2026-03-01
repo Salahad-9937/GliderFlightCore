@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/core_providers.dart';
+import '../../../../core/l10n/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/entities/flight_program_step.dart';
@@ -64,6 +65,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                 controller: _angleController,
                 label: strings.prog.servoAngle,
                 icon: Icons.rotate_right,
+                strings: strings,
                 max: 180,
               ),
               const SizedBox(height: 20),
@@ -74,6 +76,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                       controller: _secController,
                       label: strings.prog.seconds.toUpperCase(),
                       icon: Icons.timer_outlined,
+                      strings: strings,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -82,6 +85,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                       controller: _msController,
                       label: strings.prog.milliseconds.toUpperCase(),
                       icon: Icons.speed,
+                      strings: strings,
                       max: 999,
                     ),
                   ),
@@ -118,6 +122,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
     required TextEditingController controller,
     required String label,
     required IconData icon,
+    required AppStrings strings,
     int? max,
   }) {
     return TextFormField(
@@ -138,11 +143,15 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
         focusedBorder: const OutlineInputBorder(
           borderSide: BorderSide(color: AppColors.primary),
         ),
+        errorStyle: AppTextStyles.instrumentLabel.copyWith(
+          color: AppColors.error,
+          fontSize: 9,
+        ),
       ),
       validator: (v) {
-        if (v == null || v.isEmpty) return 'ERR';
+        if (v == null || v.isEmpty) return strings.core.error.toUpperCase();
         final val = int.tryParse(v);
-        if (val == null) return 'ERR';
+        if (val == null) return strings.core.error.toUpperCase();
         if (max != null && val > max) return 'MAX $max';
         return null;
       },

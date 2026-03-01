@@ -64,7 +64,7 @@ class FlightProgramsList extends ConsumerWidget {
             backgroundColor: Colors.transparent,
           ),
           error: (e, _) => Text(
-            'PROG_BANK_ERR: $e',
+            '${strings.core.systemErrorPrefix}: $e'.toUpperCase(),
             style: AppTextStyles.instrumentLabel.copyWith(
               color: AppColors.error,
             ),

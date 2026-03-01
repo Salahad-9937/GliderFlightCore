@@ -40,6 +40,10 @@ void showAddProgramDialog(
             focusedBorder: const UnderlineInputBorder(
               borderSide: BorderSide(color: AppColors.primary),
             ),
+            errorStyle: AppTextStyles.instrumentLabel.copyWith(
+              color: AppColors.error,
+              fontSize: 9,
+            ),
           ),
           validator: (v) => (v == null || v.trim().isEmpty)
               ? strings.prog.nameEmptyError.toUpperCase()

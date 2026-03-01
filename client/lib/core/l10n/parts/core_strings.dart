@@ -7,6 +7,8 @@ class CoreStrings {
   final String ok;
   final String delete;
   final String confirmation;
+  final String systemErrorPrefix;
+  final String validationError;
 
   const CoreStrings({
     required this.error,
@@ -16,6 +18,8 @@ class CoreStrings {
     required this.ok,
     required this.delete,
     required this.confirmation,
+    required this.systemErrorPrefix,
+    required this.validationError,
   });
 
   static const ru = CoreStrings(
@@ -26,5 +30,7 @@ class CoreStrings {
     ok: 'ОК',
     delete: 'Удалить',
     confirmation: 'Подтверждение',
+    systemErrorPrefix: 'СИСТЕМНАЯ ОШИБКА',
+    validationError: 'ОШИБКА ВВОДА',
   );
 }

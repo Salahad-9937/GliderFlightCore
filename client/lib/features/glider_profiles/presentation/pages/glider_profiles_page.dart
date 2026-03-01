@@ -59,7 +59,7 @@ class GliderProfilesPage extends ConsumerWidget {
           ),
           error: (err, _) => Center(
             child: Text(
-              'SYSTEM_ERR: $err'.toUpperCase(),
+              '${strings.core.systemErrorPrefix}: $err'.toUpperCase(),
               style: AppTextStyles.instrumentLabel.copyWith(
                 color: AppColors.error,
               ),
