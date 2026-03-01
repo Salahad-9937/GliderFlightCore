@@ -35,28 +35,31 @@ class GliderProfilesPage extends ConsumerWidget {
           ],
         ),
       ),
-      body: profilesAsync.when(
-        data: (profiles) => profiles.isEmpty
-            ? _EmptyState(strings: strings.profiles)
-            : ListView.builder(
-                padding: const EdgeInsets.all(16.0),
-                itemCount: profiles.length,
-                itemBuilder: (context, index) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: _GliderProfileCard(
-                    profile: profiles[index],
-                    index: index + 1,
+      // SafeArea защищает контент от системных кнопок снизу
+      body: SafeArea(
+        child: profilesAsync.when(
+          data: (profiles) => profiles.isEmpty
+              ? _EmptyState(strings: strings.profiles)
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16.0),
+                  itemCount: profiles.length,
+                  itemBuilder: (context, index) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: _GliderProfileCard(
+                      profile: profiles[index],
+                      index: index + 1,
+                    ),
                   ),
                 ),
+          loading: () => const Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          ),
+          error: (err, _) => Center(
+            child: Text(
+              'SYSTEM_ERR: $err'.toUpperCase(),
+              style: AppTextStyles.instrumentLabel.copyWith(
+                color: AppColors.error,
               ),
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
-        error: (err, _) => Center(
-          child: Text(
-            'SYSTEM_ERR: $err'.toUpperCase(),
-            style: AppTextStyles.instrumentLabel.copyWith(
-              color: AppColors.error,
             ),
           ),
         ),

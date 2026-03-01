@@ -117,24 +117,27 @@ class _FlightProgramEditorPageState
             ),
           ],
         ),
-        body: Column(
-          children: [
-            _buildMissionSummary(strings),
-            Expanded(
-              child: _program!.steps.isEmpty
-                  ? _EmptySteps(strings: strings)
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _program!.steps.length,
-                      itemBuilder: (context, index) => _StepCard(
-                        step: _program!.steps[index],
-                        index: index,
-                        onTap: () => _editStep(index),
-                        onDelete: () => _deleteStep(index),
+        // SafeArea защищает список шагов и Mission Summary
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildMissionSummary(strings),
+              Expanded(
+                child: _program!.steps.isEmpty
+                    ? _EmptySteps(strings: strings)
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _program!.steps.length,
+                        itemBuilder: (context, index) => _StepCard(
+                          step: _program!.steps[index],
+                          index: index,
+                          onTap: () => _editStep(index),
+                          onDelete: () => _deleteStep(index),
+                        ),
                       ),
-                    ),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: _addStep,

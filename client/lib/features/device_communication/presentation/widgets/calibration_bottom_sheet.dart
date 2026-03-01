@@ -21,88 +21,95 @@ class CalibrationBottomSheet extends ConsumerWidget {
         color: AppColors.background,
         border: Border(top: BorderSide(color: AppColors.primary, width: 2)),
       ),
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            strings.comm.calibrationTitle.toUpperCase(),
-            style: AppTextStyles.sectionTitle.copyWith(fontSize: 20),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-
-          // Быстрое обнуление
-          if (calibState.phase == CalibrationPhase.idle ||
-              calibState.phase == CalibrationPhase.success)
-            _buildActionButton(
-              label: strings.comm.zeroAltitudeBtn,
-              icon: Icons.exposure_zero,
-              onPressed: notifier.zeroAltitude,
-              color: AppColors.accent,
-            ),
-
-          if (calibState.phase == CalibrationPhase.zeroing)
-            _buildProgress(
-              strings.comm.zeroingProcess,
-              calibState.progress,
-              AppColors.accent,
-            ),
-
-          const SizedBox(height: 16),
-          const Divider(color: AppColors.border),
-          const SizedBox(height: 16),
-
-          // Полная калибровка
-          if (calibState.phase == CalibrationPhase.idle)
-            _buildActionButton(
-              label: strings.comm.startFullCalibBtn,
-              icon: Icons.settings_backup_restore,
-              onPressed: notifier.startFullCalibration,
-              color: AppColors.primary,
-            )
-          else if (calibState.phase == CalibrationPhase.stabilization)
-            _buildProgress(
-              strings.comm.stabilizationProcess,
-              calibState.progress,
-              AppColors.warning,
-            )
-          else if (calibState.phase == CalibrationPhase.measuring)
-            _buildProgress(
-              strings.comm.measuringProcess,
-              calibState.progress,
-              AppColors.primary,
-            )
-          else if (calibState.phase == CalibrationPhase.success)
-            _buildSuccess(notifier, strings)
-          else if (calibState.phase == CalibrationPhase.error)
-            _buildError(notifier, calibState.errorMessage, strings),
-
-          if (calibState.phase != CalibrationPhase.idle &&
-              calibState.phase != CalibrationPhase.success)
-            Padding(
-              padding: const EdgeInsets.only(top: 24),
-              child: TextButton(
-                onPressed: notifier.cancelOperation,
-                child: Text(
-                  strings.comm.cancelOperation.toUpperCase(),
-                  style: AppTextStyles.button.copyWith(color: AppColors.error),
+      // SafeArea внутри шторки гарантирует, что кнопки не уйдут под Navigation Bar
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-        ],
+              const SizedBox(height: 24),
+              Text(
+                strings.comm.calibrationTitle.toUpperCase(),
+                style: AppTextStyles.sectionTitle.copyWith(fontSize: 20),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+
+              // Быстрое обнуление
+              if (calibState.phase == CalibrationPhase.idle ||
+                  calibState.phase == CalibrationPhase.success)
+                _buildActionButton(
+                  label: strings.comm.zeroAltitudeBtn,
+                  icon: Icons.exposure_zero,
+                  onPressed: notifier.zeroAltitude,
+                  color: AppColors.accent,
+                ),
+
+              if (calibState.phase == CalibrationPhase.zeroing)
+                _buildProgress(
+                  strings.comm.zeroingProcess,
+                  calibState.progress,
+                  AppColors.accent,
+                ),
+
+              const SizedBox(height: 16),
+              const Divider(color: AppColors.border),
+              const SizedBox(height: 16),
+
+              // Полная калибровка
+              if (calibState.phase == CalibrationPhase.idle)
+                _buildActionButton(
+                  label: strings.comm.startFullCalibBtn,
+                  icon: Icons.settings_backup_restore,
+                  onPressed: notifier.startFullCalibration,
+                  color: AppColors.primary,
+                )
+              else if (calibState.phase == CalibrationPhase.stabilization)
+                _buildProgress(
+                  strings.comm.stabilizationProcess,
+                  calibState.progress,
+                  AppColors.warning,
+                )
+              else if (calibState.phase == CalibrationPhase.measuring)
+                _buildProgress(
+                  strings.comm.measuringProcess,
+                  calibState.progress,
+                  AppColors.primary,
+                )
+              else if (calibState.phase == CalibrationPhase.success)
+                _buildSuccess(notifier, strings)
+              else if (calibState.phase == CalibrationPhase.error)
+                _buildError(notifier, calibState.errorMessage, strings),
+
+              if (calibState.phase != CalibrationPhase.idle &&
+                  calibState.phase != CalibrationPhase.success)
+                Padding(
+                  padding: const EdgeInsets.only(top: 24),
+                  child: TextButton(
+                    onPressed: notifier.cancelOperation,
+                    child: Text(
+                      strings.comm.cancelOperation.toUpperCase(),
+                      style: AppTextStyles.button.copyWith(
+                        color: AppColors.error,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

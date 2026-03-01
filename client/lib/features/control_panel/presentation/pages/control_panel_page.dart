@@ -114,25 +114,28 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-        children: [
-          // Основная телеметрия
-          DeviceStatusCard(profileId: widget.gliderProfileId),
-          const SizedBox(height: 16),
+      // SafeArea предотвращает наложение системных кнопок на список
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          children: [
+            // Основная телеметрия
+            DeviceStatusCard(profileId: widget.gliderProfileId),
+            const SizedBox(height: 16),
 
-          // Системная диагностика
-          SystemHealthCard(profileId: widget.gliderProfileId),
-          const SizedBox(height: 24),
+            // Системная диагностика
+            SystemHealthCard(profileId: widget.gliderProfileId),
+            const SizedBox(height: 24),
 
-          // Список полетных программ
-          FlightProgramsList(profileId: widget.gliderProfileId),
-          const SizedBox(height: 24),
+            // Список полетных программ
+            FlightProgramsList(profileId: widget.gliderProfileId),
+            const SizedBox(height: 24),
 
-          // Секция истории полетов
-          const FlightHistorySection(),
-          const SizedBox(height: 40),
-        ],
+            // Секция истории полетов
+            const FlightHistorySection(),
+            const SizedBox(height: 40),
+          ],
+        ),
       ),
     );
   }
