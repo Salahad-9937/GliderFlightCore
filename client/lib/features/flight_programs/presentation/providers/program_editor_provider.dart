@@ -17,16 +17,6 @@ class ProgramEditorState {
     this.profileId,
   });
 
-  /// Общая длительность программы в секундах.
-  double get totalDurationSec {
-    if (program == null) return 0;
-    final totalMs = program!.steps.fold(
-      0,
-      (sum, step) => sum + step.totalDelayMs,
-    );
-    return totalMs / 1000.0;
-  }
-
   ProgramEditorState copyWith({
     FlightProgram? program,
     bool? hasChanges,
@@ -47,23 +37,16 @@ class ProgramEditorNotifier extends Notifier<ProgramEditorState> {
     return const ProgramEditorState();
   }
 
-  /// Инициализация программы. Вызывается из UI при открытии страницы.
   void init(String profileId, String programId) {
-    // Избегаем повторной инициализации, если программа уже загружена
     if (state.program != null && state.program!.id == programId) return;
 
     final programIdObj = ProgramId(profileId: profileId, programId: programId);
-
     final initialProgram = ref.read(programByIdProvider(programIdObj));
 
     if (initialProgram != null) {
       state = ProgramEditorState(
         profileId: profileId,
-        program: FlightProgram(
-          id: initialProgram.id,
-          name: initialProgram.name,
-          steps: List.from(initialProgram.steps),
-        ),
+        program: initialProgram, // Используем иммутабельную сущность
       );
     }
   }
@@ -79,32 +62,24 @@ class ProgramEditorNotifier extends Notifier<ProgramEditorState> {
 
   void addStep(FlightProgramStep step) {
     if (state.program == null) return;
-    final newSteps = List<FlightProgramStep>.from(state.program!.steps)
-      ..add(step);
-    _updateProgramSteps(newSteps);
+    state = state.copyWith(
+      program: state.program!.addStep(step),
+      hasChanges: true,
+    );
   }
 
   void updateStep(int index, FlightProgramStep step) {
     if (state.program == null) return;
-    final newSteps = List<FlightProgramStep>.from(state.program!.steps);
-    newSteps[index] = step;
-    _updateProgramSteps(newSteps);
+    state = state.copyWith(
+      program: state.program!.updateStep(index, step),
+      hasChanges: true,
+    );
   }
 
   void deleteStep(int index) {
     if (state.program == null) return;
-    final newSteps = List<FlightProgramStep>.from(state.program!.steps);
-    newSteps.removeAt(index);
-    _updateProgramSteps(newSteps);
-  }
-
-  void _updateProgramSteps(List<FlightProgramStep> steps) {
     state = state.copyWith(
-      program: FlightProgram(
-        id: state.program!.id,
-        name: state.program!.name,
-        steps: steps,
-      ),
+      program: state.program!.removeStep(index),
       hasChanges: true,
     );
   }

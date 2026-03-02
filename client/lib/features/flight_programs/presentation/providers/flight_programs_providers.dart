@@ -2,7 +2,6 @@ import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/di/core_providers.dart';
 import '../../domain/entities/flight_program.dart';
 import '../../domain/usecases/delete_program_use_case.dart';
 import '../../domain/usecases/save_program_use_case.dart';
@@ -23,24 +22,27 @@ final flightProgramsProvider =
     });
 
 /// Контроллер управления полетными программами.
+///
+/// Оркестрирует выполнение UseCase-ов.
 class FlightProgramsController {
   final Ref _ref;
   FlightProgramsController(this._ref);
 
   /// Добавляет новую программу.
   Future<void> addProgram(String profileId, String name) async {
-    final newProgram = FlightProgram(id: const Uuid().v4(), name: name);
+    final newProgram = FlightProgram(
+      id: const Uuid().v4(),
+      name: name,
+      steps: const [],
+    );
 
     final result = await _ref
         .read(saveProgramUseCaseProvider)
         .call(SaveProgramParams(profileId: profileId, program: newProgram));
 
-    result.fold(
-      (_) => _ref.invalidate(flightProgramsProvider(profileId)),
-      (failure) => _ref
-          .read(loggerServiceProvider)
-          .e('Ошибка создания программы: ${failure.message}'),
-    );
+    if (result.fold((_) => true, (_) => false)) {
+      _ref.invalidate(flightProgramsProvider(profileId));
+    }
   }
 
   /// Удаляет программу.
@@ -49,12 +51,9 @@ class FlightProgramsController {
         .read(deleteProgramUseCaseProvider)
         .call(DeleteProgramParams(profileId: profileId, programId: programId));
 
-    result.fold(
-      (_) => _ref.invalidate(flightProgramsProvider(profileId)),
-      (failure) => _ref
-          .read(loggerServiceProvider)
-          .e('Ошибка удаления программы: ${failure.message}'),
-    );
+    if (result.fold((_) => true, (_) => false)) {
+      _ref.invalidate(flightProgramsProvider(profileId));
+    }
   }
 
   /// Обновляет существующую программу.
@@ -63,12 +62,9 @@ class FlightProgramsController {
         .read(saveProgramUseCaseProvider)
         .call(SaveProgramParams(profileId: profileId, program: program));
 
-    result.fold(
-      (_) => _ref.invalidate(flightProgramsProvider(profileId)),
-      (failure) => _ref
-          .read(loggerServiceProvider)
-          .e('Ошибка обновления программы: ${failure.message}'),
-    );
+    if (result.fold((_) => true, (_) => false)) {
+      _ref.invalidate(flightProgramsProvider(profileId));
+    }
   }
 }
 

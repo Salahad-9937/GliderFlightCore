@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,71 +32,52 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
   late TextEditingController _msController;
   final _formKey = GlobalKey<FormState>();
 
-  // Главное хранилище времени шага
-  int _totalTimeMs = 0;
-
-  double _angle = 90;
-  double _minutes = 0;
-  double _seconds = 0;
-  double _millis = 0;
+  /// Текущий редактируемый шаг (State-контейнер)
+  late FlightProgramStep _currentStep;
 
   @override
   void initState() {
     super.initState();
-    _angle = widget.existingStep?.angle.toDouble() ?? 90.0;
+    _currentStep = widget.existingStep ?? const FlightProgramStep(angle: 90);
 
-    int existingSec = widget.existingStep?.delaySec ?? 0;
-    int existingMs = widget.existingStep?.delayMs ?? 0;
-    _totalTimeMs = (existingSec * 1000) + existingMs;
-
-    _updateComponentsFromTotal();
-
-    _angleController = TextEditingController(text: _angle.toInt().toString());
-    _minController = TextEditingController(text: _minutes.toInt().toString());
-    _secController = TextEditingController(text: _seconds.toInt().toString());
-    _msController = TextEditingController(text: _millis.toInt().toString());
-  }
-
-  void _updateComponentsFromTotal() {
-    _minutes = (_totalTimeMs ~/ 60000).toDouble();
-    _seconds = ((_totalTimeMs ~/ 1000) % 60).toDouble();
-    _millis = (_totalTimeMs % 1000).toDouble();
+    _angleController = TextEditingController(
+      text: _currentStep.angle.toString(),
+    );
+    _minController = TextEditingController(
+      text: _currentStep.minutes.toString(),
+    );
+    _secController = TextEditingController(
+      text: _currentStep.secondsOnly.toString(),
+    );
+    _msController = TextEditingController(
+      text: _currentStep.millisOnly.toString(),
+    );
   }
 
   void _syncTextControllers() {
-    if (_angleController.text != _angle.toInt().toString()) {
-      _angleController.text = _angle.toInt().toString();
-    }
-    if (_minController.text != _minutes.toInt().toString()) {
-      _minController.text = _minutes.toInt().toString();
-    }
-    if (_secController.text != _seconds.toInt().toString()) {
-      _secController.text = _seconds.toInt().toString();
-    }
-    if (_msController.text != _millis.toInt().toString()) {
-      _msController.text = _millis.toInt().toString();
-    }
+    _angleController.text = _currentStep.angle.toString();
+    _minController.text = _currentStep.minutes.toString();
+    _secController.text = _currentStep.secondsOnly.toString();
+    _msController.text = _currentStep.millisOnly.toString();
   }
 
   void _handleKnobChange(String type, double knobValue) {
     setState(() {
       if (type == 'angle') {
-        _angle = knobValue.clamp(0, 180);
+        _currentStep = _currentStep.copyWith(angle: knobValue.toInt());
       } else {
-        int delta = 0;
+        int newTotalMs = _currentStep.totalDelayMs;
         if (type == 'min') {
-          delta = (knobValue - _minutes).toInt() * 60000;
+          newTotalMs += (knobValue - _currentStep.minutes).toInt() * 60000;
         } else if (type == 'sec') {
-          delta = (knobValue - _seconds).toInt() * 1000;
+          newTotalMs += (knobValue - _currentStep.secondsOnly).toInt() * 1000;
         } else if (type == 'ms') {
-          delta = (knobValue - _millis).toInt();
+          newTotalMs += (knobValue - _currentStep.millisOnly).toInt();
         }
-
-        _totalTimeMs += delta;
-        // Предотвращаем уход в минус и ограничиваем 60 минутами (3600000 мс)
-        _totalTimeMs = math.max(0, math.min(60 * 60000, _totalTimeMs));
-
-        _updateComponentsFromTotal();
+        _currentStep = FlightProgramStep.fromTotalMs(
+          newTotalMs,
+          _currentStep.angle,
+        );
       }
       _syncTextControllers();
     });
@@ -107,18 +87,18 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
     final val = int.tryParse(value) ?? 0;
     setState(() {
       if (type == 'angle') {
-        _angle = val.clamp(0, 180).toDouble();
+        _currentStep = _currentStep.copyWith(angle: val);
       } else {
-        if (type == 'min') _minutes = val.toDouble();
-        if (type == 'sec') _seconds = val.toDouble();
-        if (type == 'ms') _millis = val.toDouble();
+        int m = _currentStep.minutes;
+        int s = _currentStep.secondsOnly;
+        int ms = _currentStep.millisOnly;
 
-        // Пересчет тотала по введенным данным
-        _totalTimeMs =
-            (_minutes.toInt() * 60000) +
-            (_seconds.toInt() * 1000) +
-            _millis.toInt();
-        _totalTimeMs = math.max(0, math.min(60 * 60000, _totalTimeMs));
+        if (type == 'min') m = val;
+        if (type == 'sec') s = val;
+        if (type == 'ms') ms = val;
+
+        final total = (m * 60000) + (s * 1000) + ms;
+        _currentStep = FlightProgramStep.fromTotalMs(total, _currentStep.angle);
       }
     });
   }
@@ -140,7 +120,6 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Верхний ряд: Угол и Минуты
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -148,7 +127,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                     child: Column(
                       children: [
                         InstrumentEncoder(
-                          value: _angle,
+                          value: _currentStep.angle.toDouble(),
                           min: 0,
                           max: 180,
                           fullTurnValue: 180,
@@ -166,12 +145,11 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                     child: Column(
                       children: [
                         InstrumentEncoder(
-                          value: _minutes,
+                          value: _currentStep.minutes.toDouble(),
                           min: 0,
-                          max: 60, // Ограничитель минут
+                          max: 60,
                           fullTurnValue: 60,
-                          label: strings.panel.unitMin
-                              .toUpperCase(), // Используем из локали
+                          label: strings.panel.unitMin.toUpperCase(),
                           unit: 'МИН',
                           onChanged: (v) => _handleKnobChange('min', v),
                         ),
@@ -182,13 +160,10 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                   ),
                 ],
               ),
-
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 20),
                 child: Divider(color: AppColors.border),
               ),
-
-              // Нижний ряд: Секунды и Миллисекунды
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -196,9 +171,8 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                     child: Column(
                       children: [
                         InstrumentEncoder(
-                          value: _seconds,
-                          isInfinite:
-                              true, // Вращается бесконечно, крутя минуты
+                          value: _currentStep.secondsOnly.toDouble(),
+                          isInfinite: true,
                           fullTurnValue: 60,
                           label: strings.prog.seconds,
                           unit: strings.prog.unitSecShort,
@@ -214,9 +188,8 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                     child: Column(
                       children: [
                         InstrumentEncoder(
-                          value: _millis,
-                          isInfinite:
-                              true, // Вращается бесконечно, крутя секунды
+                          value: _currentStep.millisOnly.toDouble(),
+                          isInfinite: true,
                           fullTurnValue: 1000,
                           step: 10,
                           label: strings.prog.milliseconds,
@@ -243,7 +216,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
           ),
         ),
         FilledButton(
-          onPressed: _submit,
+          onPressed: () => Navigator.pop(context, _currentStep),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.black,
@@ -279,18 +252,5 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
         onChanged: (v) => _handleTextChange(type, v),
       ),
     );
-  }
-
-  void _submit() {
-    if (_formKey.currentState!.validate()) {
-      Navigator.pop(
-        context,
-        FlightProgramStep(
-          angle: _angle.toInt(),
-          delaySec: _totalTimeMs ~/ 1000,
-          delayMs: _totalTimeMs % 1000,
-        ),
-      );
-    }
   }
 }

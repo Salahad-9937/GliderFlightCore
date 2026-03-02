@@ -9,6 +9,7 @@ import '../providers/program_editor_provider.dart';
 import '../widgets/add_edit_step_dialog.dart';
 import '../widgets/mission_step_card.dart';
 
+/// Страница редактора полетной программы.
 class FlightProgramEditorPage extends ConsumerStatefulWidget {
   final String profileId;
   final String programId;
@@ -103,7 +104,8 @@ class _FlightProgramEditorPageState
           child: Column(
             children: [
               _MissionSummary(
-                totalDurationSec: editorState.totalDurationSec,
+                // Исправлено: обращение к геттеру через сущность программы
+                totalDurationSec: program.totalDurationSec,
                 hasChanges: editorState.hasChanges,
                 strings: strings,
               ),
