@@ -9,6 +9,69 @@ import '../../domain/entities/flight_program_step.dart';
 import '../../domain/value_objects/servo_angle.dart';
 import '../../domain/value_objects/step_duration.dart';
 
+/// ViewModel для управления состоянием формы диалога.
+final class StepEditorNotifier extends Notifier<FlightProgramStep> {
+  @override
+  FlightProgramStep build() {
+    return const FlightProgramStep(
+      angle: ServoAngle(90),
+      duration: StepDuration(0),
+    );
+  }
+
+  /// Инициализация или сброс состояния.
+  void init(FlightProgramStep? initial) {
+    if (initial != null) {
+      state = initial;
+    } else {
+      // Явный сброс в дефолт при добавлении нового шага
+      state = const FlightProgramStep(
+        angle: ServoAngle(90),
+        duration: StepDuration(0),
+      );
+    }
+  }
+
+  void updateAngle(int val) {
+    state = state.copyWith(angle: ServoAngle(val));
+  }
+
+  void updateFromKnob(String type, double knobValue) {
+    int newTotalMs = state.duration.totalMs;
+    if (type == 'min') {
+      newTotalMs += (knobValue - state.duration.minutes).toInt() * 60000;
+    } else if (type == 'sec') {
+      newTotalMs += (knobValue - state.duration.secondsOnly).toInt() * 1000;
+    } else if (type == 'ms') {
+      newTotalMs += (knobValue - state.duration.millisOnly).toInt();
+    }
+    state = state.copyWith(duration: StepDuration(newTotalMs));
+  }
+
+  void updateFromText(String type, int val) {
+    if (type == 'angle') {
+      updateAngle(val);
+    } else {
+      int m = state.duration.minutes;
+      int s = state.duration.secondsOnly;
+      int ms = state.duration.millisOnly;
+      if (type == 'min') m = val;
+      if (type == 'sec') s = val;
+      if (type == 'ms') ms = val;
+      state = state.copyWith(
+        duration: StepDuration.fromComponents(min: m, sec: s, ms: ms),
+      );
+    }
+  }
+}
+
+/// Провайдер состояния редактора шага.
+final _stepEditorProvider =
+    NotifierProvider.autoDispose<StepEditorNotifier, FlightProgramStep>(
+      StepEditorNotifier.new,
+    );
+
+/// Функция вызова диалога.
 Future<FlightProgramStep?> showAddEditStepDialog(
   BuildContext context, {
   FlightProgramStep? existingStep,
@@ -34,12 +97,11 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
   late TextEditingController _msController;
   final _formKey = GlobalKey<FormState>();
 
-  late FlightProgramStep _currentStep;
-
   @override
   void initState() {
     super.initState();
-    _currentStep =
+    // Локальные контроллеры всегда инициализируются либо из переданного шага, либо в 0/90.
+    final initial =
         widget.existingStep ??
         const FlightProgramStep(
           angle: ServoAngle(90),
@@ -47,75 +109,54 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
         );
 
     _angleController = TextEditingController(
-      text: _currentStep.angle.value.toString(),
+      text: initial.angle.value.toString(),
     );
     _minController = TextEditingController(
-      text: _currentStep.duration.minutes.toString(),
+      text: initial.duration.minutes.toString(),
     );
     _secController = TextEditingController(
-      text: _currentStep.duration.secondsOnly.toString(),
+      text: initial.duration.secondsOnly.toString(),
     );
     _msController = TextEditingController(
-      text: _currentStep.duration.millisOnly.toString(),
+      text: initial.duration.millisOnly.toString(),
     );
-  }
 
-  void _syncTextControllers() {
-    _angleController.text = _currentStep.angle.value.toString();
-    _minController.text = _currentStep.duration.minutes.toString();
-    _secController.text = _currentStep.duration.secondsOnly.toString();
-    _msController.text = _currentStep.duration.millisOnly.toString();
-  }
-
-  void _handleKnobChange(String type, double knobValue) {
-    setState(() {
-      if (type == 'angle') {
-        _currentStep = _currentStep.copyWith(
-          angle: ServoAngle(knobValue.toInt()),
-        );
-      } else {
-        int newTotalMs = _currentStep.duration.totalMs;
-        if (type == 'min') {
-          newTotalMs +=
-              (knobValue - _currentStep.duration.minutes).toInt() * 60000;
-        } else if (type == 'sec') {
-          newTotalMs +=
-              (knobValue - _currentStep.duration.secondsOnly).toInt() * 1000;
-        } else if (type == 'ms') {
-          newTotalMs += (knobValue - _currentStep.duration.millisOnly).toInt();
-        }
-        _currentStep = _currentStep.copyWith(
-          duration: StepDuration(newTotalMs),
-        );
-      }
-      _syncTextControllers();
-    });
-  }
-
-  void _handleTextChange(String type, String value) {
-    final val = int.tryParse(value) ?? 0;
-    setState(() {
-      if (type == 'angle') {
-        _currentStep = _currentStep.copyWith(angle: ServoAngle(val));
-      } else {
-        int m = _currentStep.duration.minutes;
-        int s = _currentStep.duration.secondsOnly;
-        int ms = _currentStep.duration.millisOnly;
-
-        if (type == 'min') m = val;
-        if (type == 'sec') s = val;
-        if (type == 'ms') ms = val;
-
-        _currentStep = _currentStep.copyWith(
-          duration: StepDuration.fromComponents(min: m, sec: s, ms: ms),
-        );
-      }
+    // Инициализируем/сбрасываем Notifier.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(_stepEditorProvider.notifier).init(widget.existingStep);
     });
   }
 
   @override
+  void dispose() {
+    _angleController.dispose();
+    _minController.dispose();
+    _secController.dispose();
+    _msController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final step = ref.watch(_stepEditorProvider);
+    final notifier = ref.read(_stepEditorProvider.notifier);
     final strings = ref.read(l10nProvider);
+
+    // Синхронизация полей при вращении энкодеров.
+    ref.listen<FlightProgramStep>(_stepEditorProvider, (prev, next) {
+      if (_angleController.text != next.angle.value.toString()) {
+        _angleController.text = next.angle.value.toString();
+      }
+      if (_minController.text != next.duration.minutes.toString()) {
+        _minController.text = next.duration.minutes.toString();
+      }
+      if (_secController.text != next.duration.secondsOnly.toString()) {
+        _secController.text = next.duration.secondsOnly.toString();
+      }
+      if (_msController.text != next.duration.millisOnly.toString()) {
+        _msController.text = next.duration.millisOnly.toString();
+      }
+    });
 
     return AlertDialog(
       backgroundColor: AppColors.surface,
@@ -131,42 +172,27 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        InstrumentEncoder(
-                          value: _currentStep.angle.value.toDouble(),
-                          min: ServoAngle.min.toDouble(),
-                          max: ServoAngle.max.toDouble(),
-                          fullTurnValue: ServoAngle.max.toDouble(),
-                          label: strings.prog.servoAngle,
-                          unit: strings.prog.unitDeg,
-                          onChanged: (v) => _handleKnobChange('angle', v),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildManualInput(_angleController, 'angle'),
-                      ],
-                    ),
+                  _buildEncoderColumn(
+                    value: step.angle.value.toDouble(),
+                    max: ServoAngle.max.toDouble(),
+                    label: strings.prog.servoAngle,
+                    unit: strings.prog.unitDeg,
+                    controller: _angleController,
+                    onKnob: (v) => notifier.updateAngle(v.toInt()),
+                    onText: (v) =>
+                        notifier.updateFromText('angle', int.tryParse(v) ?? 0),
                   ),
                   const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        InstrumentEncoder(
-                          value: _currentStep.duration.minutes.toDouble(),
-                          min: 0,
-                          max: 60,
-                          fullTurnValue: 60,
-                          label: strings.panel.unitMin.toUpperCase(),
-                          unit: 'МИН',
-                          onChanged: (v) => _handleKnobChange('min', v),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildManualInput(_minController, 'min'),
-                      ],
-                    ),
+                  _buildEncoderColumn(
+                    value: step.duration.minutes.toDouble(),
+                    max: 60,
+                    label: strings.panel.unitMin.toUpperCase(),
+                    unit: 'МИН',
+                    controller: _minController,
+                    onKnob: (v) => notifier.updateFromKnob('min', v),
+                    onText: (v) =>
+                        notifier.updateFromText('min', int.tryParse(v) ?? 0),
                   ),
                 ],
               ),
@@ -175,41 +201,29 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                 child: Divider(color: AppColors.border),
               ),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        InstrumentEncoder(
-                          value: _currentStep.duration.secondsOnly.toDouble(),
-                          isInfinite: true,
-                          fullTurnValue: 60,
-                          label: strings.prog.seconds,
-                          unit: strings.prog.unitSecShort,
-                          onChanged: (v) => _handleKnobChange('sec', v),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildManualInput(_secController, 'sec'),
-                      ],
-                    ),
+                  _buildEncoderColumn(
+                    value: step.duration.secondsOnly.toDouble(),
+                    max: 60,
+                    isInfinite: true,
+                    label: strings.prog.seconds,
+                    unit: strings.prog.unitSecShort,
+                    controller: _secController,
+                    onKnob: (v) => notifier.updateFromKnob('sec', v),
+                    onText: (v) =>
+                        notifier.updateFromText('sec', int.tryParse(v) ?? 0),
                   ),
                   const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        InstrumentEncoder(
-                          value: _currentStep.duration.millisOnly.toDouble(),
-                          isInfinite: true,
-                          fullTurnValue: 1000,
-                          step: 10,
-                          label: strings.prog.milliseconds,
-                          unit: 'MS',
-                          onChanged: (v) => _handleKnobChange('ms', v),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildManualInput(_msController, 'ms'),
-                      ],
-                    ),
+                  _buildEncoderColumn(
+                    value: step.duration.millisOnly.toDouble(),
+                    max: 1000,
+                    isInfinite: true,
+                    label: strings.prog.milliseconds,
+                    unit: 'MS',
+                    controller: _msController,
+                    onKnob: (v) => notifier.updateFromKnob('ms', v),
+                    onText: (v) =>
+                        notifier.updateFromText('ms', int.tryParse(v) ?? 0),
                   ),
                 ],
               ),
@@ -226,13 +240,10 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
           ),
         ),
         FilledButton(
-          onPressed: () => Navigator.pop(context, _currentStep),
+          onPressed: () => Navigator.pop(context, step),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.black,
-            shape: const BeveledRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(4)),
-            ),
           ),
           child: Text(strings.prog.confirm, style: AppTextStyles.button),
         ),
@@ -240,7 +251,40 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
     );
   }
 
-  Widget _buildManualInput(TextEditingController controller, String type) {
+  Widget _buildEncoderColumn({
+    required double value,
+    required double max,
+    required String label,
+    required String unit,
+    required TextEditingController controller,
+    required ValueChanged<double> onKnob,
+    required ValueChanged<String> onText,
+    bool isInfinite = false,
+  }) {
+    return Expanded(
+      child: Column(
+        children: [
+          InstrumentEncoder(
+            value: value,
+            min: 0,
+            max: max,
+            fullTurnValue: max,
+            isInfinite: isInfinite,
+            label: label,
+            unit: unit,
+            onChanged: onKnob,
+          ),
+          const SizedBox(height: 8),
+          _buildManualInput(controller, onText),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildManualInput(
+    TextEditingController controller,
+    ValueChanged<String> onChanged,
+  ) {
     return SizedBox(
       width: 70,
       child: TextFormField(
@@ -259,7 +303,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
             borderSide: BorderSide(color: AppColors.primary),
           ),
         ),
-        onChanged: (v) => _handleTextChange(type, v),
+        onChanged: onChanged,
       ),
     );
   }

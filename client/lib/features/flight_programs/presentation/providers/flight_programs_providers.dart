@@ -1,7 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 
+import '../../../../core/di/core_providers.dart';
 import '../../domain/entities/flight_program.dart';
 import '../../domain/usecases/delete_program_use_case.dart';
 import '../../domain/usecases/save_program_use_case.dart';
@@ -21,50 +21,44 @@ final flightProgramsProvider =
       );
     });
 
-/// Контроллер управления полетными программами.
+/// Контроллер управления списком полетных программ (Presentation Layer).
 ///
-/// Оркестрирует выполнение UseCase-ов.
+/// Отвечает только за вызов соответствующих сценариев использования
+/// и уведомление UI об изменениях.
 class FlightProgramsController {
   final Ref _ref;
   FlightProgramsController(this._ref);
 
-  /// Добавляет новую программу.
+  /// Команда добавления новой программы.
+  /// Генерация сущности делегирована ниже (в репозиторий или usecase).
   Future<void> addProgram(String profileId, String name) async {
+    // В данном проекте ID генерируется на клиенте для оффлайн-работы.
+    // Оставляем создание объекта здесь, но логика "как сохранять" скрыта.
     final newProgram = FlightProgram(
-      id: const Uuid().v4(),
+      id: DateTime.now().millisecondsSinceEpoch
+          .toString(), // Временное решение до переноса в UseCase
       name: name,
-      steps: const [],
     );
 
     final result = await _ref
         .read(saveProgramUseCaseProvider)
         .call(SaveProgramParams(profileId: profileId, program: newProgram));
 
-    if (result.fold((_) => true, (_) => false)) {
-      _ref.invalidate(flightProgramsProvider(profileId));
-    }
+    result.fold(
+      (_) => _ref.invalidate(flightProgramsProvider(profileId)),
+      (failure) => _ref.read(loggerServiceProvider).e(failure.message),
+    );
   }
 
-  /// Удаляет программу.
   Future<void> deleteProgram(String profileId, String programId) async {
     final result = await _ref
         .read(deleteProgramUseCaseProvider)
         .call(DeleteProgramParams(profileId: profileId, programId: programId));
 
-    if (result.fold((_) => true, (_) => false)) {
-      _ref.invalidate(flightProgramsProvider(profileId));
-    }
-  }
-
-  /// Обновляет существующую программу.
-  Future<void> updateProgram(String profileId, FlightProgram program) async {
-    final result = await _ref
-        .read(saveProgramUseCaseProvider)
-        .call(SaveProgramParams(profileId: profileId, program: program));
-
-    if (result.fold((_) => true, (_) => false)) {
-      _ref.invalidate(flightProgramsProvider(profileId));
-    }
+    result.fold(
+      (_) => _ref.invalidate(flightProgramsProvider(profileId)),
+      (failure) => _ref.read(loggerServiceProvider).e(failure.message),
+    );
   }
 }
 
@@ -74,7 +68,6 @@ final flightProgramsControllerProvider = Provider<FlightProgramsController>((
   return FlightProgramsController(ref);
 });
 
-/// Провайдер для получения одной программы по ID.
 final programByIdProvider = Provider.family<FlightProgram?, ProgramId>((
   ref,
   id,

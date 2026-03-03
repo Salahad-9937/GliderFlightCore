@@ -1,12 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../domain/entities/flight_program.dart';
 import '../../domain/entities/flight_program_step.dart';
+import '../../domain/usecases/save_program_use_case.dart';
+import 'flight_program_usecase_providers.dart';
 import 'flight_programs_providers.dart';
 import 'program_id_provider.dart';
 
 /// Состояние редактора полетной программы.
-class ProgramEditorState {
+final class ProgramEditorState {
   final FlightProgram? program;
   final bool hasChanges;
   final String? profileId;
@@ -30,13 +31,12 @@ class ProgramEditorState {
   }
 }
 
-/// Контроллер управления состоянием текущей редактируемой программы.
-class ProgramEditorNotifier extends Notifier<ProgramEditorState> {
+/// Контроллер управления состоянием текущей редактируемой программы (Riverpod 3.x style).
+final class ProgramEditorNotifier extends Notifier<ProgramEditorState> {
   @override
-  ProgramEditorState build() {
-    return const ProgramEditorState();
-  }
+  ProgramEditorState build() => const ProgramEditorState();
 
+  /// Инициализация программы.
   void init(String profileId, String programId) {
     if (state.program != null && state.program!.id == programId) return;
 
@@ -44,20 +44,25 @@ class ProgramEditorNotifier extends Notifier<ProgramEditorState> {
     final initialProgram = ref.read(programByIdProvider(programIdObj));
 
     if (initialProgram != null) {
-      state = ProgramEditorState(
-        profileId: profileId,
-        program: initialProgram, // Используем иммутабельную сущность
-      );
+      state = ProgramEditorState(profileId: profileId, program: initialProgram);
     }
   }
 
-  void saveChanges() {
-    if (state.program != null && state.profileId != null) {
-      ref
-          .read(flightProgramsControllerProvider)
-          .updateProgram(state.profileId!, state.program!);
+  /// Сохранение изменений через UseCase.
+  Future<void> saveChanges() async {
+    final program = state.program;
+    final profileId = state.profileId;
+
+    if (program == null || profileId == null) return;
+
+    final result = await ref
+        .read(saveProgramUseCaseProvider)
+        .call(SaveProgramParams(profileId: profileId, program: program));
+
+    result.fold((_) {
       state = state.copyWith(hasChanges: false);
-    }
+      ref.invalidate(flightProgramsProvider(profileId));
+    }, (failure) => null);
   }
 
   void addStep(FlightProgramStep step) {
