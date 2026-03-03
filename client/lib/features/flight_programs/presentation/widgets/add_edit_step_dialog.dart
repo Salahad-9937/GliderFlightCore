@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -9,27 +10,20 @@ import '../../domain/entities/flight_program_step.dart';
 import '../../domain/value_objects/servo_angle.dart';
 import '../../domain/value_objects/step_duration.dart';
 
-/// ViewModel для управления состоянием формы диалога.
-final class StepEditorNotifier extends Notifier<FlightProgramStep> {
-  @override
-  FlightProgramStep build() {
-    return const FlightProgramStep(
-      angle: ServoAngle(90),
-      duration: StepDuration(0),
-    );
-  }
+part 'add_edit_step_dialog.g.dart';
 
-  /// Инициализация или сброс состояния.
-  void init(FlightProgramStep? initial) {
-    if (initial != null) {
-      state = initial;
-    } else {
-      // Явный сброс в дефолт при добавлении нового шага
-      state = const FlightProgramStep(
-        angle: ServoAngle(90),
-        duration: StepDuration(0),
-      );
-    }
+/// ViewModel для управления состоянием формы.
+/// Параметр [initial] в build() автоматически делает провайдер «семьей» (.family).
+@riverpod
+final class StepEditor extends _$StepEditor {
+  @override
+  FlightProgramStep build(FlightProgramStep? initial) {
+    // Весь мертвый код с init() удален. Начальное состояние берется из параметров.
+    return initial ??
+        const FlightProgramStep(
+          angle: ServoAngle(90),
+          duration: StepDuration(0),
+        );
   }
 
   void updateAngle(int val) {
@@ -65,13 +59,6 @@ final class StepEditorNotifier extends Notifier<FlightProgramStep> {
   }
 }
 
-/// Провайдер состояния редактора шага.
-final _stepEditorProvider =
-    NotifierProvider.autoDispose<StepEditorNotifier, FlightProgramStep>(
-      StepEditorNotifier.new,
-    );
-
-/// Функция вызова диалога.
 Future<FlightProgramStep?> showAddEditStepDialog(
   BuildContext context, {
   FlightProgramStep? existingStep,
@@ -100,7 +87,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
   @override
   void initState() {
     super.initState();
-    // Локальные контроллеры всегда инициализируются либо из переданного шага, либо в 0/90.
+    // Используем данные напрямую, мертвый код инициализации провайдера удален.
     final initial =
         widget.existingStep ??
         const FlightProgramStep(
@@ -120,11 +107,6 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
     _msController = TextEditingController(
       text: initial.duration.millisOnly.toString(),
     );
-
-    // Инициализируем/сбрасываем Notifier.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(_stepEditorProvider.notifier).init(widget.existingStep);
-    });
   }
 
   @override
@@ -138,12 +120,13 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final step = ref.watch(_stepEditorProvider);
-    final notifier = ref.read(_stepEditorProvider.notifier);
+    // Теперь обращаемся к провайдеру как к функции, передавая initial данные.
+    final stepProvider = stepEditorProvider(widget.existingStep);
+    final step = ref.watch(stepProvider);
+    final notifier = ref.read(stepProvider.notifier);
     final strings = ref.read(l10nProvider);
 
-    // Синхронизация полей при вращении энкодеров.
-    ref.listen<FlightProgramStep>(_stepEditorProvider, (prev, next) {
+    ref.listen<FlightProgramStep>(stepProvider, (prev, next) {
       if (_angleController.text != next.angle.value.toString()) {
         _angleController.text = next.angle.value.toString();
       }
