@@ -1,54 +1,25 @@
+import '../value_objects/servo_angle.dart';
+import '../value_objects/step_duration.dart';
+
 /// Сущность шага полетной программы.
 ///
-/// Содержит бизнес-логику расчета времени и ограничений сервопривода.
+/// Использует Value Objects для обеспечения бизнес-валидации.
 class FlightProgramStep {
-  /// Угол поворота сервопривода (0-180).
-  final int angle;
+  final ServoAngle angle;
+  final StepDuration duration;
 
-  /// Задержка в полных секундах.
-  final int delaySec;
+  const FlightProgramStep({required this.angle, required this.duration});
 
-  /// Задержка в миллисекундах (0-999).
-  final int delayMs;
+  /// Геттеры для обратной совместимости с UI/API
+  int get angleValue => angle.value;
+  int get totalDelayMs => duration.totalMs;
+  int get delaySec => duration.totalMs ~/ 1000;
+  int get delayMs => duration.totalMs % 1000;
 
-  /// Константы ограничений.
-  static const int maxAngle = 180;
-  static const int minAngle = 0;
-  static const int maxTotalTimeMs = 3600000; // 60 минут
-
-  const FlightProgramStep({
-    required this.angle,
-    this.delaySec = 0,
-    this.delayMs = 0,
-  });
-
-  /// Общее время задержки в миллисекундах.
-  int get totalDelayMs => (delaySec * 1000) + delayMs;
-
-  /// Создает объект из общего количества миллисекунд.
-  factory FlightProgramStep.fromTotalMs(int totalMs, int angle) {
-    final clampedMs = totalMs.clamp(0, maxTotalTimeMs);
-    return FlightProgramStep(
-      angle: angle.clamp(minAngle, maxAngle),
-      delaySec: clampedMs ~/ 1000,
-      delayMs: clampedMs % 1000,
-    );
-  }
-
-  /// Расчет минут для UI.
-  int get minutes => totalDelayMs ~/ 60000;
-
-  /// Расчет остаточных секунд для UI.
-  int get secondsOnly => (totalDelayMs ~/ 1000) % 60;
-
-  /// Расчет остаточных миллисекунд для UI.
-  int get millisOnly => totalDelayMs % 1000;
-
-  FlightProgramStep copyWith({int? angle, int? delaySec, int? delayMs}) {
+  FlightProgramStep copyWith({ServoAngle? angle, StepDuration? duration}) {
     return FlightProgramStep(
       angle: angle ?? this.angle,
-      delaySec: delaySec ?? this.delaySec,
-      delayMs: delayMs ?? this.delayMs,
+      duration: duration ?? this.duration,
     );
   }
 }

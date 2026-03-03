@@ -1,5 +1,7 @@
 import '../../domain/entities/flight_program.dart';
 import '../../domain/entities/flight_program_step.dart';
+import '../../domain/value_objects/servo_angle.dart';
+import '../../domain/value_objects/step_duration.dart';
 import '../models/flight_program_dto.dart';
 
 class FlightProgramMapper {
@@ -10,9 +12,8 @@ class FlightProgramMapper {
       steps: dto.steps
           .map(
             (s) => FlightProgramStep(
-              angle: s.angle,
-              delaySec: s.delaySec,
-              delayMs: s.delayMs,
+              angle: ServoAngle(s.angle),
+              duration: StepDuration(s.delaySec * 1000 + s.delayMs),
             ),
           )
           .toList(),
@@ -26,9 +27,9 @@ class FlightProgramMapper {
       steps: entity.steps
           .map(
             (s) => FlightProgramStepDto(
-              angle: s.angle,
-              delaySec: s.delaySec,
-              delayMs: s.delayMs,
+              angle: s.angle.value,
+              delaySec: s.duration.totalMs ~/ 1000,
+              delayMs: s.duration.totalMs % 1000,
             ),
           )
           .toList(),
