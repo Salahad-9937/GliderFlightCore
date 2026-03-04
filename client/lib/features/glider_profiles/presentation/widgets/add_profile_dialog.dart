@@ -58,8 +58,9 @@ void showAddProfileDialog(BuildContext context, WidgetRef ref) {
         FilledButton(
           onPressed: () {
             if (formKey.currentState!.validate()) {
+              // Обновлено имя провайдера
               ref
-                  .read(gliderProfilesNotifierProvider.notifier)
+                  .read(gliderProfilesProvider.notifier)
                   .addProfile(controller.text.trim());
               Navigator.pop(context);
             }

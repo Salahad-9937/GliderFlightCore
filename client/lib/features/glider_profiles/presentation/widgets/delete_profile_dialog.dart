@@ -42,9 +42,8 @@ void showDeleteProfileDialog(
         ),
         FilledButton(
           onPressed: () {
-            ref
-                .read(gliderProfilesNotifierProvider.notifier)
-                .deleteProfile(profile.id);
+            // Обновлено имя провайдера
+            ref.read(gliderProfilesProvider.notifier).deleteProfile(profile.id);
             Navigator.pop(context);
           },
           style: FilledButton.styleFrom(

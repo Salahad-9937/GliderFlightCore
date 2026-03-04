@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/architecture/failure.dart';
 import '../../../../core/architecture/result.dart';
@@ -11,12 +11,13 @@ import '../../domain/repositories/glider_profile_repository.dart';
 import '../mappers/glider_profile_mapper.dart';
 import '../models/glider_profile_dto.dart';
 
+part 'glider_profile_repository_impl.g.dart';
+
 /// Провайдер реализации репозитория профилей.
-final gliderProfileRepositoryProvider = Provider<IGliderProfileRepository>((
-  ref,
-) {
+@riverpod
+IGliderProfileRepository gliderProfileRepository(Ref ref) {
   return LocalFileGliderProfileRepository();
-});
+}
 
 /// Реализация репозитория, работающая с локальным JSON-файлом.
 class LocalFileGliderProfileRepository implements IGliderProfileRepository {

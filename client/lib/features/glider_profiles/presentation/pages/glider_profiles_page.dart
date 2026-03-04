@@ -17,7 +17,8 @@ class GliderProfilesPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final profilesAsync = ref.watch(gliderProfilesNotifierProvider);
+    // Обновлено имя провайдера
+    final profilesAsync = ref.watch(gliderProfilesProvider);
     final strings = ref.watch(l10nProvider);
 
     return Scaffold(

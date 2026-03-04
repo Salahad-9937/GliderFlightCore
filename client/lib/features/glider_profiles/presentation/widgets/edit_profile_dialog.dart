@@ -63,8 +63,9 @@ void showEditProfileDialog(
         FilledButton(
           onPressed: () {
             if (formKey.currentState!.validate()) {
+              // Обновлено имя провайдера
               ref
-                  .read(gliderProfilesNotifierProvider.notifier)
+                  .read(gliderProfilesProvider.notifier)
                   .updateProfileName(profileId, controller.text.trim());
               Navigator.pop(context);
             }

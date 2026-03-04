@@ -1,6 +1,6 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 import 'package:collection/collection.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../../core/architecture/use_case.dart';
 import '../../../../core/di/core_providers.dart';
@@ -8,8 +8,11 @@ import '../../domain/entities/glider_profile.dart';
 import '../../domain/usecases/update_profile_name_use_case.dart';
 import 'glider_profile_usecase_providers.dart';
 
+part 'glider_profiles_providers.g.dart';
+
 /// Управление списком профилей через UseCases.
-class GliderProfilesNotifier extends AsyncNotifier<List<GliderProfile>> {
+@riverpod
+class GliderProfiles extends _$GliderProfiles {
   @override
   Future<List<GliderProfile>> build() async {
     final result = await ref
@@ -64,12 +67,9 @@ class GliderProfilesNotifier extends AsyncNotifier<List<GliderProfile>> {
   }
 }
 
-final gliderProfilesNotifierProvider =
-    AsyncNotifierProvider<GliderProfilesNotifier, List<GliderProfile>>(
-      GliderProfilesNotifier.new,
-    );
-
-final profileByIdProvider = Provider.family<GliderProfile?, String>((ref, id) {
-  final profilesAsync = ref.watch(gliderProfilesNotifierProvider);
+/// Провайдер для получения профиля по ID.
+@riverpod
+GliderProfile? profileById(Ref ref, String id) {
+  final profilesAsync = ref.watch(gliderProfilesProvider);
   return profilesAsync.asData?.value.firstWhereOrNull((p) => p.id == id);
-});
+}
