@@ -4,7 +4,6 @@ import '../../domain/entities/flight_program_step.dart';
 import '../../domain/usecases/save_program_use_case.dart';
 import 'flight_program_usecase_providers.dart';
 import 'flight_programs_providers.dart';
-import 'program_id_provider.dart';
 
 part 'program_editor_provider.g.dart';
 
@@ -43,8 +42,10 @@ class ProgramEditor extends _$ProgramEditor {
   void init(String profileId, String programId) {
     if (state.program != null && state.program!.id == programId) return;
 
-    final programIdObj = ProgramId(profileId: profileId, programId: programId);
-    final initialProgram = ref.read(programByIdProvider(programIdObj));
+    // Вызов провайдера с именованными параметрами
+    final initialProgram = ref.read(
+      programByIdProvider(profileId: profileId, programId: programId),
+    );
 
     if (initialProgram != null) {
       state = ProgramEditorState(profileId: profileId, program: initialProgram);

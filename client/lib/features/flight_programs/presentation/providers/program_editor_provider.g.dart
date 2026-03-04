@@ -44,7 +44,7 @@ final class ProgramEditorProvider
   }
 }
 
-String _$programEditorHash() => r'021753d5eb927d3382488c4660c9941a0ca7c9fe';
+String _$programEditorHash() => r'07b8e8115887bbb2d0573cc8cf8cd04e8ed88451';
 
 /// Контроллер управления состоянием текущей редактируемой программы.
 

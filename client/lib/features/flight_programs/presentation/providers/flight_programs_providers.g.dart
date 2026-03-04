@@ -109,19 +109,25 @@ abstract class _$FlightPrograms extends $AsyncNotifier<List<FlightProgram>> {
 }
 
 /// Провайдер для получения одной программы по ID.
+///
+/// Использует множественные аргументы, поддерживаемые генератором.
 
 @ProviderFor(programById)
 final programByIdProvider = ProgramByIdFamily._();
 
 /// Провайдер для получения одной программы по ID.
+///
+/// Использует множественные аргументы, поддерживаемые генератором.
 
 final class ProgramByIdProvider
     extends $FunctionalProvider<FlightProgram?, FlightProgram?, FlightProgram?>
     with $Provider<FlightProgram?> {
   /// Провайдер для получения одной программы по ID.
+  ///
+  /// Использует множественные аргументы, поддерживаемые генератором.
   ProgramByIdProvider._({
     required ProgramByIdFamily super.from,
-    required ProgramId super.argument,
+    required ({String profileId, String programId}) super.argument,
   }) : super(
          retry: null,
          name: r'programByIdProvider',
@@ -137,7 +143,7 @@ final class ProgramByIdProvider
   String toString() {
     return r'programByIdProvider'
         ''
-        '($argument)';
+        '$argument';
   }
 
   @$internal
@@ -147,8 +153,12 @@ final class ProgramByIdProvider
 
   @override
   FlightProgram? create(Ref ref) {
-    final argument = this.argument as ProgramId;
-    return programById(ref, argument);
+    final argument = this.argument as ({String profileId, String programId});
+    return programById(
+      ref,
+      profileId: argument.profileId,
+      programId: argument.programId,
+    );
   }
 
   /// {@macro riverpod.override_with_value}
@@ -170,12 +180,18 @@ final class ProgramByIdProvider
   }
 }
 
-String _$programByIdHash() => r'00c9a8046c26e7ca20d1c157831713f213daa1d3';
+String _$programByIdHash() => r'b528327051eeb5b86f5e5ce270c1c9b2eac512d5';
 
 /// Провайдер для получения одной программы по ID.
+///
+/// Использует множественные аргументы, поддерживаемые генератором.
 
 final class ProgramByIdFamily extends $Family
-    with $FunctionalFamilyOverride<FlightProgram?, ProgramId> {
+    with
+        $FunctionalFamilyOverride<
+          FlightProgram?,
+          ({String profileId, String programId})
+        > {
   ProgramByIdFamily._()
     : super(
         retry: null,
@@ -186,9 +202,16 @@ final class ProgramByIdFamily extends $Family
       );
 
   /// Провайдер для получения одной программы по ID.
+  ///
+  /// Использует множественные аргументы, поддерживаемые генератором.
 
-  ProgramByIdProvider call(ProgramId id) =>
-      ProgramByIdProvider._(argument: id, from: this);
+  ProgramByIdProvider call({
+    required String profileId,
+    required String programId,
+  }) => ProgramByIdProvider._(
+    argument: (profileId: profileId, programId: programId),
+    from: this,
+  );
 
   @override
   String toString() => r'programByIdProvider';

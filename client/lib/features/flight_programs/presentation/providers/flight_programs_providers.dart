@@ -7,7 +7,6 @@ import '../../domain/entities/flight_program.dart';
 import '../../domain/usecases/delete_program_use_case.dart';
 import '../../domain/usecases/save_program_use_case.dart';
 import 'flight_program_usecase_providers.dart';
-import 'program_id_provider.dart';
 
 part 'flight_programs_providers.g.dart';
 
@@ -56,10 +55,14 @@ class FlightPrograms extends _$FlightPrograms {
 }
 
 /// Провайдер для получения одной программы по ID.
+///
+/// Использует множественные аргументы, поддерживаемые генератором.
 @riverpod
-FlightProgram? programById(Ref ref, ProgramId id) {
-  final programsAsync = ref.watch(flightProgramsProvider(id.profileId));
-  return programsAsync.asData?.value.firstWhereOrNull(
-    (p) => p.id == id.programId,
-  );
+FlightProgram? programById(
+  Ref ref, {
+  required String profileId,
+  required String programId,
+}) {
+  final programsAsync = ref.watch(flightProgramsProvider(profileId));
+  return programsAsync.asData?.value.firstWhereOrNull((p) => p.id == programId);
 }

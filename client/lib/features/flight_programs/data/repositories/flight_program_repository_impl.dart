@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/architecture/failure.dart';
 import '../../../../core/architecture/result.dart';
@@ -11,12 +11,13 @@ import '../../domain/repositories/flight_program_repository.dart';
 import '../mappers/flight_program_mapper.dart';
 import '../models/flight_program_dto.dart';
 
+part 'flight_program_repository_impl.g.dart';
+
 /// Провайдер реализации репозитория полетных программ.
-final flightProgramRepositoryProvider = Provider<IFlightProgramRepository>((
-  ref,
-) {
+@riverpod
+IFlightProgramRepository flightProgramRepository(Ref ref) {
   return LocalFileFlightProgramRepository();
-});
+}
 
 /// Реализация репозитория, хранящая программы в локальных JSON-файлах.
 class LocalFileFlightProgramRepository implements IFlightProgramRepository {
