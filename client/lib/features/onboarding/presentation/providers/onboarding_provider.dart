@@ -1,13 +1,19 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/di/core_providers.dart';
 
-/// Состояние Onboarding (просто флаг).
+part 'onboarding_provider.g.dart';
+
+/// Состояние Onboarding.
 class OnboardingState {
   final bool isCompleted;
   const OnboardingState({required this.isCompleted});
 }
 
-class OnboardingNotifier extends Notifier<OnboardingState> {
+/// Контроллер процесса приветствия.
+///
+/// Использует [keepAlive: true], чтобы состояние сохранялось в течение всей сессии.
+@Riverpod(keepAlive: true)
+class Onboarding extends _$Onboarding {
   static const _key = 'onboarding_completed';
 
   @override
@@ -25,8 +31,3 @@ class OnboardingNotifier extends Notifier<OnboardingState> {
     state = const OnboardingState(isCompleted: true);
   }
 }
-
-final onboardingProvider =
-    NotifierProvider<OnboardingNotifier, OnboardingState>(
-      OnboardingNotifier.new,
-    );
