@@ -12,14 +12,14 @@ class FlightProgram {
     this.steps = const [],
   });
 
-  /// Общая длительность программы в миллисекундах.
   int get totalDurationMs =>
       steps.fold(0, (sum, step) => sum + step.totalDelayMs);
 
-  /// Общая длительность в секундах (для UI).
   double get totalDurationSec => totalDurationMs / 1000.0;
 
-  /// Создает копию программы с обновленным списком шагов.
+  /// Геттер для форматированной длительности (вынос из UI).
+  String get formattedTotalDuration => totalDurationSec.toStringAsFixed(2);
+
   FlightProgram copyWithSteps(List<FlightProgramStep> newSteps) {
     return FlightProgram(
       id: id,
@@ -28,18 +28,15 @@ class FlightProgram {
     );
   }
 
-  /// Добавление шага.
   FlightProgram addStep(FlightProgramStep step) {
     return copyWithSteps([...steps, step]);
   }
 
-  /// Удаление шага.
   FlightProgram removeStep(int index) {
     final newSteps = List<FlightProgramStep>.from(steps)..removeAt(index);
     return copyWithSteps(newSteps);
   }
 
-  /// Обновление шага.
   FlightProgram updateStep(int index, FlightProgramStep step) {
     final newSteps = List<FlightProgramStep>.from(steps);
     newSteps[index] = step;

@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/validators.dart';
 import '../providers/glider_profiles_providers.dart';
 
+/// Диалог создания нового профиля планера.
 void showAddProfileDialog(BuildContext context, WidgetRef ref) {
   final controller = TextEditingController();
   final formKey = GlobalKey<FormState>();
@@ -42,9 +44,10 @@ void showAddProfileDialog(BuildContext context, WidgetRef ref) {
               fontSize: 9,
             ),
           ),
-          validator: (v) => (v == null || v.trim().isEmpty)
-              ? strings.profiles.nameNotEmpty.toUpperCase()
-              : null,
+          validator: (v) => Validators.notEmpty(
+            v,
+            strings.profiles.nameNotEmpty.toUpperCase(),
+          ),
         ),
       ),
       actions: [
@@ -58,7 +61,6 @@ void showAddProfileDialog(BuildContext context, WidgetRef ref) {
         FilledButton(
           onPressed: () {
             if (formKey.currentState!.validate()) {
-              // Обновлено имя провайдера
               ref
                   .read(gliderProfilesProvider.notifier)
                   .addProfile(controller.text.trim());

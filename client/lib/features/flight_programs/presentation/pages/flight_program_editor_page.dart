@@ -5,6 +5,7 @@ import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/presentation/widgets/instrument_value.dart';
+import '../../domain/entities/flight_program.dart';
 import '../providers/program_editor_provider.dart';
 import '../widgets/add_edit_step_dialog.dart';
 import '../widgets/mission_step_card.dart';
@@ -104,7 +105,7 @@ class _FlightProgramEditorPageState
           child: Column(
             children: [
               _MissionSummary(
-                totalDurationSec: program.totalDurationSec,
+                program: program,
                 hasChanges: editorState.hasChanges,
                 strings: strings,
               ),
@@ -192,12 +193,12 @@ class _FlightProgramEditorPageState
 }
 
 class _MissionSummary extends StatelessWidget {
-  final double totalDurationSec;
+  final FlightProgram program;
   final bool hasChanges;
   final dynamic strings;
 
   const _MissionSummary({
-    required this.totalDurationSec,
+    required this.program,
     required this.hasChanges,
     required this.strings,
   });
@@ -221,7 +222,7 @@ class _MissionSummary extends StatelessWidget {
                 style: AppTextStyles.instrumentLabel,
               ),
               InstrumentValue(
-                value: totalDurationSec.toStringAsFixed(2),
+                value: program.formattedTotalDuration,
                 unit: strings.prog.unitSecShort,
                 valueStyle: AppTextStyles.telemetryValueMedium.copyWith(
                   color: AppColors.primary,

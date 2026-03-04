@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/validators.dart';
 import '../providers/flight_programs_providers.dart';
 
+/// Диалог создания новой полетной программы.
 void showAddProgramDialog(
   BuildContext context,
   WidgetRef ref,
@@ -45,9 +47,8 @@ void showAddProgramDialog(
               fontSize: 9,
             ),
           ),
-          validator: (v) => (v == null || v.trim().isEmpty)
-              ? strings.prog.nameEmptyError.toUpperCase()
-              : null,
+          validator: (v) =>
+              Validators.notEmpty(v, strings.prog.nameEmptyError.toUpperCase()),
         ),
       ),
       actions: [
@@ -61,7 +62,6 @@ void showAddProgramDialog(
         FilledButton(
           onPressed: () {
             if (formKey.currentState!.validate()) {
-              // Вызов метода напрямую через notifier провайдера списка
               ref
                   .read(flightProgramsProvider(profileId).notifier)
                   .addProgram(controller.text.trim());

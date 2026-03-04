@@ -1,9 +1,10 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../domain/value_objects/servo_angle.dart';
 
+/// Визуализатор положения качалки сервопривода.
 class ServoVisualizer extends StatelessWidget {
-  final int angle;
+  final ServoAngle angle;
   const ServoVisualizer({super.key, required this.angle});
 
   @override
@@ -19,7 +20,8 @@ class ServoVisualizer extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Transform.rotate(
-            angle: (angle - 90) * math.pi / 180,
+            // Используется готовое значение в радианах из домена
+            angle: angle.radians,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

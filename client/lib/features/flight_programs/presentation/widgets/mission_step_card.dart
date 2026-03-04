@@ -42,7 +42,8 @@ class MissionStepCard extends StatelessWidget {
           onTap: onTap,
           child: Row(
             children: [
-              ServoVisualizer(angle: step.angle.value),
+              // Передаем объект Value Object целиком
+              ServoVisualizer(angle: step.angle),
               const SizedBox(width: 20),
               Expanded(
                 child: Column(
