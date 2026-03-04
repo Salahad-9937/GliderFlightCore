@@ -18,25 +18,29 @@ class InstrumentValue extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
-      children: [
-        Text(
-          value,
-          style: (valueStyle ?? AppTextStyles.telemetryValueMedium).copyWith(
-            color: color ?? Colors.white,
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          Text(
+            value,
+            style: (valueStyle ?? AppTextStyles.telemetryValueMedium).copyWith(
+              color: color ?? Colors.white,
+            ),
           ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          unit,
-          style: AppTextStyles.instrumentLabel.copyWith(
-            fontSize: (valueStyle?.fontSize ?? 24) * 0.4,
+          const SizedBox(width: 4),
+          Text(
+            unit,
+            style: AppTextStyles.instrumentLabel.copyWith(
+              fontSize: (valueStyle?.fontSize ?? 24) * 0.4,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

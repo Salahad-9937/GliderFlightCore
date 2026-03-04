@@ -32,6 +32,7 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
     WidgetsBinding.instance.addObserver(this);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       ref.read(deviceConnectionProvider.notifier).connect();
     });
   }
@@ -45,6 +46,7 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!mounted) return;
     // UI теперь только делегирует событие нотификатору
     ref.read(deviceConnectionProvider.notifier).handleLifecycleChange(state);
   }
