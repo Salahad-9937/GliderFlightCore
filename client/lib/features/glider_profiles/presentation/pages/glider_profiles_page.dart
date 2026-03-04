@@ -17,7 +17,6 @@ class GliderProfilesPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Обновлено имя провайдера
     final profilesAsync = ref.watch(gliderProfilesProvider);
     final strings = ref.watch(l10nProvider);
 
@@ -169,7 +168,7 @@ class _GliderProfileCard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${strings.panel.idLabel}: ${profile.id.substring(0, 8).toUpperCase()}',
+                    '${strings.panel.idLabel}: ${profile.shortId}',
                     style: AppTextStyles.instrumentLabel.copyWith(fontSize: 9),
                   ),
                 ],

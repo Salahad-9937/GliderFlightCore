@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'add_edit_step_dialog.dart';
+part of 'step_editor_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
@@ -8,15 +8,21 @@ part of 'add_edit_step_dialog.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// ViewModel для управления состоянием формы.
+/// ViewModel для управления состоянием формы редактирования шага.
+///
+/// Инкапсулирует всю математику расчета миллисекунд и валидацию углов.
 
 @ProviderFor(StepEditor)
 final stepEditorProvider = StepEditorFamily._();
 
-/// ViewModel для управления состоянием формы.
+/// ViewModel для управления состоянием формы редактирования шага.
+///
+/// Инкапсулирует всю математику расчета миллисекунд и валидацию углов.
 final class StepEditorProvider
     extends $NotifierProvider<StepEditor, FlightProgramStep> {
-  /// ViewModel для управления состоянием формы.
+  /// ViewModel для управления состоянием формы редактирования шага.
+  ///
+  /// Инкапсулирует всю математику расчета миллисекунд и валидацию углов.
   StepEditorProvider._({
     required StepEditorFamily super.from,
     required FlightProgramStep? super.argument,
@@ -61,9 +67,11 @@ final class StepEditorProvider
   }
 }
 
-String _$stepEditorHash() => r'97e4331add648cef48f7a040c8f2924741e4ec68';
+String _$stepEditorHash() => r'83db556da37528d5335add2e87332641ad1f7083';
 
-/// ViewModel для управления состоянием формы.
+/// ViewModel для управления состоянием формы редактирования шага.
+///
+/// Инкапсулирует всю математику расчета миллисекунд и валидацию углов.
 
 final class StepEditorFamily extends $Family
     with
@@ -83,7 +91,9 @@ final class StepEditorFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// ViewModel для управления состоянием формы.
+  /// ViewModel для управления состоянием формы редактирования шага.
+  ///
+  /// Инкапсулирует всю математику расчета миллисекунд и валидацию углов.
 
   StepEditorProvider call(FlightProgramStep? initial) =>
       StepEditorProvider._(argument: initial, from: this);
@@ -92,7 +102,9 @@ final class StepEditorFamily extends $Family
   String toString() => r'stepEditorProvider';
 }
 
-/// ViewModel для управления состоянием формы.
+/// ViewModel для управления состоянием формы редактирования шага.
+///
+/// Инкапсулирует всю математику расчета миллисекунд и валидацию углов.
 
 abstract class _$StepEditor extends $Notifier<FlightProgramStep> {
   late final _$args = ref.$arg as FlightProgramStep?;

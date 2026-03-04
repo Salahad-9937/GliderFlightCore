@@ -8,10 +8,13 @@ class FlightProgramStep {
 
   const FlightProgramStep({required this.angle, required this.duration});
 
-  /// Геттеры-прокси для UI и мапперов.
   int get totalDelayMs => duration.totalMs;
   int get delaySec => duration.totalMs ~/ 1000;
   int get delayMs => duration.totalMs % 1000;
+
+  /// Геттер для форматированной строки задержки (вынос из UI)
+  String get formattedDelay =>
+      '$delaySec.${delayMs.toString().padLeft(3, '0')}s';
 
   FlightProgramStep copyWith({ServoAngle? angle, StepDuration? duration}) {
     return FlightProgramStep(

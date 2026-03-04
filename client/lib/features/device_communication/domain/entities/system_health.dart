@@ -17,4 +17,12 @@ class SystemHealth {
     required this.version,
     required this.timestamp,
   });
+
+  /// Геттеры для выноса логики расчета из UI
+  double get freeHeapKb => freeHeap / 1024.0;
+  double get fsUsedKb => fsUsed / 1024.0;
+  double get fsTotalKb => fsTotal / 1024.0;
+
+  int get uptimeMinutes => uptime ~/ 60;
+  int get uptimeSecondsRemainder => uptime % 60;
 }

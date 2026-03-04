@@ -9,19 +9,10 @@ import 'servo_visualizer.dart';
 
 /// Виджет отображения шага полетной программы в списке.
 class MissionStepCard extends StatelessWidget {
-  /// Данные шага.
   final FlightProgramStep step;
-
-  /// Порядковый номер шага.
   final int index;
-
-  /// Локализация.
   final dynamic strings;
-
-  /// Колбэк при нажатии на карточку.
   final VoidCallback onTap;
-
-  /// Колбэк при удалении шага.
   final VoidCallback onDelete;
 
   const MissionStepCard({
@@ -51,7 +42,6 @@ class MissionStepCard extends StatelessWidget {
           onTap: onTap,
           child: Row(
             children: [
-              // Передаем целочисленное значение угла из Value Object
               ServoVisualizer(angle: step.angle.value),
               const SizedBox(width: 20),
               Expanded(
@@ -65,7 +55,7 @@ class MissionStepCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${strings.prog.delayBefore.toUpperCase()}: ${step.delaySec}.${step.delayMs.toString().padLeft(3, '0')}s',
+                      '${strings.prog.delayBefore.toUpperCase()}: ${step.formattedDelay}',
                       style: AppTextStyles.instrumentLabel,
                     ),
                   ],

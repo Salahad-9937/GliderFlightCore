@@ -1,62 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/presentation/widgets/instrument_encoder.dart';
 import '../../domain/entities/flight_program_step.dart';
 import '../../domain/value_objects/servo_angle.dart';
-import '../../domain/value_objects/step_duration.dart';
+import '../providers/step_editor_provider.dart';
 
-part 'add_edit_step_dialog.g.dart';
-
-/// ViewModel для управления состоянием формы.
-@riverpod
-final class StepEditor extends _$StepEditor {
-  @override
-  FlightProgramStep build(FlightProgramStep? initial) {
-    return initial ??
-        const FlightProgramStep(
-          angle: ServoAngle(90),
-          duration: StepDuration(0),
-        );
-  }
-
-  void updateAngle(int val) {
-    state = state.copyWith(angle: ServoAngle(val));
-  }
-
-  void updateFromKnob(String type, double knobValue) {
-    int newTotalMs = state.duration.totalMs;
-    if (type == 'min') {
-      newTotalMs += (knobValue - state.duration.minutes).toInt() * 60000;
-    } else if (type == 'sec') {
-      newTotalMs += (knobValue - state.duration.secondsOnly).toInt() * 1000;
-    } else if (type == 'ms') {
-      newTotalMs += (knobValue - state.duration.millisOnly).toInt();
-    }
-    state = state.copyWith(duration: StepDuration(newTotalMs));
-  }
-
-  void updateFromText(String type, int val) {
-    if (type == 'angle') {
-      updateAngle(val);
-    } else {
-      int m = state.duration.minutes;
-      int s = state.duration.secondsOnly;
-      int ms = state.duration.millisOnly;
-      if (type == 'min') m = val;
-      if (type == 'sec') s = val;
-      if (type == 'ms') ms = val;
-      state = state.copyWith(
-        duration: StepDuration.fromComponents(min: m, sec: s, ms: ms),
-      );
-    }
-  }
-}
-
+/// Вызов диалога добавления или редактирования шага.
 Future<FlightProgramStep?> showAddEditStepDialog(
   BuildContext context, {
   FlightProgramStep? existingStep,
@@ -85,12 +38,9 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
   @override
   void initState() {
     super.initState();
-    final initial =
-        widget.existingStep ??
-        const FlightProgramStep(
-          angle: ServoAngle(90),
-          duration: StepDuration(0),
-        );
+
+    // Читаем начальное состояние из провайдера для инициализации контроллеров
+    final initial = ref.read(stepEditorProvider(widget.existingStep));
 
     _angleController = TextEditingController(
       text: initial.angle.value.toString(),
@@ -122,19 +72,12 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
     final notifier = ref.read(stepProvider.notifier);
     final strings = ref.read(l10nProvider);
 
+    // Синхронизация текстовых полей при изменении состояния (например, через энкодер)
     ref.listen<FlightProgramStep>(stepProvider, (prev, next) {
-      if (_angleController.text != next.angle.value.toString()) {
-        _angleController.text = next.angle.value.toString();
-      }
-      if (_minController.text != next.duration.minutes.toString()) {
-        _minController.text = next.duration.minutes.toString();
-      }
-      if (_secController.text != next.duration.secondsOnly.toString()) {
-        _secController.text = next.duration.secondsOnly.toString();
-      }
-      if (_msController.text != next.duration.millisOnly.toString()) {
-        _msController.text = next.duration.millisOnly.toString();
-      }
+      _updateController(_angleController, next.angle.value.toString());
+      _updateController(_minController, next.duration.minutes.toString());
+      _updateController(_secController, next.duration.secondsOnly.toString());
+      _updateController(_msController, next.duration.millisOnly.toString());
     });
 
     return AlertDialog(
@@ -159,8 +102,10 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                     unit: strings.prog.unitDeg,
                     controller: _angleController,
                     onKnob: (v) => notifier.updateAngle(v.toInt()),
-                    onText: (v) =>
-                        notifier.updateFromText('angle', int.tryParse(v) ?? 0),
+                    onText: (v) => notifier.updateFromText(
+                      DurationComponent.angle,
+                      int.tryParse(v) ?? 0,
+                    ),
                   ),
                   const SizedBox(width: 16),
                   _buildEncoderColumn(
@@ -169,9 +114,12 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                     label: strings.panel.unitMin.toUpperCase(),
                     unit: 'МИН',
                     controller: _minController,
-                    onKnob: (v) => notifier.updateFromKnob('min', v),
-                    onText: (v) =>
-                        notifier.updateFromText('min', int.tryParse(v) ?? 0),
+                    onKnob: (v) =>
+                        notifier.updateFromKnob(DurationComponent.min, v),
+                    onText: (v) => notifier.updateFromText(
+                      DurationComponent.min,
+                      int.tryParse(v) ?? 0,
+                    ),
                   ),
                 ],
               ),
@@ -188,9 +136,12 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                     label: strings.prog.seconds,
                     unit: strings.prog.unitSecShort,
                     controller: _secController,
-                    onKnob: (v) => notifier.updateFromKnob('sec', v),
-                    onText: (v) =>
-                        notifier.updateFromText('sec', int.tryParse(v) ?? 0),
+                    onKnob: (v) =>
+                        notifier.updateFromKnob(DurationComponent.sec, v),
+                    onText: (v) => notifier.updateFromText(
+                      DurationComponent.sec,
+                      int.tryParse(v) ?? 0,
+                    ),
                   ),
                   const SizedBox(width: 16),
                   _buildEncoderColumn(
@@ -200,9 +151,12 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                     label: strings.prog.milliseconds,
                     unit: 'MS',
                     controller: _msController,
-                    onKnob: (v) => notifier.updateFromKnob('ms', v),
-                    onText: (v) =>
-                        notifier.updateFromText('ms', int.tryParse(v) ?? 0),
+                    onKnob: (v) =>
+                        notifier.updateFromKnob(DurationComponent.ms, v),
+                    onText: (v) => notifier.updateFromText(
+                      DurationComponent.ms,
+                      int.tryParse(v) ?? 0,
+                    ),
                   ),
                 ],
               ),
@@ -228,6 +182,13 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
         ),
       ],
     );
+  }
+
+  /// Обновляет текст в контроллере только если он отличается, чтобы не сбивать курсор
+  void _updateController(TextEditingController controller, String value) {
+    if (controller.text != value) {
+      controller.text = value;
+    }
   }
 
   Widget _buildEncoderColumn({

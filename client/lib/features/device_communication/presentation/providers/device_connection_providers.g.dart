@@ -44,7 +44,7 @@ final class DeviceConnectionProvider
   }
 }
 
-String _$deviceConnectionHash() => r'c7f0ebb5fe1671a32cbb8cf75018a3d978d06b67';
+String _$deviceConnectionHash() => r'e0b2dc795e3be38ed63c9ae32422a88d330d5de4';
 
 /// Нотификатор управления сессией связи с устройством.
 
