@@ -38,6 +38,7 @@ class SystemHealthCard extends ConsumerWidget {
                   _buildRow(strings.panel.firmwareVersion, health.version),
                   _buildRow(
                     strings.panel.uptime,
+                    // Прямой вызов форматирования из домена
                     health.formatUptime(
                       strings.panel.unitMin,
                       strings.panel.unitSec,
@@ -45,11 +46,13 @@ class SystemHealthCard extends ConsumerWidget {
                   ),
                   _buildRow(
                     strings.panel.freeRam,
-                    '${health.freeHeapKb.toStringAsFixed(1)} KB',
+                    // Использование готовой метки из домена
+                    health.freeHeapLabel,
                   ),
                   _buildRow(
                     strings.panel.fsMemory,
-                    '${health.fsUsedKb.toStringAsFixed(0)} / ${health.fsTotalKb.toStringAsFixed(0)} KB',
+                    // Использование готовой метки из домена
+                    health.fsMemoryLabel,
                   ),
                   _buildRow(strings.panel.chipId, health.chipId.toUpperCase()),
                 ],

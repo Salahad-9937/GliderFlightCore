@@ -25,6 +25,13 @@ class SystemHealth {
   int get uptimeMinutes => uptime ~/ 60;
   int get uptimeSecondsRemainder => uptime % 60;
 
+  /// Форматированная строка свободной RAM.
+  String get freeHeapLabel => '${freeHeapKb.toStringAsFixed(1)} KB';
+
+  /// Форматированная строка состояния файловой системы.
+  String get fsMemoryLabel =>
+      '${fsUsedKb.toStringAsFixed(0)} / ${fsTotalKb.toStringAsFixed(0)} KB';
+
   /// Собирает строку аптайма на основе переданных локализованных единиц.
   String formatUptime(String minUnit, String secUnit) {
     if (uptimeMinutes > 0) {

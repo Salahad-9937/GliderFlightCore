@@ -147,7 +147,8 @@ class _GliderProfileCard extends ConsumerWidget {
               ),
               child: Center(
                 child: Text(
-                  profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
+                  // Используется готовая метка из домена
+                  profile.avatarLabel,
                   style: AppTextStyles.telemetryValueMedium.copyWith(
                     color: AppColors.primary,
                     fontSize: 20,
@@ -168,6 +169,7 @@ class _GliderProfileCard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
+                    // Используется готовый короткий ID из домена
                     '${strings.panel.idLabel}: ${profile.shortId}',
                     style: AppTextStyles.instrumentLabel.copyWith(fontSize: 9),
                   ),
