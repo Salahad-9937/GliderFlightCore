@@ -6,7 +6,6 @@ class Device {
   final String? ipAddress;
   final String? errorMessage;
 
-  // Состояние оборудования
   final bool isHardwareOk;
   final bool isCalibrating;
   final bool isCalibrated;
@@ -14,7 +13,6 @@ class Device {
   final bool isLogging;
   final bool isStable;
 
-  // Телеметрия
   final double? altitude;
   final double? temperature;
   final double? currentPressure;
@@ -22,7 +20,6 @@ class Device {
   final double? storedBasePressure;
   final double? vcc;
 
-  // Процесс калибровки
   final String? calibrationPhase;
   final int? calibrationProgress;
 
@@ -46,11 +43,13 @@ class Device {
     this.calibrationProgress,
   });
 
-  /// Бизнес-логика: проверка критического уровня питания.
   bool get isVccCritical => vcc != null && vcc! < 3.3;
 
-  /// Бизнес-логика: определение готовности к полету.
-  bool get isReadyForFlight => isHardwareOk && isCalibrated && isStable;
+  /// Геттеры для форматированного вывода (вынос из UI)
+  String get formattedAltitude => altitude?.toStringAsFixed(1) ?? '0.0';
+  String get formattedTemperature => temperature?.toStringAsFixed(1) ?? '--';
+  String get formattedPressure => currentPressure?.toStringAsFixed(0) ?? '--';
+  String get formattedVcc => vcc?.toStringAsFixed(2) ?? '--';
 
   Device copyWith({
     DeviceStatus? status,

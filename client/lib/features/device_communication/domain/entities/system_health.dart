@@ -18,11 +18,18 @@ class SystemHealth {
     required this.timestamp,
   });
 
-  /// Геттеры для выноса логики расчета из UI
   double get freeHeapKb => freeHeap / 1024.0;
   double get fsUsedKb => fsUsed / 1024.0;
   double get fsTotalKb => fsTotal / 1024.0;
 
   int get uptimeMinutes => uptime ~/ 60;
   int get uptimeSecondsRemainder => uptime % 60;
+
+  /// Собирает строку аптайма на основе переданных локализованных единиц.
+  String formatUptime(String minUnit, String secUnit) {
+    if (uptimeMinutes > 0) {
+      return '$uptimeMinutes $minUnit $uptimeSecondsRemainder $secUnit';
+    }
+    return '$uptimeSecondsRemainder $secUnit';
+  }
 }

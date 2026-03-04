@@ -6,7 +6,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/presentation/widgets/instrument_card.dart';
 import '../providers/system_health_provider.dart';
-import '../../domain/entities/system_health.dart';
 
 /// Виджет системных метрик в стиле терминала.
 class SystemHealthCard extends ConsumerWidget {
@@ -39,7 +38,10 @@ class SystemHealthCard extends ConsumerWidget {
                   _buildRow(strings.panel.firmwareVersion, health.version),
                   _buildRow(
                     strings.panel.uptime,
-                    _formatUptime(health, strings),
+                    health.formatUptime(
+                      strings.panel.unitMin,
+                      strings.panel.unitSec,
+                    ),
                   ),
                   _buildRow(
                     strings.panel.freeRam,
@@ -62,14 +64,6 @@ class SystemHealthCard extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  String _formatUptime(SystemHealth health, dynamic strings) {
-    final m = health.uptimeMinutes;
-    final s = health.uptimeSecondsRemainder;
-    return m > 0
-        ? '$m ${strings.panel.unitMin} $s ${strings.panel.unitSec}'
-        : '$s ${strings.panel.unitSec}';
   }
 
   Widget _buildRow(String label, String value) {

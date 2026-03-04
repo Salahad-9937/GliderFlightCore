@@ -71,7 +71,7 @@ class TelemetryDashboard extends ConsumerWidget {
     return Column(
       children: [
         InstrumentValue(
-          value: device.altitude?.toStringAsFixed(1) ?? '0.0',
+          value: device.formattedAltitude,
           unit: strings.comm.altitudeUnit,
           valueStyle: AppTextStyles.telemetryValueLarge,
           color: altColor,
@@ -95,20 +95,19 @@ class TelemetryDashboard extends ConsumerWidget {
       children: [
         _SensorItem(
           icon: Icons.thermostat,
-          // Исправлена лишняя интерполяция строк
-          value: device.temperature?.toStringAsFixed(1) ?? '--',
+          value: device.formattedTemperature,
           unit: '°C',
           label: strings.comm.temperature,
         ),
         _SensorItem(
           icon: Icons.speed,
-          value: device.currentPressure?.toStringAsFixed(0) ?? '--',
+          value: device.formattedPressure,
           unit: 'Pa',
           label: strings.comm.pressure,
         ),
         _SensorItem(
           icon: Icons.bolt,
-          value: device.vcc?.toStringAsFixed(2) ?? '--',
+          value: device.formattedVcc,
           unit: 'V',
           label: strings.comm.power,
           color: device.isVccCritical ? AppColors.error : AppColors.success,
@@ -163,7 +162,6 @@ class TelemetryDashboard extends ConsumerWidget {
   }
 }
 
-/// Вспомогательный виджет для отображения отдельного датчика.
 class _SensorItem extends StatelessWidget {
   final IconData icon;
   final String value;

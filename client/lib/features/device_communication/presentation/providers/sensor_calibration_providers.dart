@@ -1,6 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/architecture/use_case.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/device.dart';
 import '../../domain/entities/device_status.dart';
 import 'device_connection_providers.dart';
@@ -27,17 +29,30 @@ class CalibrationState {
     this.progress = 0.0,
     this.errorMessage,
   });
+
+  /// Геттер для строкового представления прогресса.
+  String get progressLabel => '${(progress * 100).toInt()}%';
+
+  /// Геттер для выбора цвета на основе фазы.
+  Color get phaseColor {
+    return switch (phase) {
+      CalibrationPhase.zeroing => AppColors.accent,
+      CalibrationPhase.stabilization => AppColors.warning,
+      CalibrationPhase.measuring => AppColors.primary,
+      CalibrationPhase.success => AppColors.success,
+      CalibrationPhase.error => AppColors.error,
+      _ => AppColors.border,
+    };
+  }
 }
 
 @riverpod
 class SensorCalibration extends _$SensorCalibration {
   @override
   CalibrationState build() {
-    // Синхронизация состояния калибровки с данными от устройства
     ref.listen<Device>(deviceConnectionProvider, (previous, next) {
       _handleDeviceUpdate(next);
     });
-
     return const CalibrationState();
   }
 

@@ -12,7 +12,6 @@ class CalibrationBottomSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Обновлено имя провайдера
     final calibState = ref.watch(sensorCalibrationProvider);
     final notifier = ref.read(sensorCalibrationProvider.notifier);
     final strings = ref.watch(l10nProvider);
@@ -46,6 +45,8 @@ class CalibrationBottomSheet extends ConsumerWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
+
+              // Быстрое обнуление
               if (calibState.phase == CalibrationPhase.idle ||
                   calibState.phase == CalibrationPhase.success)
                 _buildActionButton(
@@ -54,15 +55,15 @@ class CalibrationBottomSheet extends ConsumerWidget {
                   onPressed: notifier.zeroAltitude,
                   color: AppColors.accent,
                 ),
+
               if (calibState.phase == CalibrationPhase.zeroing)
-                _buildProgress(
-                  strings.comm.zeroingProcess,
-                  calibState.progress,
-                  AppColors.accent,
-                ),
+                _buildProgress(strings.comm.zeroingProcess, calibState),
+
               const SizedBox(height: 16),
               const Divider(color: AppColors.border),
               const SizedBox(height: 16),
+
+              // Полная калибровка
               if (calibState.phase == CalibrationPhase.idle)
                 _buildActionButton(
                   label: strings.comm.startFullCalibBtn,
@@ -71,21 +72,14 @@ class CalibrationBottomSheet extends ConsumerWidget {
                   color: AppColors.primary,
                 )
               else if (calibState.phase == CalibrationPhase.stabilization)
-                _buildProgress(
-                  strings.comm.stabilizationProcess,
-                  calibState.progress,
-                  AppColors.warning,
-                )
+                _buildProgress(strings.comm.stabilizationProcess, calibState)
               else if (calibState.phase == CalibrationPhase.measuring)
-                _buildProgress(
-                  strings.comm.measuringProcess,
-                  calibState.progress,
-                  AppColors.primary,
-                )
+                _buildProgress(strings.comm.measuringProcess, calibState)
               else if (calibState.phase == CalibrationPhase.success)
                 _buildSuccess(notifier, strings)
               else if (calibState.phase == CalibrationPhase.error)
                 _buildError(notifier, calibState.errorMessage, strings),
+
               if (calibState.phase != CalibrationPhase.idle &&
                   calibState.phase != CalibrationPhase.success)
                 Padding(
@@ -125,28 +119,27 @@ class CalibrationBottomSheet extends ConsumerWidget {
     );
   }
 
-  Widget _buildProgress(String label, double progress, Color color) {
+  Widget _buildProgress(String label, CalibrationState state) {
     return Column(
       children: [
         Text(
           label.toUpperCase(),
-          style: AppTextStyles.instrumentLabel.copyWith(color: color),
+          style: AppTextStyles.instrumentLabel.copyWith(
+            color: state.phaseColor,
+          ),
         ),
         const SizedBox(height: 12),
         ClipRRect(
           borderRadius: BorderRadius.circular(2),
           child: LinearProgressIndicator(
-            value: progress,
+            value: state.progress,
             minHeight: 8,
-            color: color,
+            color: state.phaseColor,
             backgroundColor: AppColors.surface,
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          '${(progress * 100).toInt()}%',
-          style: AppTextStyles.instrumentLabel,
-        ),
+        Text(state.progressLabel, style: AppTextStyles.instrumentLabel),
       ],
     );
   }
@@ -168,9 +161,7 @@ class CalibrationBottomSheet extends ConsumerWidget {
         ),
         const SizedBox(height: 24),
         FilledButton(
-          onPressed: () {
-            notifier.saveCalibration();
-          },
+          onPressed: () => notifier.saveCalibration(),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.success,
             foregroundColor: Colors.black,
