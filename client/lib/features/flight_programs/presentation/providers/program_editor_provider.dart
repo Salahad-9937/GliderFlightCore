@@ -31,16 +31,17 @@ final class ProgramEditorState {
   }
 }
 
-/// Контроллер управления состоянием текущей редактируемой программы (Riverpod 3.x style).
-final class ProgramEditorNotifier extends Notifier<ProgramEditorState> {
+/// Контроллер управления состоянием текущей редактируемой программы.
+class ProgramEditorNotifier extends Notifier<ProgramEditorState> {
   @override
   ProgramEditorState build() => const ProgramEditorState();
 
-  /// Инициализация программы.
   void init(String profileId, String programId) {
     if (state.program != null && state.program!.id == programId) return;
 
     final programIdObj = ProgramId(profileId: profileId, programId: programId);
+
+    // Использование сгенерированного провайдера programByIdProvider
     final initialProgram = ref.read(programByIdProvider(programIdObj));
 
     if (initialProgram != null) {
@@ -48,7 +49,6 @@ final class ProgramEditorNotifier extends Notifier<ProgramEditorState> {
     }
   }
 
-  /// Сохранение изменений через UseCase.
   Future<void> saveChanges() async {
     final program = state.program;
     final profileId = state.profileId;
@@ -61,6 +61,7 @@ final class ProgramEditorNotifier extends Notifier<ProgramEditorState> {
 
     result.fold((_) {
       state = state.copyWith(hasChanges: false);
+      // Инвалидация сгенерированного провайдера списка
       ref.invalidate(flightProgramsProvider(profileId));
     }, (failure) => null);
   }

@@ -42,9 +42,10 @@ void showDeleteProgramDialog(
         ),
         FilledButton(
           onPressed: () {
+            // Вызов метода удаления через notifier провайдера списка
             ref
-                .read(flightProgramsControllerProvider)
-                .deleteProgram(profileId, program.id);
+                .read(flightProgramsProvider(profileId).notifier)
+                .deleteProgram(program.id);
             Navigator.pop(context);
           },
           style: FilledButton.styleFrom(

@@ -13,12 +13,10 @@ import '../../domain/value_objects/step_duration.dart';
 part 'add_edit_step_dialog.g.dart';
 
 /// ViewModel для управления состоянием формы.
-/// Параметр [initial] в build() автоматически делает провайдер «семьей» (.family).
 @riverpod
 final class StepEditor extends _$StepEditor {
   @override
   FlightProgramStep build(FlightProgramStep? initial) {
-    // Весь мертвый код с init() удален. Начальное состояние берется из параметров.
     return initial ??
         const FlightProgramStep(
           angle: ServoAngle(90),
@@ -87,7 +85,6 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
   @override
   void initState() {
     super.initState();
-    // Используем данные напрямую, мертвый код инициализации провайдера удален.
     final initial =
         widget.existingStep ??
         const FlightProgramStep(
@@ -120,7 +117,6 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // Теперь обращаемся к провайдеру как к функции, передавая initial данные.
     final stepProvider = stepEditorProvider(widget.existingStep);
     final step = ref.watch(stepProvider);
     final notifier = ref.read(stepProvider.notifier);

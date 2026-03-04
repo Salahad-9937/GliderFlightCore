@@ -61,9 +61,10 @@ void showAddProgramDialog(
         FilledButton(
           onPressed: () {
             if (formKey.currentState!.validate()) {
+              // Вызов метода напрямую через notifier провайдера списка
               ref
-                  .read(flightProgramsControllerProvider)
-                  .addProgram(profileId, controller.text.trim());
+                  .read(flightProgramsProvider(profileId).notifier)
+                  .addProgram(controller.text.trim());
               Navigator.pop(context);
             }
           },

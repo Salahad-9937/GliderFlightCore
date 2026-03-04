@@ -9,17 +9,14 @@ part of 'add_edit_step_dialog.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 /// ViewModel для управления состоянием формы.
-/// Параметр [initial] в build() автоматически делает провайдер «семьей» (.family).
 
 @ProviderFor(StepEditor)
 final stepEditorProvider = StepEditorFamily._();
 
 /// ViewModel для управления состоянием формы.
-/// Параметр [initial] в build() автоматически делает провайдер «семьей» (.family).
 final class StepEditorProvider
     extends $NotifierProvider<StepEditor, FlightProgramStep> {
   /// ViewModel для управления состоянием формы.
-  /// Параметр [initial] в build() автоматически делает провайдер «семьей» (.family).
   StepEditorProvider._({
     required StepEditorFamily super.from,
     required FlightProgramStep? super.argument,
@@ -67,7 +64,6 @@ final class StepEditorProvider
 String _$stepEditorHash() => r'97e4331add648cef48f7a040c8f2924741e4ec68';
 
 /// ViewModel для управления состоянием формы.
-/// Параметр [initial] в build() автоматически делает провайдер «семьей» (.family).
 
 final class StepEditorFamily extends $Family
     with
@@ -88,7 +84,6 @@ final class StepEditorFamily extends $Family
       );
 
   /// ViewModel для управления состоянием формы.
-  /// Параметр [initial] в build() автоматически делает провайдер «семьей» (.family).
 
   StepEditorProvider call(FlightProgramStep? initial) =>
       StepEditorProvider._(argument: initial, from: this);
@@ -98,7 +93,6 @@ final class StepEditorFamily extends $Family
 }
 
 /// ViewModel для управления состоянием формы.
-/// Параметр [initial] в build() автоматически делает провайдер «семьей» (.family).
 
 abstract class _$StepEditor extends $Notifier<FlightProgramStep> {
   late final _$args = ref.$arg as FlightProgramStep?;

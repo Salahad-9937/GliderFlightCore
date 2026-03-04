@@ -10,7 +10,7 @@ class FlightProgramStep {
 
   const FlightProgramStep({required this.angle, required this.duration});
 
-  /// Геттеры для обратной совместимости с UI/API
+  /// Геттеры-прокси для UI и мапперов.
   int get angleValue => angle.value;
   int get totalDelayMs => duration.totalMs;
   int get delaySec => duration.totalMs ~/ 1000;

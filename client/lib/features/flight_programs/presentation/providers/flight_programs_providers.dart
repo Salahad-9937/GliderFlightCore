@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../../core/di/core_providers.dart';
 import '../../domain/entities/flight_program.dart';
@@ -8,72 +9,62 @@ import '../../domain/usecases/save_program_use_case.dart';
 import 'flight_program_usecase_providers.dart';
 import 'program_id_provider.dart';
 
-/// Провайдер списка программ для конкретного профиля.
-final flightProgramsProvider =
-    FutureProvider.family<List<FlightProgram>, String>((ref, profileId) async {
-      final result = await ref
-          .watch(getProgramsUseCaseProvider)
-          .call(profileId);
+part 'flight_programs_providers.g.dart';
 
-      return result.fold(
-        (programs) => programs,
-        (failure) => throw Exception(failure.message),
-      );
-    });
+/// Провайдер управления списком программ (Riverpod 3.x Notifier).
+/// Инкапсулирует состояние и методы его изменения.
+@riverpod
+class FlightPrograms extends _$FlightPrograms {
+  @override
+  Future<List<FlightProgram>> build(String profileId) async {
+    final result = await ref.watch(getProgramsUseCaseProvider).call(profileId);
 
-/// Контроллер управления списком полетных программ (Presentation Layer).
-///
-/// Отвечает только за вызов соответствующих сценариев использования
-/// и уведомление UI об изменениях.
-class FlightProgramsController {
-  final Ref _ref;
-  FlightProgramsController(this._ref);
-
-  /// Команда добавления новой программы.
-  /// Генерация сущности делегирована ниже (в репозиторий или usecase).
-  Future<void> addProgram(String profileId, String name) async {
-    // В данном проекте ID генерируется на клиенте для оффлайн-работы.
-    // Оставляем создание объекта здесь, но логика "как сохранять" скрыта.
-    final newProgram = FlightProgram(
-      id: DateTime.now().millisecondsSinceEpoch
-          .toString(), // Временное решение до переноса в UseCase
-      name: name,
+    return result.fold(
+      (programs) => programs,
+      (failure) => throw Exception(failure.message),
     );
+  }
 
-    final result = await _ref
+  /// Добавление новой программы.
+  Future<void> addProgram(String name) async {
+    final newProgram = FlightProgram(id: const Uuid().v4(), name: name);
+
+    // Переводим UI в состояние загрузки
+    state = const AsyncLoading();
+
+    final result = await ref
         .read(saveProgramUseCaseProvider)
         .call(SaveProgramParams(profileId: profileId, program: newProgram));
 
     result.fold(
-      (_) => _ref.invalidate(flightProgramsProvider(profileId)),
-      (failure) => _ref.read(loggerServiceProvider).e(failure.message),
+      (_) => ref.invalidateSelf(), // Принудительное перечитывание данных
+      (failure) {
+        ref.read(loggerServiceProvider).e(failure.message);
+        ref.invalidateSelf(); // Возвращаем старое состояние при ошибке
+      },
     );
   }
 
-  Future<void> deleteProgram(String profileId, String programId) async {
-    final result = await _ref
+  /// Удаление программы.
+  Future<void> deleteProgram(String programId) async {
+    state = const AsyncLoading();
+
+    final result = await ref
         .read(deleteProgramUseCaseProvider)
         .call(DeleteProgramParams(profileId: profileId, programId: programId));
 
-    result.fold(
-      (_) => _ref.invalidate(flightProgramsProvider(profileId)),
-      (failure) => _ref.read(loggerServiceProvider).e(failure.message),
-    );
+    result.fold((_) => ref.invalidateSelf(), (failure) {
+      ref.read(loggerServiceProvider).e(failure.message);
+      ref.invalidateSelf();
+    });
   }
 }
 
-final flightProgramsControllerProvider = Provider<FlightProgramsController>((
-  ref,
-) {
-  return FlightProgramsController(ref);
-});
-
-final programByIdProvider = Provider.family<FlightProgram?, ProgramId>((
-  ref,
-  id,
-) {
+/// Провайдер для получения одной программы по ID.
+@riverpod
+FlightProgram? programById(Ref ref, ProgramId id) {
   final programsAsync = ref.watch(flightProgramsProvider(id.profileId));
   return programsAsync.asData?.value.firstWhereOrNull(
     (p) => p.id == id.programId,
   );
-});
+}
