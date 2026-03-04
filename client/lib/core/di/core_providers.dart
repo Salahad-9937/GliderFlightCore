@@ -1,5 +1,5 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../network/http_network_client.dart';
 import '../network/i_network_client.dart';
@@ -10,36 +10,44 @@ import '../services/logger_service_impl.dart';
 import '../constants/app_constants.dart';
 import '../l10n/app_strings.dart';
 
+part 'core_providers.g.dart';
+
 /// Провайдер SharedPreferences.
 /// Инициализируется через override в main.dart.
-final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
+@Riverpod(keepAlive: true)
+SharedPreferences sharedPreferences(Ref ref) {
   throw UnimplementedError();
-});
+}
 
 /// Провайдер базового HTTP клиента.
-final httpClientProvider = Provider<http.Client>((ref) {
+@Riverpod(keepAlive: true)
+http.Client httpClient(Ref ref) {
   final client = http.Client();
   ref.onDispose(client.close);
   return client;
-});
+}
 
 /// Провайдер логгера.
-final loggerServiceProvider = Provider<ILoggerService>((ref) {
+@Riverpod(keepAlive: true)
+ILoggerService loggerService(Ref ref) {
   return LoggerServiceImpl();
-});
+}
 
 /// Провайдер службы времени.
-final dateTimeServiceProvider = Provider<IDateTimeService>((ref) {
+@Riverpod(keepAlive: true)
+IDateTimeService dateTimeService(Ref ref) {
   return DateTimeServiceImpl();
-});
+}
 
 /// Провайдер локализации.
-final l10nProvider = Provider<AppStrings>((ref) {
+@Riverpod(keepAlive: true)
+AppStrings l10n(Ref ref) {
   return AppStrings.ru;
-});
+}
 
 /// Провайдер сетевого клиента для связи с планером.
-final networkClientProvider = Provider<INetworkClient>((ref) {
+@Riverpod(keepAlive: true)
+INetworkClient networkClient(Ref ref) {
   final client = ref.watch(httpClientProvider);
   return HttpNetworkClient(AppConstants.defaultDeviceIp, client);
-});
+}
