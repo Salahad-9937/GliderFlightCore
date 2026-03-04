@@ -11,8 +11,7 @@ import 'program_id_provider.dart';
 
 part 'flight_programs_providers.g.dart';
 
-/// Провайдер управления списком программ (Riverpod 3.x Notifier).
-/// Инкапсулирует состояние и методы его изменения.
+/// Провайдер управления списком программ.
 @riverpod
 class FlightPrograms extends _$FlightPrograms {
   @override
@@ -29,20 +28,16 @@ class FlightPrograms extends _$FlightPrograms {
   Future<void> addProgram(String name) async {
     final newProgram = FlightProgram(id: const Uuid().v4(), name: name);
 
-    // Переводим UI в состояние загрузки
     state = const AsyncLoading();
 
     final result = await ref
         .read(saveProgramUseCaseProvider)
         .call(SaveProgramParams(profileId: profileId, program: newProgram));
 
-    result.fold(
-      (_) => ref.invalidateSelf(), // Принудительное перечитывание данных
-      (failure) {
-        ref.read(loggerServiceProvider).e(failure.message);
-        ref.invalidateSelf(); // Возвращаем старое состояние при ошибке
-      },
-    );
+    result.fold((_) => ref.invalidateSelf(), (failure) {
+      ref.read(loggerServiceProvider).e(failure.message);
+      ref.invalidateSelf();
+    });
   }
 
   /// Удаление программы.

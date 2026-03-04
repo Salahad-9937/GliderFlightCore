@@ -8,18 +8,15 @@ part of 'flight_programs_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Провайдер управления списком программ (Riverpod 3.x Notifier).
-/// Инкапсулирует состояние и методы его изменения.
+/// Провайдер управления списком программ.
 
 @ProviderFor(FlightPrograms)
 final flightProgramsProvider = FlightProgramsFamily._();
 
-/// Провайдер управления списком программ (Riverpod 3.x Notifier).
-/// Инкапсулирует состояние и методы его изменения.
+/// Провайдер управления списком программ.
 final class FlightProgramsProvider
     extends $AsyncNotifierProvider<FlightPrograms, List<FlightProgram>> {
-  /// Провайдер управления списком программ (Riverpod 3.x Notifier).
-  /// Инкапсулирует состояние и методы его изменения.
+  /// Провайдер управления списком программ.
   FlightProgramsProvider._({
     required FlightProgramsFamily super.from,
     required String super.argument,
@@ -58,8 +55,7 @@ final class FlightProgramsProvider
 
 String _$flightProgramsHash() => r'07fd51cf2bb12bc54d190deed44c15bc1153d8ef';
 
-/// Провайдер управления списком программ (Riverpod 3.x Notifier).
-/// Инкапсулирует состояние и методы его изменения.
+/// Провайдер управления списком программ.
 
 final class FlightProgramsFamily extends $Family
     with
@@ -79,8 +75,7 @@ final class FlightProgramsFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// Провайдер управления списком программ (Riverpod 3.x Notifier).
-  /// Инкапсулирует состояние и методы его изменения.
+  /// Провайдер управления списком программ.
 
   FlightProgramsProvider call(String profileId) =>
       FlightProgramsProvider._(argument: profileId, from: this);
@@ -89,8 +84,7 @@ final class FlightProgramsFamily extends $Family
   String toString() => r'flightProgramsProvider';
 }
 
-/// Провайдер управления списком программ (Riverpod 3.x Notifier).
-/// Инкапсулирует состояние и методы его изменения.
+/// Провайдер управления списком программ.
 
 abstract class _$FlightPrograms extends $AsyncNotifier<List<FlightProgram>> {
   late final _$args = ref.$arg as String;

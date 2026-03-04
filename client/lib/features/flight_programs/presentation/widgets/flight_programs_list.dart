@@ -19,7 +19,6 @@ class FlightProgramsList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Подписка на сгенерированный FutureProvider
     final programsAsync = ref.watch(flightProgramsProvider(profileId));
     final strings = ref.watch(l10nProvider);
 

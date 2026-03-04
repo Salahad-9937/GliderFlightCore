@@ -104,7 +104,6 @@ class _FlightProgramEditorPageState
           child: Column(
             children: [
               _MissionSummary(
-                // Исправлено: обращение к геттеру через сущность программы
                 totalDurationSec: program.totalDurationSec,
                 hasChanges: editorState.hasChanges,
                 strings: strings,

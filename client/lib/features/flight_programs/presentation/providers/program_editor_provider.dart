@@ -1,10 +1,12 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../domain/entities/flight_program.dart';
 import '../../domain/entities/flight_program_step.dart';
 import '../../domain/usecases/save_program_use_case.dart';
 import 'flight_program_usecase_providers.dart';
 import 'flight_programs_providers.dart';
 import 'program_id_provider.dart';
+
+part 'program_editor_provider.g.dart';
 
 /// Состояние редактора полетной программы.
 final class ProgramEditorState {
@@ -32,16 +34,16 @@ final class ProgramEditorState {
 }
 
 /// Контроллер управления состоянием текущей редактируемой программы.
-class ProgramEditorNotifier extends Notifier<ProgramEditorState> {
+@riverpod
+class ProgramEditor extends _$ProgramEditor {
   @override
   ProgramEditorState build() => const ProgramEditorState();
 
+  /// Инициализация редактора данными программы.
   void init(String profileId, String programId) {
     if (state.program != null && state.program!.id == programId) return;
 
     final programIdObj = ProgramId(profileId: profileId, programId: programId);
-
-    // Использование сгенерированного провайдера programByIdProvider
     final initialProgram = ref.read(programByIdProvider(programIdObj));
 
     if (initialProgram != null) {
@@ -49,6 +51,7 @@ class ProgramEditorNotifier extends Notifier<ProgramEditorState> {
     }
   }
 
+  /// Сохранение изменений в репозиторий.
   Future<void> saveChanges() async {
     final program = state.program;
     final profileId = state.profileId;
@@ -61,7 +64,6 @@ class ProgramEditorNotifier extends Notifier<ProgramEditorState> {
 
     result.fold((_) {
       state = state.copyWith(hasChanges: false);
-      // Инвалидация сгенерированного провайдера списка
       ref.invalidate(flightProgramsProvider(profileId));
     }, (failure) => null);
   }
@@ -90,8 +92,3 @@ class ProgramEditorNotifier extends Notifier<ProgramEditorState> {
     );
   }
 }
-
-final programEditorProvider =
-    NotifierProvider<ProgramEditorNotifier, ProgramEditorState>(
-      ProgramEditorNotifier.new,
-    );
