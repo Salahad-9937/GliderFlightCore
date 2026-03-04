@@ -1,11 +1,11 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/architecture/failure.dart';
 import '../../../../core/architecture/result.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/di/core_providers.dart';
 import '../../../../core/network/i_network_client.dart';
 import '../../../../core/services/i_datetime_service.dart';
-import '../../../flight_programs/data/mappers/flight_program_mapper.dart'; // Добавлено
+import '../../../flight_programs/data/mappers/flight_program_mapper.dart';
 import '../../../flight_programs/domain/entities/flight_program.dart';
 import '../../domain/entities/device.dart';
 import '../../domain/entities/system_health.dart';
@@ -14,12 +14,15 @@ import '../mappers/device_mapper.dart';
 import '../models/device_status_dto.dart';
 import '../models/system_health_dto.dart';
 
+part 'device_repository_impl.g.dart';
+
 /// Провайдер реализации репозитория устройства.
-final deviceRepositoryProvider = Provider<IDeviceRepository>((ref) {
+@riverpod
+IDeviceRepository deviceRepository(Ref ref) {
   final networkClient = ref.watch(networkClientProvider);
   final dateTimeService = ref.watch(dateTimeServiceProvider);
   return DeviceRepositoryImpl(networkClient, dateTimeService);
-});
+}
 
 /// Реализация репозитория для взаимодействия с ESP8266 по HTTP.
 class DeviceRepositoryImpl implements IDeviceRepository {
@@ -59,13 +62,8 @@ class DeviceRepositoryImpl implements IDeviceRepository {
 
   @override
   Future<Result<void, Failure>> uploadProgram(FlightProgram program) async {
-    // Использование маппера для преобразования сущности в DTO и затем в Map
     final dto = FlightProgramMapper.fromEntity(program);
-    final result = await _network.post(
-      '/program',
-      body: dto
-          .toJson(), // В DTO метод toJson() возвращает Map<String, dynamic>
-    );
+    final result = await _network.post('/program', body: dto.toJson());
 
     return result.fold((_) => const Success(null), (failure) => Error(failure));
   }

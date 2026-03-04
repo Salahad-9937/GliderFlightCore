@@ -1,10 +1,12 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/architecture/use_case.dart';
 import '../../domain/entities/device.dart';
 import '../../domain/entities/device_status.dart';
 import 'device_connection_providers.dart';
 import 'device_usecase_providers.dart';
+
+part 'sensor_calibration_providers.g.dart';
 
 enum CalibrationPhase {
   idle,
@@ -27,11 +29,12 @@ class CalibrationState {
   });
 }
 
-class SensorCalibrationNotifier extends Notifier<CalibrationState> {
+@riverpod
+class SensorCalibration extends _$SensorCalibration {
   @override
   CalibrationState build() {
-    // Слушаем обновления устройства для синхронизации фаз калибровки
-    ref.listen<Device>(deviceConnectionNotifierProvider, (previous, next) {
+    // Синхронизация состояния калибровки с данными от устройства
+    ref.listen<Device>(deviceConnectionProvider, (previous, next) {
       _handleDeviceUpdate(next);
     });
 
@@ -73,16 +76,12 @@ class SensorCalibrationNotifier extends Notifier<CalibrationState> {
   }
 
   CalibrationPhase _mapPhase(String? phaseStr) {
-    switch (phaseStr) {
-      case 'stabilization':
-        return CalibrationPhase.stabilization;
-      case 'measuring':
-        return CalibrationPhase.measuring;
-      case 'zeroing':
-        return CalibrationPhase.zeroing;
-      default:
-        return CalibrationPhase.idle;
-    }
+    return switch (phaseStr) {
+      'stabilization' => CalibrationPhase.stabilization,
+      'measuring' => CalibrationPhase.measuring,
+      'zeroing' => CalibrationPhase.zeroing,
+      _ => CalibrationPhase.idle,
+    };
   }
 
   Future<bool> zeroAltitude() async {
@@ -123,8 +122,3 @@ class SensorCalibrationNotifier extends Notifier<CalibrationState> {
 
   void reset() => state = const CalibrationState(phase: CalibrationPhase.idle);
 }
-
-final sensorCalibrationProvider =
-    NotifierProvider<SensorCalibrationNotifier, CalibrationState>(
-      SensorCalibrationNotifier.new,
-    );

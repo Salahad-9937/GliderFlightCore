@@ -12,6 +12,7 @@ class CalibrationBottomSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Обновлено имя провайдера
     final calibState = ref.watch(sensorCalibrationProvider);
     final notifier = ref.read(sensorCalibrationProvider.notifier);
     final strings = ref.watch(l10nProvider);
@@ -21,7 +22,6 @@ class CalibrationBottomSheet extends ConsumerWidget {
         color: AppColors.background,
         border: Border(top: BorderSide(color: AppColors.primary, width: 2)),
       ),
-      // SafeArea внутри шторки гарантирует, что кнопки не уйдут под Navigation Bar
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
@@ -46,8 +46,6 @@ class CalibrationBottomSheet extends ConsumerWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
-
-              // Быстрое обнуление
               if (calibState.phase == CalibrationPhase.idle ||
                   calibState.phase == CalibrationPhase.success)
                 _buildActionButton(
@@ -56,19 +54,15 @@ class CalibrationBottomSheet extends ConsumerWidget {
                   onPressed: notifier.zeroAltitude,
                   color: AppColors.accent,
                 ),
-
               if (calibState.phase == CalibrationPhase.zeroing)
                 _buildProgress(
                   strings.comm.zeroingProcess,
                   calibState.progress,
                   AppColors.accent,
                 ),
-
               const SizedBox(height: 16),
               const Divider(color: AppColors.border),
               const SizedBox(height: 16),
-
-              // Полная калибровка
               if (calibState.phase == CalibrationPhase.idle)
                 _buildActionButton(
                   label: strings.comm.startFullCalibBtn,
@@ -92,7 +86,6 @@ class CalibrationBottomSheet extends ConsumerWidget {
                 _buildSuccess(notifier, strings)
               else if (calibState.phase == CalibrationPhase.error)
                 _buildError(notifier, calibState.errorMessage, strings),
-
               if (calibState.phase != CalibrationPhase.idle &&
                   calibState.phase != CalibrationPhase.success)
                 Padding(

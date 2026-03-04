@@ -1,4 +1,4 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../data/repositories/device_repository_impl.dart';
 import '../../domain/usecases/cancel_operation_use_case.dart';
 import '../../domain/usecases/get_device_status_use_case.dart';
@@ -9,34 +9,44 @@ import '../../domain/usecases/toggle_monitoring_use_case.dart';
 import '../../domain/usecases/upload_program_use_case.dart';
 import '../../domain/usecases/zero_altitude_use_case.dart';
 
-final getDeviceStatusUseCaseProvider = Provider((ref) {
+part 'device_usecase_providers.g.dart';
+
+@riverpod
+GetDeviceStatusUseCase getDeviceStatusUseCase(Ref ref) {
   return GetDeviceStatusUseCase(ref.watch(deviceRepositoryProvider));
-});
+}
 
-final getSystemHealthUseCaseProvider = Provider((ref) {
+@riverpod
+GetSystemHealthUseCase getSystemHealthUseCase(Ref ref) {
   return GetSystemHealthUseCase(ref.watch(deviceRepositoryProvider));
-});
+}
 
-final uploadProgramUseCaseProvider = Provider((ref) {
+@riverpod
+UploadProgramUseCase uploadProgramUseCase(Ref ref) {
   return UploadProgramUseCase(ref.watch(deviceRepositoryProvider));
-});
+}
 
-final zeroAltitudeUseCaseProvider = Provider((ref) {
+@riverpod
+ZeroAltitudeUseCase zeroAltitudeUseCase(Ref ref) {
   return ZeroAltitudeUseCase(ref.watch(deviceRepositoryProvider));
-});
+}
 
-final startCalibrationUseCaseProvider = Provider((ref) {
+@riverpod
+StartCalibrationUseCase startCalibrationUseCase(Ref ref) {
   return StartCalibrationUseCase(ref.watch(deviceRepositoryProvider));
-});
+}
 
-final cancelOperationUseCaseProvider = Provider((ref) {
+@riverpod
+CancelOperationUseCase cancelOperationUseCase(Ref ref) {
   return CancelOperationUseCase(ref.watch(deviceRepositoryProvider));
-});
+}
 
-final saveCalibrationUseCaseProvider = Provider((ref) {
+@riverpod
+SaveCalibrationUseCase saveCalibrationUseCase(Ref ref) {
   return SaveCalibrationUseCase(ref.watch(deviceRepositoryProvider));
-});
+}
 
-final toggleMonitoringUseCaseProvider = Provider((ref) {
+@riverpod
+ToggleMonitoringUseCase toggleMonitoringUseCase(Ref ref) {
   return ToggleMonitoringUseCase(ref.watch(deviceRepositoryProvider));
-});
+}

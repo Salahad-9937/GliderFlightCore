@@ -14,8 +14,9 @@ class ConnectionInstructions extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final device = ref.watch(deviceConnectionNotifierProvider);
-    final notifier = ref.read(deviceConnectionNotifierProvider.notifier);
+    // Обновлено имя провайдера на сгенерированное
+    final device = ref.watch(deviceConnectionProvider);
+    final notifier = ref.read(deviceConnectionProvider.notifier);
     final strings = ref.watch(l10nProvider);
 
     final isConnecting = device.status == DeviceStatus.connecting;

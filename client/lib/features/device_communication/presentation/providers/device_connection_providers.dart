@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/architecture/use_case.dart';
 import '../../../../core/constants/app_constants.dart';
@@ -9,10 +9,13 @@ import '../../domain/entities/device_status.dart';
 import 'device_usecase_providers.dart';
 import 'sensor_settings_controller.dart';
 
+part 'device_connection_providers.g.dart';
+
 /// Нотификатор управления сессией связи с устройством.
-class DeviceConnectionNotifier extends Notifier<Device> {
+@Riverpod(keepAlive: true)
+class DeviceConnection extends _$DeviceConnection {
   Timer? _pollingTimer;
-  int _consecutiveFailures = 0; // Счетчик последовательных ошибок
+  int _consecutiveFailures = 0;
 
   @override
   Device build() {
@@ -63,6 +66,7 @@ class DeviceConnectionNotifier extends Notifier<Device> {
   }
 
   void pausePolling() => _stopPolling();
+
   void resumePolling() {
     if (state.status == DeviceStatus.connected) _startPolling();
   }
@@ -87,7 +91,7 @@ class DeviceConnectionNotifier extends Notifier<Device> {
 
     result.fold(
       (device) {
-        _consecutiveFailures = 0; // Сбрасываем счетчик при успехе
+        _consecutiveFailures = 0;
         state = device;
       },
       (failure) {
@@ -98,7 +102,6 @@ class DeviceConnectionNotifier extends Notifier<Device> {
               'Сбой опроса ($_consecutiveFailures/${AppConstants.maxConsecutiveFailures}): ${failure.message}',
             );
 
-        // Разрываем соединение только если превышен лимит попыток
         if (_consecutiveFailures >= AppConstants.maxConsecutiveFailures) {
           final strings = ref.read(l10nProvider);
           _stopPolling();
@@ -116,8 +119,3 @@ class DeviceConnectionNotifier extends Notifier<Device> {
     _pollingTimer = null;
   }
 }
-
-final deviceConnectionNotifierProvider =
-    NotifierProvider<DeviceConnectionNotifier, Device>(
-      DeviceConnectionNotifier.new,
-    );

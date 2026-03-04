@@ -13,7 +13,8 @@ class DeviceStatusCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final device = ref.watch(deviceConnectionNotifierProvider);
+    // Обновлено имя провайдера
+    final device = ref.watch(deviceConnectionProvider);
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 400),

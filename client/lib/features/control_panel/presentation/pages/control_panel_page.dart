@@ -28,46 +28,47 @@ class ControlPanelPage extends ConsumerStatefulWidget {
 
 class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
     with WidgetsBindingObserver {
-  late DeviceConnectionNotifier _connectionNotifier;
-  late SensorSettingsController _settingsController;
   bool _isBackgrounded = false;
 
   @override
   void initState() {
     super.initState();
-    _connectionNotifier = ref.read(deviceConnectionNotifierProvider.notifier);
-    _settingsController = ref.read(sensorSettingsControllerProvider);
     WidgetsBinding.instance.addObserver(this);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _connectionNotifier.connect();
+      // Обновлено имя провайдера
+      ref.read(deviceConnectionProvider.notifier).connect();
     });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _connectionNotifier.disconnect();
+    // Обновлено имя провайдера
+    ref.read(deviceConnectionProvider.notifier).disconnect();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final device = ref.read(deviceConnectionNotifierProvider);
+    final device = ref.read(deviceConnectionProvider);
     if (device.status != DeviceStatus.connected) return;
+
+    final connectionNotifier = ref.read(deviceConnectionProvider.notifier);
+    final settingsController = ref.read(sensorSettingsControllerProvider);
 
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       if (!_isBackgrounded) {
         _isBackgrounded = true;
-        _connectionNotifier.pausePolling();
-        _settingsController.toggleMonitoring(false);
+        connectionNotifier.pausePolling();
+        settingsController.toggleMonitoring(false);
       }
     } else if (state == AppLifecycleState.resumed) {
       if (_isBackgrounded) {
         _isBackgrounded = false;
-        _settingsController.toggleMonitoring(true).then((_) {
-          _connectionNotifier.resumePolling();
+        settingsController.toggleMonitoring(true).then((_) {
+          connectionNotifier.resumePolling();
         });
       }
     }
@@ -114,24 +115,16 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
           ),
         ],
       ),
-      // SafeArea предотвращает наложение системных кнопок на список
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           children: [
-            // Основная телеметрия
             DeviceStatusCard(profileId: widget.gliderProfileId),
             const SizedBox(height: 16),
-
-            // Системная диагностика
             SystemHealthCard(profileId: widget.gliderProfileId),
             const SizedBox(height: 24),
-
-            // Список полетных программ
             FlightProgramsList(profileId: widget.gliderProfileId),
             const SizedBox(height: 24),
-
-            // Секция истории полетов
             const FlightHistorySection(),
             const SizedBox(height: 40),
           ],

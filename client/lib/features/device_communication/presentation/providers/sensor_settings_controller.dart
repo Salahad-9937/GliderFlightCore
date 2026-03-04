@@ -1,5 +1,7 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'device_usecase_providers.dart';
+
+part 'sensor_settings_controller.g.dart';
 
 /// Контроллер для управления параметрами датчиков.
 class SensorSettingsController {
@@ -16,8 +18,7 @@ class SensorSettingsController {
   }
 }
 
-final sensorSettingsControllerProvider = Provider<SensorSettingsController>((
-  ref,
-) {
+@riverpod
+SensorSettingsController sensorSettingsController(Ref ref) {
   return SensorSettingsController(ref);
-});
+}

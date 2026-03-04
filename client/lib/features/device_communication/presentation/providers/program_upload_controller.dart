@@ -17,10 +17,9 @@ class ProgramUploadController {
 
   /// Загружает программу на устройство, приостанавливая телеметрию.
   Future<UploadResult> uploadProgram(FlightProgram program) async {
-    final deviceState = _ref.read(deviceConnectionNotifierProvider);
-    final connectionNotifier = _ref.read(
-      deviceConnectionNotifierProvider.notifier,
-    );
+    // Обновлены ссылки на провайдер
+    final deviceState = _ref.read(deviceConnectionProvider);
+    final connectionNotifier = _ref.read(deviceConnectionProvider.notifier);
 
     if (deviceState.status != DeviceStatus.connected) {
       return UploadResult.notConnected;

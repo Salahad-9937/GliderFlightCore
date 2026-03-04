@@ -15,7 +15,8 @@ class TelemetryDashboard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final device = ref.watch(deviceConnectionNotifierProvider);
+    // Обновлено имя провайдера
+    final device = ref.watch(deviceConnectionProvider);
     final strings = ref.watch(l10nProvider);
 
     return InstrumentCard(
@@ -24,7 +25,7 @@ class TelemetryDashboard extends ConsumerWidget {
       actions: [
         IconButton(
           onPressed: () =>
-              ref.read(deviceConnectionNotifierProvider.notifier).disconnect(),
+              ref.read(deviceConnectionProvider.notifier).disconnect(),
           icon: const Icon(
             Icons.power_settings_new,
             size: 18,
@@ -40,7 +41,6 @@ class TelemetryDashboard extends ConsumerWidget {
           return Column(
             children: [
               if (!device.isHardwareOk) _buildHardwareError(strings),
-
               if (isLandscape)
                 Row(
                   children: [
@@ -57,7 +57,6 @@ class TelemetryDashboard extends ConsumerWidget {
                     _buildSensorGrid(device, strings),
                   ],
                 ),
-
               const SizedBox(height: 20),
               _buildCalibrationButton(context, strings),
             ],
