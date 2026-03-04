@@ -39,7 +39,8 @@ class DeviceRepositoryImpl implements IDeviceRepository {
       (json) => Success(
         DeviceMapper.toEntity(
           DeviceStatusDto.fromJson(json),
-          ipAddress: AppConstants.defaultDeviceIp.replaceAll('http://', ''),
+          // Исправлено имя аргумента согласно сигнатуре маппера
+          rawIp: AppConstants.defaultDeviceIp,
         ),
       ),
       (failure) => Error(failure),

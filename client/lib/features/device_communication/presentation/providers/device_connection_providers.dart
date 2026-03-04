@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/widgets.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/architecture/use_case.dart';
@@ -21,6 +22,23 @@ class DeviceConnection extends _$DeviceConnection {
   Device build() {
     ref.onDispose(() => _stopPolling());
     return const Device(status: DeviceStatus.disconnected);
+  }
+
+  /// Обработка изменения состояния жизненного цикла приложения.
+  /// Вынесено из UI для соблюдения Layering.
+  Future<void> handleLifecycleChange(AppLifecycleState state) async {
+    if (this.state.status != DeviceStatus.connected) return;
+
+    final settings = ref.read(sensorSettingsControllerProvider);
+
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      pausePolling();
+      await settings.toggleMonitoring(false);
+    } else if (state == AppLifecycleState.resumed) {
+      await settings.toggleMonitoring(true);
+      resumePolling();
+    }
   }
 
   Future<void> connect() async {

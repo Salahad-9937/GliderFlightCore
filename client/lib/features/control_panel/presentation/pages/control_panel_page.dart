@@ -8,9 +8,7 @@ import '../../../glider_profiles/presentation/providers/glider_profiles_provider
 import '../../../glider_profiles/presentation/widgets/edit_profile_dialog.dart';
 import '../../../flight_programs/presentation/widgets/flight_programs_list.dart';
 
-import '../../../device_communication/domain/entities/device_status.dart';
 import '../../../device_communication/presentation/providers/device_connection_providers.dart';
-import '../../../device_communication/presentation/providers/sensor_settings_controller.dart';
 import '../../../device_communication/presentation/widgets/device_status_card.dart';
 import '../../../device_communication/presentation/widgets/system_health_card.dart';
 
@@ -28,15 +26,12 @@ class ControlPanelPage extends ConsumerStatefulWidget {
 
 class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
     with WidgetsBindingObserver {
-  bool _isBackgrounded = false;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Обновлено имя провайдера
       ref.read(deviceConnectionProvider.notifier).connect();
     });
   }
@@ -44,34 +39,14 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // Обновлено имя провайдера
     ref.read(deviceConnectionProvider.notifier).disconnect();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final device = ref.read(deviceConnectionProvider);
-    if (device.status != DeviceStatus.connected) return;
-
-    final connectionNotifier = ref.read(deviceConnectionProvider.notifier);
-    final settingsController = ref.read(sensorSettingsControllerProvider);
-
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
-      if (!_isBackgrounded) {
-        _isBackgrounded = true;
-        connectionNotifier.pausePolling();
-        settingsController.toggleMonitoring(false);
-      }
-    } else if (state == AppLifecycleState.resumed) {
-      if (_isBackgrounded) {
-        _isBackgrounded = false;
-        settingsController.toggleMonitoring(true).then((_) {
-          connectionNotifier.resumePolling();
-        });
-      }
-    }
+    // UI теперь только делегирует событие нотификатору
+    ref.read(deviceConnectionProvider.notifier).handleLifecycleChange(state);
   }
 
   @override

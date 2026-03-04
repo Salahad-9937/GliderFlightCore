@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/presentation/widgets/instrument_card.dart';
 import '../../../../core/presentation/widgets/instrument_value.dart';
+import '../../domain/entities/device.dart';
 import '../providers/device_connection_providers.dart';
 import 'calibration_bottom_sheet.dart';
 
@@ -15,7 +16,6 @@ class TelemetryDashboard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Обновлено имя провайдера
     final device = ref.watch(deviceConnectionProvider);
     final strings = ref.watch(l10nProvider);
 
@@ -66,7 +66,7 @@ class TelemetryDashboard extends ConsumerWidget {
     );
   }
 
-  Widget _buildMainValue(dynamic device, dynamic strings) {
+  Widget _buildMainValue(Device device, dynamic strings) {
     final altColor = device.isStable ? AppColors.primary : AppColors.warning;
     return Column(
       children: [
@@ -87,7 +87,7 @@ class TelemetryDashboard extends ConsumerWidget {
     );
   }
 
-  Widget _buildSensorGrid(dynamic device, dynamic strings) {
+  Widget _buildSensorGrid(Device device, dynamic strings) {
     return Wrap(
       spacing: 24,
       runSpacing: 16,
@@ -95,24 +95,23 @@ class TelemetryDashboard extends ConsumerWidget {
       children: [
         _SensorItem(
           icon: Icons.thermostat,
-          value: '${device.temperature?.toStringAsFixed(1) ?? '--'}',
+          // Исправлена лишняя интерполяция строк
+          value: device.temperature?.toStringAsFixed(1) ?? '--',
           unit: '°C',
           label: strings.comm.temperature,
         ),
         _SensorItem(
           icon: Icons.speed,
-          value: '${device.currentPressure?.toStringAsFixed(0) ?? '--'}',
+          value: device.currentPressure?.toStringAsFixed(0) ?? '--',
           unit: 'Pa',
           label: strings.comm.pressure,
         ),
         _SensorItem(
           icon: Icons.bolt,
-          value: '${device.vcc?.toStringAsFixed(2) ?? '--'}',
+          value: device.vcc?.toStringAsFixed(2) ?? '--',
           unit: 'V',
           label: strings.comm.power,
-          color: (device.vcc != null && device.vcc! < 3.3)
-              ? AppColors.error
-              : AppColors.success,
+          color: device.isVccCritical ? AppColors.error : AppColors.success,
         ),
       ],
     );
@@ -164,6 +163,7 @@ class TelemetryDashboard extends ConsumerWidget {
   }
 }
 
+/// Вспомогательный виджет для отображения отдельного датчика.
 class _SensorItem extends StatelessWidget {
   final IconData icon;
   final String value;

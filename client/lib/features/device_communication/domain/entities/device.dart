@@ -1,8 +1,6 @@
 import 'device_status.dart';
 
 /// Сущность, представляющая бортовое устройство и его телеметрию.
-///
-/// Чистая доменная модель без знаний о JSON или HTTP.
 class Device {
   final DeviceStatus status;
   final String? ipAddress;
@@ -47,6 +45,12 @@ class Device {
     this.calibrationPhase,
     this.calibrationProgress,
   });
+
+  /// Бизнес-логика: проверка критического уровня питания.
+  bool get isVccCritical => vcc != null && vcc! < 3.3;
+
+  /// Бизнес-логика: определение готовности к полету.
+  bool get isReadyForFlight => isHardwareOk && isCalibrated && isStable;
 
   Device copyWith({
     DeviceStatus? status,

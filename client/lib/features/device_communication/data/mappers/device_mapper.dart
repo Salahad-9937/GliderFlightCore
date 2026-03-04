@@ -7,10 +7,11 @@ import '../models/system_health_dto.dart';
 /// Маппер для преобразования DTO в доменные сущности.
 class DeviceMapper {
   /// Преобразует DTO статуса в сущность Device.
-  static Device toEntity(DeviceStatusDto dto, {required String ipAddress}) {
+  static Device toEntity(DeviceStatusDto dto, {required String rawIp}) {
     return Device(
       status: DeviceStatus.connected,
-      ipAddress: ipAddress,
+      // Логика трансформации данных перенесена сюда
+      ipAddress: rawIp.replaceAll('http://', ''),
       isHardwareOk: dto.hwOk,
       isCalibrated: dto.calibrated,
       isCalibrating: dto.calibrating,
@@ -29,8 +30,6 @@ class DeviceMapper {
   }
 
   /// Преобразует DTO диагностики в сущность SystemHealth.
-  ///
-  /// [timestamp] передается извне (IDateTimeService) для детерминизма.
   static SystemHealth toSystemHealthEntity(
     SystemHealthDto dto,
     DateTime timestamp,
