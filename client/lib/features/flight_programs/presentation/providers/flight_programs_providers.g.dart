@@ -109,22 +109,16 @@ abstract class _$FlightPrograms extends $AsyncNotifier<List<FlightProgram>> {
 }
 
 /// Провайдер для получения одной программы по ID.
-///
-/// Использует множественные аргументы, поддерживаемые генератором.
 
 @ProviderFor(programById)
 final programByIdProvider = ProgramByIdFamily._();
 
 /// Провайдер для получения одной программы по ID.
-///
-/// Использует множественные аргументы, поддерживаемые генератором.
 
 final class ProgramByIdProvider
     extends $FunctionalProvider<FlightProgram?, FlightProgram?, FlightProgram?>
     with $Provider<FlightProgram?> {
   /// Провайдер для получения одной программы по ID.
-  ///
-  /// Использует множественные аргументы, поддерживаемые генератором.
   ProgramByIdProvider._({
     required ProgramByIdFamily super.from,
     required ({String profileId, String programId}) super.argument,
@@ -183,8 +177,6 @@ final class ProgramByIdProvider
 String _$programByIdHash() => r'b528327051eeb5b86f5e5ce270c1c9b2eac512d5';
 
 /// Провайдер для получения одной программы по ID.
-///
-/// Использует множественные аргументы, поддерживаемые генератором.
 
 final class ProgramByIdFamily extends $Family
     with
@@ -202,8 +194,6 @@ final class ProgramByIdFamily extends $Family
       );
 
   /// Провайдер для получения одной программы по ID.
-  ///
-  /// Использует множественные аргументы, поддерживаемые генератором.
 
   ProgramByIdProvider call({
     required String profileId,

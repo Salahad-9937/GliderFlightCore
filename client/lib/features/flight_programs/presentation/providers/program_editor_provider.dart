@@ -42,7 +42,6 @@ class ProgramEditor extends _$ProgramEditor {
   void init(String profileId, String programId) {
     if (state.program != null && state.program!.id == programId) return;
 
-    // Вызов провайдера с именованными параметрами
     final initialProgram = ref.read(
       programByIdProvider(profileId: profileId, programId: programId),
     );

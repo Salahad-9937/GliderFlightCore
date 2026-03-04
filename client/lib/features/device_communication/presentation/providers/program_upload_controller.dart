@@ -1,9 +1,11 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../flight_programs/domain/entities/flight_program.dart';
 import '../../domain/entities/device_status.dart';
 import 'device_connection_providers.dart';
 import 'device_usecase_providers.dart';
+
+part 'program_upload_controller.g.dart';
 
 enum UploadResult { success, failure, notConnected }
 
@@ -41,8 +43,7 @@ class ProgramUploadController {
   }
 }
 
-final programUploadControllerProvider = Provider<ProgramUploadController>((
-  ref,
-) {
+@riverpod
+ProgramUploadController programUploadController(Ref ref) {
   return ProgramUploadController(ref);
-});
+}

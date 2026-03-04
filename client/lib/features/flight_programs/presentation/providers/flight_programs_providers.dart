@@ -55,8 +55,6 @@ class FlightPrograms extends _$FlightPrograms {
 }
 
 /// Провайдер для получения одной программы по ID.
-///
-/// Использует множественные аргументы, поддерживаемые генератором.
 @riverpod
 FlightProgram? programById(
   Ref ref, {
