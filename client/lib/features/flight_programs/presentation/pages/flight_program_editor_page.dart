@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/presentation/widgets/instrument_value.dart';
-import '../../domain/entities/flight_program.dart';
+import '../../../../core/utils/string_extensions.dart';
 import '../providers/program_editor_provider.dart';
 import '../widgets/add_edit_step_dialog.dart';
+import '../widgets/empty_steps.dart';
+import '../widgets/flight_program_editor_app_bar.dart';
 import '../widgets/mission_step_card.dart';
+import '../widgets/mission_summary.dart';
 
 /// Страница редактора полетной программы.
 class FlightProgramEditorPage extends ConsumerStatefulWidget {
@@ -32,6 +34,7 @@ class _FlightProgramEditorPageState
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       ref
           .read(programEditorProvider.notifier)
           .init(widget.profileId, widget.programId);
@@ -66,52 +69,30 @@ class _FlightProgramEditorPageState
       },
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: AppBar(
-          backgroundColor: AppColors.background,
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                program.name.toUpperCase(),
-                style: AppTextStyles.sectionTitle,
+        appBar: FlightProgramEditorAppBar(
+          program: program,
+          hasChanges: editorState.hasChanges,
+          onSave: () {
+            notifier.saveChanges();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(strings.prog.missionDataSaved.t),
+                backgroundColor: AppColors.success,
               ),
-              Text(
-                strings.prog.missionSequenceEditor,
-                style: AppTextStyles.instrumentLabel,
-              ),
-            ],
-          ),
-          actions: [
-            IconButton(
-              onPressed: () {
-                notifier.saveChanges();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(strings.prog.missionDataSaved.toUpperCase()),
-                    backgroundColor: AppColors.success,
-                  ),
-                );
-              },
-              icon: Icon(
-                Icons.save,
-                color: editorState.hasChanges
-                    ? AppColors.warning
-                    : AppColors.primary,
-              ),
-            ),
-          ],
+            );
+          },
         ),
         body: SafeArea(
           child: Column(
             children: [
-              _MissionSummary(
+              MissionSummary(
                 program: program,
                 hasChanges: editorState.hasChanges,
                 strings: strings,
               ),
               Expanded(
                 child: program.steps.isEmpty
-                    ? _EmptySteps(strings: strings)
+                    ? EmptySteps(strings: strings)
                     : ListView.builder(
                         padding: const EdgeInsets.all(16),
                         itemCount: program.steps.length,
@@ -162,25 +143,25 @@ class _FlightProgramEditorPageState
           side: BorderSide(color: AppColors.warning),
         ),
         title: Text(
-          strings.prog.unsavedData,
+          strings.prog.unsavedData.t,
           style: AppTextStyles.sectionTitle.copyWith(color: AppColors.warning),
         ),
         content: Text(
-          strings.prog.abortEditing,
+          strings.prog.abortEditing.t,
           style: AppTextStyles.instrumentLabel.copyWith(color: Colors.white),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text(
-              strings.core.cancel.toUpperCase(),
+              strings.core.cancel.t,
               style: AppTextStyles.instrumentLabel,
             ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(
-              strings.prog.exit.toUpperCase(),
+              strings.prog.exit.t,
               style: AppTextStyles.instrumentLabel.copyWith(
                 color: AppColors.error,
               ),
@@ -190,77 +171,4 @@ class _FlightProgramEditorPageState
       ),
     );
   }
-}
-
-class _MissionSummary extends StatelessWidget {
-  final FlightProgram program;
-  final bool hasChanges;
-  final dynamic strings;
-
-  const _MissionSummary({
-    required this.program,
-    required this.hasChanges,
-    required this.strings,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                strings.prog.totalMissionTime,
-                style: AppTextStyles.instrumentLabel,
-              ),
-              InstrumentValue(
-                value: program.formattedTotalDuration,
-                unit: strings.prog.unitSecShort,
-                valueStyle: AppTextStyles.telemetryValueMedium.copyWith(
-                  color: AppColors.primary,
-                ),
-              ),
-            ],
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                strings.prog.sequenceStatus,
-                style: AppTextStyles.instrumentLabel,
-              ),
-              Text(
-                hasChanges ? strings.prog.modified : strings.prog.synced,
-                style: AppTextStyles.button.copyWith(
-                  color: hasChanges ? AppColors.warning : AppColors.success,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptySteps extends StatelessWidget {
-  final dynamic strings;
-  const _EmptySteps({required this.strings});
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Text(
-      strings.prog.noMissionSteps,
-      style: AppTextStyles.instrumentLabel.copyWith(
-        color: AppColors.borderBright,
-      ),
-    ),
-  );
 }

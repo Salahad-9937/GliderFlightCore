@@ -5,11 +5,11 @@ import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/presentation/widgets/instrument_encoder.dart';
+import '../../../../core/utils/string_extensions.dart';
 import '../../domain/entities/flight_program_step.dart';
 import '../../domain/value_objects/servo_angle.dart';
 import '../providers/step_editor_provider.dart';
 
-/// Вызов диалога добавления или редактирования шага.
 Future<FlightProgramStep?> showAddEditStepDialog(
   BuildContext context, {
   FlightProgramStep? existingStep,
@@ -38,8 +38,6 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
   @override
   void initState() {
     super.initState();
-
-    // Читаем начальное состояние из провайдера для инициализации контроллеров
     final initial = ref.read(stepEditorProvider(widget.existingStep));
 
     _angleController = TextEditingController(
@@ -72,7 +70,6 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
     final notifier = ref.read(stepProvider.notifier);
     final strings = ref.read(l10nProvider);
 
-    // Синхронизация текстовых полей при изменении состояния (например, через энкодер)
     ref.listen<FlightProgramStep>(stepProvider, (prev, next) {
       _updateController(_angleController, next.angle.value.toString());
       _updateController(_minController, next.duration.minutes.toString());
@@ -86,7 +83,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
       shape: const RoundedRectangleBorder(
         side: BorderSide(color: AppColors.primary),
       ),
-      title: Text(strings.prog.stepConfig, style: AppTextStyles.sectionTitle),
+      title: Text(strings.prog.stepConfig.t, style: AppTextStyles.sectionTitle),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -99,7 +96,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                     value: step.angle.value.toDouble(),
                     max: ServoAngle.max.toDouble(),
                     label: strings.prog.servoAngle,
-                    unit: strings.prog.unitDeg,
+                    unit: strings.prog.unitDeg.t,
                     controller: _angleController,
                     onKnob: (v) => notifier.updateAngle(v.toInt()),
                     onText: (v) => notifier.updateFromText(
@@ -111,7 +108,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                   _buildEncoderColumn(
                     value: step.duration.minutes.toDouble(),
                     max: 60,
-                    label: strings.panel.unitMin.toUpperCase(),
+                    label: strings.panel.unitMin,
                     unit: 'МИН',
                     controller: _minController,
                     onKnob: (v) =>
@@ -134,7 +131,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
                     max: 60,
                     isInfinite: true,
                     label: strings.prog.seconds,
-                    unit: strings.prog.unitSecShort,
+                    unit: strings.prog.unitSecShort.t,
                     controller: _secController,
                     onKnob: (v) =>
                         notifier.updateFromKnob(DurationComponent.sec, v),
@@ -168,7 +165,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: Text(
-            strings.core.cancel.toUpperCase(),
+            strings.core.cancel.t,
             style: AppTextStyles.instrumentLabel,
           ),
         ),
@@ -178,17 +175,14 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.black,
           ),
-          child: Text(strings.prog.confirm, style: AppTextStyles.button),
+          child: Text(strings.prog.confirm.t, style: AppTextStyles.button),
         ),
       ],
     );
   }
 
-  /// Обновляет текст в контроллере только если он отличается, чтобы не сбивать курсор
   void _updateController(TextEditingController controller, String value) {
-    if (controller.text != value) {
-      controller.text = value;
-    }
+    if (controller.text != value) controller.text = value;
   }
 
   Widget _buildEncoderColumn({
@@ -210,7 +204,7 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
             max: max,
             fullTurnValue: max,
             isInfinite: isInfinite,
-            label: label,
+            label: label.t,
             unit: unit,
             onChanged: onKnob,
           ),
