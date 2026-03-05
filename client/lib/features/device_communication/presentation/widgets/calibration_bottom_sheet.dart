@@ -4,7 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/string_extensions.dart';
 import '../providers/sensor_calibration_providers.dart';
+import 'calibration_error_view.dart';
+import 'calibration_phase_view.dart';
+import 'calibration_success_view.dart';
 
 /// Терминал калибровки датчиков.
 class CalibrationBottomSheet extends ConsumerWidget {
@@ -28,72 +32,16 @@ class CalibrationBottomSheet extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+              _buildHandle(),
               const SizedBox(height: 24),
               Text(
-                strings.comm.calibrationTitle.toUpperCase(),
+                strings.comm.calibrationTitle.t,
                 style: AppTextStyles.sectionTitle.copyWith(fontSize: 20),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
-
-              // Быстрое обнуление
-              if (calibState.phase == CalibrationPhase.idle ||
-                  calibState.phase == CalibrationPhase.success)
-                _buildActionButton(
-                  label: strings.comm.zeroAltitudeBtn,
-                  icon: Icons.exposure_zero,
-                  onPressed: notifier.zeroAltitude,
-                  color: AppColors.accent,
-                ),
-
-              if (calibState.phase == CalibrationPhase.zeroing)
-                _buildProgress(strings.comm.zeroingProcess, calibState),
-
-              const SizedBox(height: 16),
-              const Divider(color: AppColors.border),
-              const SizedBox(height: 16),
-
-              // Полная калибровка
-              if (calibState.phase == CalibrationPhase.idle)
-                _buildActionButton(
-                  label: strings.comm.startFullCalibBtn,
-                  icon: Icons.settings_backup_restore,
-                  onPressed: notifier.startFullCalibration,
-                  color: AppColors.primary,
-                )
-              else if (calibState.phase == CalibrationPhase.stabilization)
-                _buildProgress(strings.comm.stabilizationProcess, calibState)
-              else if (calibState.phase == CalibrationPhase.measuring)
-                _buildProgress(strings.comm.measuringProcess, calibState)
-              else if (calibState.phase == CalibrationPhase.success)
-                _buildSuccess(notifier, strings)
-              else if (calibState.phase == CalibrationPhase.error)
-                _buildError(notifier, calibState.errorMessage, strings),
-
-              if (calibState.phase != CalibrationPhase.idle &&
-                  calibState.phase != CalibrationPhase.success)
-                Padding(
-                  padding: const EdgeInsets.only(top: 24),
-                  child: TextButton(
-                    onPressed: notifier.cancelOperation,
-                    child: Text(
-                      strings.comm.cancelOperation.toUpperCase(),
-                      style: AppTextStyles.button.copyWith(
-                        color: AppColors.error,
-                      ),
-                    ),
-                  ),
-                ),
+              _buildContent(calibState, notifier, strings),
+              _buildCancelButton(calibState, notifier, strings),
             ],
           ),
         ),
@@ -101,16 +49,67 @@ class CalibrationBottomSheet extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionButton({
-    required String label,
-    required IconData icon,
-    required VoidCallback onPressed,
-    required Color color,
-  }) {
+  Widget _buildContent(
+    CalibrationState state,
+    SensorCalibration notifier,
+    dynamic strings,
+  ) {
+    return switch (state.phase) {
+      CalibrationPhase.idle || CalibrationPhase.success => Column(
+        children: [
+          _actionBtn(
+            strings.comm.zeroAltitudeBtn,
+            Icons.exposure_zero,
+            notifier.zeroAltitude,
+            AppColors.accent,
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: AppColors.border),
+          const SizedBox(height: 16),
+          if (state.phase == CalibrationPhase.idle)
+            _actionBtn(
+              strings.comm.startFullCalibBtn,
+              Icons.settings_backup_restore,
+              notifier.startFullCalibration,
+              AppColors.primary,
+            )
+          else
+            CalibrationSuccessView(
+              strings: strings,
+              onSave: notifier.saveCalibration,
+            ),
+        ],
+      ),
+      CalibrationPhase.zeroing => CalibrationPhaseView(
+        label: strings.comm.zeroingProcess,
+        state: state,
+      ),
+      CalibrationPhase.stabilization => CalibrationPhaseView(
+        label: strings.comm.stabilizationProcess,
+        state: state,
+      ),
+      CalibrationPhase.measuring => CalibrationPhaseView(
+        label: strings.comm.measuringProcess,
+        state: state,
+      ),
+      CalibrationPhase.error => CalibrationErrorView(
+        error: state.errorMessage,
+        strings: strings,
+        onRetry: notifier.reset,
+      ),
+    };
+  }
+
+  Widget _actionBtn(
+    String label,
+    IconData icon,
+    VoidCallback onPressed,
+    Color color,
+  ) {
     return OutlinedButton.icon(
       onPressed: onPressed,
       icon: Icon(icon, size: 20),
-      label: Text(label.toUpperCase(), style: AppTextStyles.button),
+      label: Text(label.t, style: AppTextStyles.button),
       style: OutlinedButton.styleFrom(
         foregroundColor: color,
         side: BorderSide(color: color.withValues(alpha: 0.5)),
@@ -119,77 +118,35 @@ class CalibrationBottomSheet extends ConsumerWidget {
     );
   }
 
-  Widget _buildProgress(String label, CalibrationState state) {
-    return Column(
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: AppTextStyles.instrumentLabel.copyWith(
-            color: state.phaseColor,
-          ),
+  Widget _buildCancelButton(
+    CalibrationState state,
+    SensorCalibration notifier,
+    dynamic strings,
+  ) {
+    if (state.phase == CalibrationPhase.idle ||
+        state.phase == CalibrationPhase.success) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: TextButton(
+        onPressed: notifier.cancelOperation,
+        child: Text(
+          strings.comm.cancelOperation.t,
+          style: AppTextStyles.button.copyWith(color: AppColors.error),
         ),
-        const SizedBox(height: 12),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(2),
-          child: LinearProgressIndicator(
-            value: state.progress,
-            minHeight: 8,
-            color: state.phaseColor,
-            backgroundColor: AppColors.surface,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(state.progressLabel, style: AppTextStyles.instrumentLabel),
-      ],
+      ),
     );
   }
 
-  Widget _buildSuccess(dynamic notifier, dynamic strings) {
-    return Column(
-      children: [
-        const Icon(
-          Icons.check_circle_outline,
-          color: AppColors.success,
-          size: 48,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          strings.comm.calibSuccess.toUpperCase(),
-          style: AppTextStyles.instrumentLabel.copyWith(
-            color: AppColors.success,
-          ),
-        ),
-        const SizedBox(height: 24),
-        FilledButton(
-          onPressed: () => notifier.saveCalibration(),
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.success,
-            foregroundColor: Colors.black,
-          ),
-          child: Text(
-            strings.comm.saveToMemoryBtn.toUpperCase(),
-            style: AppTextStyles.button,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildError(dynamic notifier, String? error, dynamic strings) {
-    return Column(
-      children: [
-        const Icon(Icons.error_outline, color: AppColors.error, size: 48),
-        const SizedBox(height: 16),
-        Text(
-          error?.toUpperCase() ?? 'CALIB_ERROR',
-          style: AppTextStyles.instrumentLabel.copyWith(color: AppColors.error),
-        ),
-        const SizedBox(height: 16),
-        TextButton(
-          onPressed: notifier.reset,
-          child: Text(strings.core.retry.toUpperCase()),
-        ),
-      ],
-    );
-  }
+  Widget _buildHandle() => Center(
+    child: Container(
+      width: 40,
+      height: 4,
+      decoration: BoxDecoration(
+        color: AppColors.border,
+        borderRadius: BorderRadius.circular(2),
+      ),
+    ),
+  );
 }

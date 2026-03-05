@@ -5,6 +5,7 @@ import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/presentation/widgets/instrument_card.dart';
+import '../../../../core/utils/string_extensions.dart';
 import '../providers/system_health_provider.dart';
 
 /// Виджет системных метрик в стиле терминала.
@@ -16,7 +17,6 @@ class SystemHealthCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final systemAsync = ref.watch(systemHealthProvider(profileId));
     final strings = ref.watch(l10nProvider);
-    ref.watch(systemUpdateTimerProvider);
 
     return InstrumentCard(
       label: strings.panel.systemDiagTitle,
@@ -30,31 +30,28 @@ class SystemHealthCard extends ConsumerWidget {
       child: systemAsync.when(
         data: (health) => health == null
             ? Text(
-                strings.panel.deviceNotReady.toUpperCase(),
+                strings.panel.deviceNotReady.t,
                 style: AppTextStyles.instrumentLabel,
               )
             : Column(
                 children: [
-                  _buildRow(strings.panel.firmwareVersion, health.version),
-                  _buildRow(
-                    strings.panel.uptime,
-                    // Прямой вызов форматирования из домена
-                    health.formatUptime(
-                      strings.panel.unitMin,
-                      strings.panel.unitSec,
-                    ),
+                  _row(strings.panel.firmwareVersion, health.version),
+                  // Использование Consumer для изоляции ежесекундного обновления (Stage 14.4)
+                  Consumer(
+                    builder: (context, ref, _) {
+                      ref.watch(systemUpdateTimerProvider);
+                      return _row(
+                        strings.panel.uptime,
+                        health.formatUptime(
+                          strings.panel.unitMin,
+                          strings.panel.unitSec,
+                        ),
+                      );
+                    },
                   ),
-                  _buildRow(
-                    strings.panel.freeRam,
-                    // Использование готовой метки из домена
-                    health.freeHeapLabel,
-                  ),
-                  _buildRow(
-                    strings.panel.fsMemory,
-                    // Использование готовой метки из домена
-                    health.fsMemoryLabel,
-                  ),
-                  _buildRow(strings.panel.chipId, health.chipId.toUpperCase()),
+                  _row(strings.panel.freeRam, health.freeHeapLabel),
+                  _row(strings.panel.fsMemory, health.fsMemoryLabel),
+                  _row(strings.panel.chipId, health.chipId.t),
                 ],
               ),
         loading: () => const LinearProgressIndicator(
@@ -62,29 +59,27 @@ class SystemHealthCard extends ConsumerWidget {
           backgroundColor: Colors.transparent,
         ),
         error: (e, _) => Text(
-          'DIAG_ERR: $e',
+          'DIAG_ERR: $e'.t,
           style: AppTextStyles.instrumentLabel.copyWith(color: AppColors.error),
         ),
       ),
     );
   }
 
-  Widget _buildRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label.toUpperCase(), style: AppTextStyles.instrumentLabel),
-          Text(
-            value,
-            style: AppTextStyles.telemetryValueMedium.copyWith(
-              fontSize: 13,
-              color: AppColors.primary,
-            ),
+  Widget _row(String label, String value) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label.t, style: AppTextStyles.instrumentLabel),
+        Text(
+          value,
+          style: AppTextStyles.telemetryValueMedium.copyWith(
+            fontSize: 13,
+            color: AppColors.primary,
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
 }

@@ -5,16 +5,15 @@ import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/presentation/widgets/instrument_card.dart';
+import '../../../../core/utils/string_extensions.dart';
 import '../../domain/entities/device_status.dart';
 import '../providers/device_connection_providers.dart';
 
-/// Виджет ожидания связи в стиле системного лога.
 class ConnectionInstructions extends ConsumerWidget {
   const ConnectionInstructions({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Обновлено имя провайдера на сгенерированное
     final device = ref.watch(deviceConnectionProvider);
     final notifier = ref.read(deviceConnectionProvider.notifier);
     final strings = ref.watch(l10nProvider);
@@ -30,7 +29,7 @@ class ConnectionInstructions extends ConsumerWidget {
         children: [
           Text(
             '${strings.comm.connectionStep1}\n${strings.comm.connectionStep2}'
-                .toUpperCase(),
+                .t,
             style: AppTextStyles.instrumentLabel.copyWith(height: 1.8),
           ),
           const SizedBox(height: 24),
@@ -50,7 +49,7 @@ class ConnectionInstructions extends ConsumerWidget {
                     ),
                   )
                 : Text(
-                    strings.comm.connectionCheck.toUpperCase(),
+                    strings.comm.connectionCheck.t,
                     style: AppTextStyles.button,
                   ),
           ),
@@ -58,7 +57,7 @@ class ConnectionInstructions extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: Text(
-                'ERROR: ${device.errorMessage}'.toUpperCase(),
+                'ERROR: ${device.errorMessage}'.t,
                 style: AppTextStyles.instrumentLabel.copyWith(
                   color: AppColors.error,
                 ),

@@ -8,7 +8,8 @@ import '../../../../core/presentation/widgets/instrument_card.dart';
 import '../../../../core/presentation/widgets/instrument_value.dart';
 import '../../domain/entities/device.dart';
 import '../providers/device_connection_providers.dart';
-import 'calibration_bottom_sheet.dart';
+import 'device_dialogs.dart';
+import 'sensor_grid_item.dart';
 
 /// Виджет отображения телеметрии в стиле кокпита.
 class TelemetryDashboard extends ConsumerWidget {
@@ -37,26 +38,10 @@ class TelemetryDashboard extends ConsumerWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isLandscape = constraints.maxWidth > 400;
-
           return Column(
             children: [
               if (!device.isHardwareOk) _buildHardwareError(strings),
-              if (isLandscape)
-                Row(
-                  children: [
-                    Expanded(flex: 2, child: _buildMainValue(device, strings)),
-                    const VerticalDivider(color: AppColors.border),
-                    Expanded(flex: 3, child: _buildSensorGrid(device, strings)),
-                  ],
-                )
-              else
-                Column(
-                  children: [
-                    _buildMainValue(device, strings),
-                    const Divider(color: AppColors.border, height: 32),
-                    _buildSensorGrid(device, strings),
-                  ],
-                ),
+              _buildMainLayout(device, strings, isLandscape),
               const SizedBox(height: 20),
               _buildCalibrationButton(context, strings),
             ],
@@ -66,19 +51,40 @@ class TelemetryDashboard extends ConsumerWidget {
     );
   }
 
+  Widget _buildMainLayout(Device device, dynamic strings, bool isLandscape) {
+    if (isLandscape) {
+      return Row(
+        children: [
+          Expanded(flex: 2, child: _buildMainValue(device, strings)),
+          const VerticalDivider(color: AppColors.border),
+          Expanded(flex: 3, child: _buildSensorGrid(device, strings)),
+        ],
+      );
+    }
+    return Column(
+      children: [
+        _buildMainValue(device, strings),
+        const Divider(color: AppColors.border, height: 32),
+        _buildSensorGrid(device, strings),
+      ],
+    );
+  }
+
   Widget _buildMainValue(Device device, dynamic strings) {
     final altColor = device.isStable ? AppColors.primary : AppColors.warning;
     return Column(
       children: [
-        InstrumentValue(
-          value: device.formattedAltitude,
-          unit: strings.comm.altitudeUnit,
-          valueStyle: AppTextStyles.telemetryValueLarge,
-          color: altColor,
+        RepaintBoundary(
+          child: InstrumentValue(
+            value: device.formattedAltitude,
+            unit: strings.comm.altitudeUnit.t,
+            valueStyle: AppTextStyles.telemetryValueLarge,
+            color: altColor,
+          ),
         ),
         if (device.isCalibrating)
           Text(
-            strings.comm.calibratingProgress.toUpperCase(),
+            strings.comm.calibratingProgress.t,
             style: AppTextStyles.instrumentLabel.copyWith(
               color: AppColors.warning,
             ),
@@ -93,19 +99,19 @@ class TelemetryDashboard extends ConsumerWidget {
       runSpacing: 16,
       alignment: WrapAlignment.center,
       children: [
-        _SensorItem(
+        SensorGridItem(
           icon: Icons.thermostat,
           value: device.formattedTemperature,
           unit: '°C',
           label: strings.comm.temperature,
         ),
-        _SensorItem(
+        SensorGridItem(
           icon: Icons.speed,
           value: device.formattedPressure,
           unit: 'Pa',
           label: strings.comm.pressure,
         ),
-        _SensorItem(
+        SensorGridItem(
           icon: Icons.bolt,
           value: device.formattedVcc,
           unit: 'V',
@@ -116,83 +122,41 @@ class TelemetryDashboard extends ConsumerWidget {
     );
   }
 
-  Widget _buildHardwareError(dynamic strings) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(8),
-      color: AppColors.error.withValues(alpha: 0.1),
-      child: Row(
-        children: [
-          const Icon(Icons.warning, color: AppColors.error, size: 16),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              strings.comm.sensorError,
-              style: AppTextStyles.instrumentLabel.copyWith(
-                color: AppColors.error,
-              ),
+  Widget _buildHardwareError(dynamic strings) => Container(
+    margin: const EdgeInsets.only(bottom: 16),
+    padding: const EdgeInsets.all(8),
+    color: AppColors.error.withValues(alpha: 0.1),
+    child: Row(
+      children: [
+        const Icon(Icons.warning, color: AppColors.error, size: 16),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            strings.comm.sensorError.t,
+            style: AppTextStyles.instrumentLabel.copyWith(
+              color: AppColors.error,
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCalibrationButton(BuildContext context, dynamic strings) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: () => showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (context) => const CalibrationBottomSheet(),
         ),
-        icon: const Icon(Icons.tune, size: 18),
-        label: Text(
-          strings.comm.calibrationTitle.toUpperCase(),
-          style: AppTextStyles.button,
-        ),
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: AppColors.borderBright),
-          foregroundColor: Colors.white,
-        ),
-      ),
-    );
-  }
-}
-
-class _SensorItem extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final String unit;
-  final String label;
-  final Color? color;
-
-  const _SensorItem({
-    required this.icon,
-    required this.value,
-    required this.unit,
-    required this.label,
-    this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: color ?? Colors.grey),
-            const SizedBox(width: 4),
-            InstrumentValue(value: value, unit: unit, color: color),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(label.toUpperCase(), style: AppTextStyles.instrumentLabel),
       ],
-    );
-  }
+    ),
+  );
+
+  Widget _buildCalibrationButton(BuildContext context, dynamic strings) =>
+      SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          // Использование фабрики диалогов (Stage 6.2)
+          onPressed: () => DeviceDialogs.showCalibration(context),
+          icon: const Icon(Icons.tune, size: 18),
+          label: Text(
+            strings.comm.calibrationTitle.t,
+            style: AppTextStyles.button,
+          ),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: AppColors.borderBright),
+            foregroundColor: Colors.white,
+          ),
+        ),
+      );
 }
