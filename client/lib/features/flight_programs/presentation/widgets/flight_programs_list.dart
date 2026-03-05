@@ -6,11 +6,10 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/string_extensions.dart';
 import '../providers/flight_programs_providers.dart';
-import 'add_program_dialog.dart';
+import 'flight_program_dialogs.dart';
 import 'program_card.dart';
 import 'programs_empty_state.dart';
 
-/// Список программ в стиле банка данных.
 class FlightProgramsList extends ConsumerWidget {
   final String profileId;
   const FlightProgramsList({super.key, required this.profileId});
@@ -31,7 +30,8 @@ class FlightProgramsList extends ConsumerWidget {
               style: AppTextStyles.sectionTitle,
             ),
             IconButton(
-              onPressed: () => showAddProgramDialog(context, ref, profileId),
+              onPressed: () =>
+                  FlightProgramDialogs.showAdd(context, ref, profileId),
               icon: const Icon(
                 Icons.add_circle_outline,
                 color: AppColors.primary,

@@ -8,9 +8,8 @@ import '../../../../core/utils/string_extensions.dart';
 import '../../../device_communication/presentation/providers/program_upload_controller.dart';
 import '../../domain/entities/flight_program.dart';
 import '../pages/flight_program_editor_page.dart';
-import 'delete_program_dialog.dart';
+import 'flight_program_dialogs.dart';
 
-/// Виджет карточки программы в списке.
 class ProgramCard extends ConsumerWidget {
   final String profileId;
   final FlightProgram program;
@@ -36,20 +35,15 @@ class ProgramCard extends ConsumerWidget {
             size: 16,
             color: AppColors.primary,
           ),
-          onSelected: (val) => _handleMenuAction(context, ref, val, strings),
+          onSelected: (val) => _onAction(context, ref, val, strings),
           color: AppColors.surfaceLight,
           itemBuilder: (context) => [
-            PopupMenuItem(
-              value: 'upload',
-              child: _buildPopupItem(Icons.upload, strings.prog.uploadToDevice),
-            ),
-            PopupMenuItem(
-              value: 'delete',
-              child: _buildPopupItem(
-                Icons.delete_outline,
-                strings.core.delete,
-                isError: true,
-              ),
+            _item('upload', Icons.upload, strings.prog.uploadToDevice),
+            _item(
+              'delete',
+              Icons.delete_outline,
+              strings.core.delete,
+              isError: true,
             ),
           ],
         ),
@@ -95,37 +89,47 @@ class ProgramCard extends ConsumerWidget {
     );
   }
 
-  Future<void> _handleMenuAction(
+  void _onAction(
     BuildContext context,
     WidgetRef ref,
     String val,
     dynamic strings,
   ) async {
-    if (val == 'upload') {
-      final res = await ref
-          .read(programUploadControllerProvider)
-          .uploadProgram(program);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            (res == UploadResult.success
-                    ? strings.prog.uploadSuccess
-                    : strings.prog.uploadError)
-                .t,
-          ),
-          backgroundColor: res == UploadResult.success
-              ? AppColors.success
-              : AppColors.error,
-        ),
-      );
-    } else if (val == 'delete') {
-      showDeleteProgramDialog(context, ref, profileId, program);
+    switch (val) {
+      case 'upload':
+        final res = await ref
+            .read(programUploadControllerProvider)
+            .uploadProgram(program);
+        if (!context.mounted) return;
+        _showStatus(
+          context,
+          res == UploadResult.success
+              ? strings.prog.uploadSuccess
+              : strings.prog.uploadError,
+          res == UploadResult.success,
+        );
+      case 'delete':
+        FlightProgramDialogs.showDelete(context, ref, profileId, program);
     }
   }
 
-  Widget _buildPopupItem(IconData icon, String label, {bool isError = false}) {
-    return Row(
+  void _showStatus(BuildContext context, String msg, bool ok) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg.t),
+        backgroundColor: ok ? AppColors.success : AppColors.error,
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _item(
+    String val,
+    IconData icon,
+    String label, {
+    bool isError = false,
+  }) => PopupMenuItem(
+    value: val,
+    child: Row(
       children: [
         Icon(icon, size: 18, color: isError ? AppColors.error : Colors.white),
         const SizedBox(width: 12),
@@ -136,6 +140,6 @@ class ProgramCard extends ConsumerWidget {
           ),
         ),
       ],
-    );
-  }
+    ),
+  );
 }

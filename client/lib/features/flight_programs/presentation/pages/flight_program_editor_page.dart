@@ -12,7 +12,6 @@ import '../widgets/flight_program_editor_app_bar.dart';
 import '../widgets/mission_step_card.dart';
 import '../widgets/mission_summary.dart';
 
-/// Страница редактора полетной программы.
 class FlightProgramEditorPage extends ConsumerStatefulWidget {
   final String profileId;
   final String programId;
@@ -46,7 +45,6 @@ class _FlightProgramEditorPageState
     final editorState = ref.watch(programEditorProvider);
     final notifier = ref.read(programEditorProvider.notifier);
     final strings = ref.watch(l10nProvider);
-
     final program = editorState.program;
 
     if (program == null) {
@@ -63,9 +61,7 @@ class _FlightProgramEditorPageState
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final shouldPop = await _showExitConfirmation(context, strings);
-        if (shouldPop == true && context.mounted) {
-          Navigator.of(context).pop();
-        }
+        if (shouldPop == true && context.mounted) Navigator.of(context).pop();
       },
       child: Scaffold(
         backgroundColor: AppColors.background,
@@ -91,27 +87,30 @@ class _FlightProgramEditorPageState
                 strings: strings,
               ),
               Expanded(
-                child: program.steps.isEmpty
-                    ? EmptySteps(strings: strings)
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: program.steps.length,
-                        itemBuilder: (context, index) => MissionStepCard(
-                          step: program.steps[index],
-                          index: index,
-                          strings: strings,
-                          onTap: () async {
-                            final updated = await showAddEditStepDialog(
-                              context,
-                              existingStep: program.steps[index],
-                            );
-                            if (updated != null) {
-                              notifier.updateStep(index, updated);
-                            }
-                          },
-                          onDelete: () => notifier.deleteStep(index),
+                // Изоляция отрисовки списка для производительности (Stage 14.4)
+                child: RepaintBoundary(
+                  child: program.steps.isEmpty
+                      ? EmptySteps(strings: strings)
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: program.steps.length,
+                          itemBuilder: (context, index) => MissionStepCard(
+                            step: program.steps[index],
+                            index: index,
+                            strings: strings,
+                            onTap: () async {
+                              final updated = await showAddEditStepDialog(
+                                context,
+                                existingStep: program.steps[index],
+                              );
+                              if (updated != null) {
+                                notifier.updateStep(index, updated);
+                              }
+                            },
+                            onDelete: () => notifier.deleteStep(index),
+                          ),
                         ),
-                      ),
+                ),
               ),
             ],
           ),
@@ -119,9 +118,7 @@ class _FlightProgramEditorPageState
         floatingActionButton: FloatingActionButton(
           onPressed: () async {
             final newStep = await showAddEditStepDialog(context);
-            if (newStep != null) {
-              notifier.addStep(newStep);
-            }
+            if (newStep != null) notifier.addStep(newStep);
           },
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.black,
