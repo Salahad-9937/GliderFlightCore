@@ -4,14 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/core_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/string_extensions.dart';
 import '../../../glider_profiles/presentation/providers/glider_profiles_providers.dart';
-import '../../../glider_profiles/presentation/widgets/edit_profile_dialog.dart';
 import '../../../flight_programs/presentation/widgets/flight_programs_list.dart';
 
 import '../../../device_communication/presentation/providers/device_connection_providers.dart';
 import '../../../device_communication/presentation/widgets/device_status_card.dart';
 import '../../../device_communication/presentation/widgets/system_health_card.dart';
 
+import '../widgets/control_panel_app_bar.dart';
 import '../widgets/flight_history_section.dart';
 
 /// Страница управления планером в стиле тактического терминала.
@@ -47,7 +48,6 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!mounted) return;
-    // UI теперь только делегирует событие нотификатору
     ref.read(deviceConnectionProvider.notifier).handleLifecycleChange(state);
   }
 
@@ -57,41 +57,12 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
     final strings = ref.watch(l10nProvider);
 
     if (profile == null) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        body: Center(
-          child: Text(
-            strings.panel.profileNotFound.toUpperCase(),
-            style: AppTextStyles.instrumentLabel,
-          ),
-        ),
-      );
+      return _ProfileNotFound(message: strings.panel.profileNotFound);
     }
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(profile.name.toUpperCase(), style: AppTextStyles.sectionTitle),
-            Text('MISSION CONTROL', style: AppTextStyles.instrumentLabel),
-          ],
-        ),
-        actions: [
-          IconButton(
-            onPressed: () => showEditProfileDialog(
-              context,
-              ref,
-              widget.gliderProfileId,
-              profile.name,
-            ),
-            icon: const Icon(Icons.edit_note, color: AppColors.primary),
-            tooltip: strings.panel.renameGlider,
-          ),
-        ],
-      ),
+      appBar: ControlPanelAppBar(profile: profile),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -106,6 +77,21 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
             const SizedBox(height: 40),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ProfileNotFound extends StatelessWidget {
+  final String message;
+  const _ProfileNotFound({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Center(
+        child: Text(message.t, style: AppTextStyles.instrumentLabel),
       ),
     );
   }
