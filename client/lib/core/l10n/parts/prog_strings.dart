@@ -51,6 +51,10 @@ class ProgStrings {
   final String unitSecShort;
   final String missionDataSaved;
 
+  // Строки валидации
+  final String invalidDurationTitle;
+  final String zeroDurationError;
+
   const ProgStrings({
     required this.programsTitle,
     required this.createProgram,
@@ -100,6 +104,8 @@ class ProgStrings {
     required this.unitDeg,
     required this.unitSecShort,
     required this.missionDataSaved,
+    required this.invalidDurationTitle,
+    required this.zeroDurationError,
   });
 
   static const ru = ProgStrings(
@@ -152,5 +158,7 @@ class ProgStrings {
     unitDeg: 'ГРАД',
     unitSecShort: 'СЕК',
     missionDataSaved: 'ДАННЫЕ МИССИИ СОХРАНЕНЫ',
+    invalidDurationTitle: 'НЕДОПУСТИМОЕ ВРЕМЯ',
+    zeroDurationError: 'ДЛИТЕЛЬНОСТЬ ШАГА ДОЛЖНА БЫТЬ БОЛЬШЕ НУЛЯ.',
   );
 }

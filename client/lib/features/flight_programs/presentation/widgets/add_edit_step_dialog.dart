@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/core_providers.dart';
+import '../../../../core/l10n/app_strings.dart';
 import '../../../../core/presentation/widgets/tactical_encoder_field.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -168,7 +169,13 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
           ),
         ),
         FilledButton(
-          onPressed: () => Navigator.pop(context, step),
+          onPressed: () {
+            if (notifier.isDurationValid) {
+              Navigator.pop(context, step);
+            } else {
+              _showZeroDurationWarning(context, strings);
+            }
+          },
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.black,
@@ -176,6 +183,32 @@ class _StepDialogState extends ConsumerState<_StepDialog> {
           child: Text(strings.prog.confirm.t, style: AppTextStyles.button),
         ),
       ],
+    );
+  }
+
+  void _showZeroDurationWarning(BuildContext context, AppStrings strings) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: const RoundedRectangleBorder(
+          side: BorderSide(color: AppColors.warning),
+        ),
+        title: Text(
+          strings.prog.invalidDurationTitle.t,
+          style: AppTextStyles.sectionTitle.copyWith(color: AppColors.warning),
+        ),
+        content: Text(
+          strings.prog.zeroDurationError.t,
+          style: AppTextStyles.instrumentLabel.copyWith(color: Colors.white),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(strings.core.ok.t, style: AppTextStyles.button),
+          ),
+        ],
+      ),
     );
   }
 

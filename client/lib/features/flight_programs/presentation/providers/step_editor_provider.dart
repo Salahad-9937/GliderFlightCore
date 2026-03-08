@@ -22,6 +22,10 @@ final class StepEditor extends _$StepEditor {
         );
   }
 
+  /// Проверяет, что длительность шага не равна нулю.
+  /// Логическая проверка для предотвращения ошибок прошивки.
+  bool get isDurationValid => state.duration.totalMs > 0;
+
   /// Обновление угла сервопривода.
   void updateAngle(int val) {
     state = state.copyWith(angle: ServoAngle(val));
