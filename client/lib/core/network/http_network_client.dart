@@ -81,10 +81,21 @@ class HttpNetworkClient implements INetworkClient {
   /// Универсальный обработчик HTTP ответов.
   Result<dynamic, Failure> _handleResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
+      final bodyString = utf8.decode(response.bodyBytes).trim();
+
+      // Если тело пустое или содержит простое подтверждение "OK" —
+      // возвращаем пустую Map. Это предотвращает ошибку парсинга JSON
+      // в методах-командах (calibrate, zero, baro).
+      if (bodyString.isEmpty || bodyString == "OK") {
+        return const Success({});
+      }
+
       try {
-        return Success(jsonDecode(utf8.decode(response.bodyBytes)));
+        return Success(jsonDecode(bodyString));
       } catch (e) {
-        return const Error(DataFailure('Ошибка парсинга данных'));
+        // Если статус успешный (2xx), но это не JSON, считаем ответ валидным,
+        // но не содержащим данных (актуально для action-ендпоинтов).
+        return const Success({});
       }
     }
 
