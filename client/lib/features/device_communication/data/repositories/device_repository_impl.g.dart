@@ -8,12 +8,9 @@ part of 'device_repository_impl.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Провайдер реализации репозитория устройства.
 
 @ProviderFor(deviceRepository)
 final deviceRepositoryProvider = DeviceRepositoryProvider._();
-
-/// Провайдер реализации репозитория устройства.
 
 final class DeviceRepositoryProvider
     extends
@@ -23,7 +20,6 @@ final class DeviceRepositoryProvider
           IDeviceRepository
         >
     with $Provider<IDeviceRepository> {
-  /// Провайдер реализации репозитория устройства.
   DeviceRepositoryProvider._()
     : super(
         from: null,

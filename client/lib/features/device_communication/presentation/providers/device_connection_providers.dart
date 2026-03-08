@@ -4,7 +4,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/architecture/use_case.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../../../../core/di/core_providers.dart';
 import '../../domain/entities/device.dart';
 import '../../domain/entities/device_status.dart';
 import 'device_usecase_providers.dart';
@@ -12,43 +11,47 @@ import 'sensor_settings_controller.dart';
 
 part 'device_connection_providers.g.dart';
 
-/// Нотификатор управления сессией связи с устройством.
-@Riverpod(keepAlive: true)
+/// Нотификатор управления сессией связи.
+/// Использует autoDispose для автоматического управления ресурсами.
+@riverpod
 class DeviceConnection extends _$DeviceConnection {
   Timer? _pollingTimer;
   int _consecutiveFailures = 0;
 
   @override
   Device build() {
+    // Ресурс уничтожается автоматически, когда все виджеты перестают слушать провайдер.
     ref.onDispose(() => _stopPolling());
+
+    // Инициируем подключение при первой активации провайдера.
+    // Используем microtask, так как модификация состояния (внутри connect)
+    // запрещена непосредственно во время выполнения build.
+    Future.microtask(() => connect());
+
+    // Возвращаем начальное состояние. До завершения build обращение к state запрещено.
     return const Device(status: DeviceStatus.disconnected);
   }
 
-  /// Обработка изменения состояния жизненного цикла приложения.
-  /// Вынесено из UI для соблюдения Layering.
-  Future<void> handleLifecycleChange(AppLifecycleState state) async {
-    if (this.state.status != DeviceStatus.connected) return;
+  /// Управление через жизненный цикл приложения.
+  /// Вызывается только если провайдер активен.
+  Future<void> handleLifecycleChange(AppLifecycleState lifecycleState) async {
+    if (state.status != DeviceStatus.connected) return;
 
     final settings = ref.read(sensorSettingsControllerProvider);
 
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
+    if (lifecycleState == AppLifecycleState.paused ||
+        lifecycleState == AppLifecycleState.inactive) {
       pausePolling();
       await settings.toggleMonitoring(false);
-    } else if (state == AppLifecycleState.resumed) {
+    } else if (lifecycleState == AppLifecycleState.resumed) {
       await settings.toggleMonitoring(true);
       resumePolling();
     }
   }
 
+  /// Инициация подключения к устройству.
   Future<void> connect() async {
     if (state.status == DeviceStatus.connecting) return;
-
-    if (state.status == DeviceStatus.connected) {
-      _startPolling();
-      await ref.read(sensorSettingsControllerProvider).toggleMonitoring(true);
-      return;
-    }
 
     state = state.copyWith(status: DeviceStatus.connecting);
     _consecutiveFailures = 0;
@@ -64,9 +67,6 @@ class DeviceConnection extends _$DeviceConnection {
         _startPolling();
       },
       (failure) {
-        ref
-            .read(loggerServiceProvider)
-            .e('Ошибка подключения: ${failure.message}');
         state = Device(
           status: DeviceStatus.error,
           errorMessage: failure.message,
@@ -75,16 +75,19 @@ class DeviceConnection extends _$DeviceConnection {
     );
   }
 
+  /// Ручное отключение и сброс состояния.
   void disconnect() {
     _stopPolling();
     if (state.status == DeviceStatus.connected) {
       ref.read(toggleMonitoringUseCaseProvider).call(false);
     }
-    Timer.run(() => state = const Device(status: DeviceStatus.disconnected));
+    state = const Device(status: DeviceStatus.disconnected);
   }
 
+  /// Остановка таймера опроса.
   void pausePolling() => _stopPolling();
 
+  /// Возобновление опроса, если соединение активно.
   void resumePolling() {
     if (state.status == DeviceStatus.connected) _startPolling();
   }
@@ -98,10 +101,7 @@ class DeviceConnection extends _$DeviceConnection {
   }
 
   Future<void> _pollStatus() async {
-    if (state.status != DeviceStatus.connected) {
-      _stopPolling();
-      return;
-    }
+    if (state.status != DeviceStatus.connected) return;
 
     final result = await ref
         .read(getDeviceStatusUseCaseProvider)
@@ -114,18 +114,11 @@ class DeviceConnection extends _$DeviceConnection {
       },
       (failure) {
         _consecutiveFailures++;
-        ref
-            .read(loggerServiceProvider)
-            .w(
-              'Сбой опроса ($_consecutiveFailures/${AppConstants.maxConsecutiveFailures}): ${failure.message}',
-            );
-
         if (_consecutiveFailures >= AppConstants.maxConsecutiveFailures) {
-          final strings = ref.read(l10nProvider);
           _stopPolling();
           state = Device(
             status: DeviceStatus.error,
-            errorMessage: '${strings.comm.connectionLost}: ${failure.message}',
+            errorMessage: failure.message,
           );
         }
       },

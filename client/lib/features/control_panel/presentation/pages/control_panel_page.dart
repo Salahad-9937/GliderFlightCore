@@ -7,7 +7,6 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/string_extensions.dart';
 import '../../../glider_profiles/presentation/providers/glider_profiles_providers.dart';
 import '../../../flight_programs/presentation/widgets/flight_programs_list.dart';
-
 import '../../../device_communication/presentation/providers/device_connection_providers.dart';
 import '../../../device_communication/presentation/widgets/device_status_card.dart';
 import '../../../device_communication/presentation/widgets/system_health_card.dart';
@@ -15,10 +14,10 @@ import '../../../device_communication/presentation/widgets/system_health_card.da
 import '../widgets/control_panel_app_bar.dart';
 import '../widgets/flight_history_section.dart';
 
-/// Страница управления планером в стиле тактического терминала.
+/// Страница управления миссией.
+/// Логика инициализации и очистки связи теперь инкапсулирована в провайдере.
 class ControlPanelPage extends ConsumerStatefulWidget {
   final String gliderProfileId;
-
   const ControlPanelPage({super.key, required this.gliderProfileId});
 
   @override
@@ -31,23 +30,21 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      ref.read(deviceConnectionProvider.notifier).connect();
-    });
+    // Больше не вызываем connect() вручную, провайдер сам поймет, что его начали слушать.
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    ref.read(deviceConnectionProvider.notifier).disconnect();
+    // Больше не вызываем disconnect() вручную. При закрытии страницы
+    // слушатели пропадут, и autoDispose провайдер сам остановит поллинг.
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!mounted) return;
+    // Оставляем только реакцию на сворачивание приложения (экономия батареи)
     ref.read(deviceConnectionProvider.notifier).handleLifecycleChange(state);
   }
 
@@ -57,7 +54,15 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
     final strings = ref.watch(l10nProvider);
 
     if (profile == null) {
-      return _ProfileNotFound(message: strings.panel.profileNotFound);
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: Text(
+            strings.panel.profileNotFound.t,
+            style: AppTextStyles.instrumentLabel,
+          ),
+        ),
+      );
     }
 
     return Scaffold(
@@ -77,21 +82,6 @@ class _ControlPanelPageState extends ConsumerState<ControlPanelPage>
             const SizedBox(height: 40),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _ProfileNotFound extends StatelessWidget {
-  final String message;
-  const _ProfileNotFound({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Center(
-        child: Text(message.t, style: AppTextStyles.instrumentLabel),
       ),
     );
   }

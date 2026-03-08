@@ -1,7 +1,10 @@
+import '../../../../core/domain/contracts/device_payload.dart';
+import '../../data/mappers/flight_program_mapper.dart';
 import 'flight_program_step.dart';
 
 /// Сущность полетной программы.
-class FlightProgram {
+/// Реализует [IDevicePayload] для загрузки на устройство через абстрактный контракт.
+class FlightProgram implements IDevicePayload {
   final String id;
   final String name;
   final List<FlightProgramStep> steps;
@@ -12,12 +15,17 @@ class FlightProgram {
     this.steps = const [],
   });
 
+  @override
+  Map<String, dynamic> toDeviceJson() {
+    // Используем существующий маппер для формирования JSON
+    return FlightProgramMapper.fromEntity(this).toJson();
+  }
+
   int get totalDurationMs =>
       steps.fold(0, (sum, step) => sum + step.totalDelayMs);
 
   double get totalDurationSec => totalDurationMs / 1000.0;
 
-  /// Геттер для форматированной длительности (вынос из UI).
   String get formattedTotalDuration => totalDurationSec.toStringAsFixed(2);
 
   FlightProgram copyWithSteps(List<FlightProgramStep> newSteps) {

@@ -3,10 +3,9 @@ import '../../../../core/architecture/failure.dart';
 import '../../../../core/architecture/result.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/di/core_providers.dart';
+import '../../../../core/domain/contracts/device_payload.dart';
 import '../../../../core/network/i_network_client.dart';
 import '../../../../core/services/i_datetime_service.dart';
-import '../../../flight_programs/data/mappers/flight_program_mapper.dart';
-import '../../../flight_programs/domain/entities/flight_program.dart';
 import '../../domain/entities/device.dart';
 import '../../domain/entities/system_health.dart';
 import '../../domain/repositories/device_repository.dart';
@@ -16,7 +15,6 @@ import '../models/system_health_dto.dart';
 
 part 'device_repository_impl.g.dart';
 
-/// Провайдер реализации репозитория устройства.
 @riverpod
 IDeviceRepository deviceRepository(Ref ref) {
   final networkClient = ref.watch(networkClientProvider);
@@ -24,7 +22,6 @@ IDeviceRepository deviceRepository(Ref ref) {
   return DeviceRepositoryImpl(networkClient, dateTimeService);
 }
 
-/// Реализация репозитория для взаимодействия с ESP8266 по HTTP.
 class DeviceRepositoryImpl implements IDeviceRepository {
   final INetworkClient _network;
   final IDateTimeService _dateTimeService;
@@ -34,12 +31,10 @@ class DeviceRepositoryImpl implements IDeviceRepository {
   @override
   Future<Result<Device, Failure>> getDeviceStatus() async {
     final result = await _network.get('/status');
-
     return result.fold(
       (json) => Success(
         DeviceMapper.toEntity(
           DeviceStatusDto.fromJson(json),
-          // Исправлено имя аргумента согласно сигнатуре маппера
           rawIp: AppConstants.defaultDeviceIp,
         ),
       ),
@@ -62,10 +57,12 @@ class DeviceRepositoryImpl implements IDeviceRepository {
   }
 
   @override
-  Future<Result<void, Failure>> uploadProgram(FlightProgram program) async {
-    final dto = FlightProgramMapper.fromEntity(program);
-    final result = await _network.post('/program', body: dto.toJson());
-
+  Future<Result<void, Failure>> uploadPayload(IDevicePayload payload) async {
+    // Репозиторий просто берет JSON из контракта
+    final result = await _network.post(
+      '/program',
+      body: payload.toDeviceJson(),
+    );
     return result.fold((_) => const Success(null), (failure) => Error(failure));
   }
 

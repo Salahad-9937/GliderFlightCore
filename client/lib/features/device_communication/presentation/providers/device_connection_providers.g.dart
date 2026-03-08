@@ -8,22 +8,25 @@ part of 'device_connection_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Нотификатор управления сессией связи с устройством.
+/// Нотификатор управления сессией связи.
+/// Использует autoDispose для автоматического управления ресурсами.
 
 @ProviderFor(DeviceConnection)
 final deviceConnectionProvider = DeviceConnectionProvider._();
 
-/// Нотификатор управления сессией связи с устройством.
+/// Нотификатор управления сессией связи.
+/// Использует autoDispose для автоматического управления ресурсами.
 final class DeviceConnectionProvider
     extends $NotifierProvider<DeviceConnection, Device> {
-  /// Нотификатор управления сессией связи с устройством.
+  /// Нотификатор управления сессией связи.
+  /// Использует autoDispose для автоматического управления ресурсами.
   DeviceConnectionProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
         name: r'deviceConnectionProvider',
-        isAutoDispose: false,
+        isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -44,9 +47,10 @@ final class DeviceConnectionProvider
   }
 }
 
-String _$deviceConnectionHash() => r'e0b2dc795e3be38ed63c9ae32422a88d330d5de4';
+String _$deviceConnectionHash() => r'90fc57c7cdbb861dc6986e12b4a139876e514f4c';
 
-/// Нотификатор управления сессией связи с устройством.
+/// Нотификатор управления сессией связи.
+/// Использует autoDispose для автоматического управления ресурсами.
 
 abstract class _$DeviceConnection extends $Notifier<Device> {
   Device build();

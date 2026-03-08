@@ -1,15 +1,16 @@
 import '../../../../core/architecture/failure.dart';
 import '../../../../core/architecture/result.dart';
 import '../../../../core/architecture/use_case.dart';
-import '../../../flight_programs/domain/entities/flight_program.dart';
+import '../../../../core/domain/contracts/device_payload.dart';
 import '../repositories/device_repository.dart';
 
-class UploadProgramUseCase implements UseCase<void, FlightProgram> {
+/// Сценарий загрузки данных. Работает с интерфейсом [IDevicePayload].
+class UploadProgramUseCase implements UseCase<void, IDevicePayload> {
   final IDeviceRepository _repository;
   UploadProgramUseCase(this._repository);
 
   @override
-  Future<Result<void, Failure>> call(FlightProgram program) {
-    return _repository.uploadProgram(program);
+  Future<Result<void, Failure>> call(IDevicePayload payload) {
+    return _repository.uploadPayload(payload);
   }
 }
