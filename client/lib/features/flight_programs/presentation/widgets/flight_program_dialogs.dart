@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/core_providers.dart';
+import '../../../../core/l10n/app_strings.dart';
 import '../../../../core/presentation/widgets/tactical_text_field.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -93,7 +94,7 @@ class FlightProgramDialogs {
     );
   }
 
-  static Widget _cancelButton(BuildContext context, dynamic strings) =>
+  static Widget _cancelButton(BuildContext context, AppStrings strings) =>
       TextButton(
         onPressed: () => Navigator.pop(context),
         child: Text(

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_providers.dart';
+import '../../../../core/l10n/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/presentation/widgets/instrument_card.dart';
 import '../../../../core/presentation/widgets/instrument_value.dart';
+import '../../../../core/utils/string_extensions.dart';
 import '../../domain/entities/device.dart';
 import '../providers/device_connection_providers.dart';
 import 'device_dialogs.dart';
@@ -51,7 +53,7 @@ class TelemetryDashboard extends ConsumerWidget {
     );
   }
 
-  Widget _buildMainLayout(Device device, dynamic strings, bool isLandscape) {
+  Widget _buildMainLayout(Device device, AppStrings strings, bool isLandscape) {
     if (isLandscape) {
       return Row(
         children: [
@@ -70,7 +72,7 @@ class TelemetryDashboard extends ConsumerWidget {
     );
   }
 
-  Widget _buildMainValue(Device device, dynamic strings) {
+  Widget _buildMainValue(Device device, AppStrings strings) {
     final altColor = device.isStable ? AppColors.primary : AppColors.warning;
     return Column(
       children: [
@@ -93,7 +95,7 @@ class TelemetryDashboard extends ConsumerWidget {
     );
   }
 
-  Widget _buildSensorGrid(Device device, dynamic strings) {
+  Widget _buildSensorGrid(Device device, AppStrings strings) {
     return Wrap(
       spacing: 24,
       runSpacing: 16,
@@ -122,7 +124,7 @@ class TelemetryDashboard extends ConsumerWidget {
     );
   }
 
-  Widget _buildHardwareError(dynamic strings) => Container(
+  Widget _buildHardwareError(AppStrings strings) => Container(
     margin: const EdgeInsets.only(bottom: 16),
     padding: const EdgeInsets.all(8),
     color: AppColors.error.withValues(alpha: 0.1),
@@ -142,11 +144,10 @@ class TelemetryDashboard extends ConsumerWidget {
     ),
   );
 
-  Widget _buildCalibrationButton(BuildContext context, dynamic strings) =>
+  Widget _buildCalibrationButton(BuildContext context, AppStrings strings) =>
       SizedBox(
         width: double.infinity,
         child: OutlinedButton.icon(
-          // Использование фабрики диалогов (Stage 6.2)
           onPressed: () => DeviceDialogs.showCalibration(context),
           icon: const Icon(Icons.tune, size: 18),
           label: Text(

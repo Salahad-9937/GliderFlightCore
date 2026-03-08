@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/l10n/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/presentation/widgets/instrument_card.dart';
@@ -11,7 +12,7 @@ import 'servo_visualizer.dart';
 class MissionStepCard extends StatelessWidget {
   final FlightProgramStep step;
   final int index;
-  final dynamic strings;
+  final AppStrings strings;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 

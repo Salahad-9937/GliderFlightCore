@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import '../../../../core/l10n/app_strings.dart';
 import '../../../../core/presentation/widgets/instrument_value.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/string_extensions.dart';
 import '../../domain/entities/flight_program.dart';
 
 /// Виджет сводной информации о программе в редакторе.
 class MissionSummary extends StatelessWidget {
   final FlightProgram program;
   final bool hasChanges;
-  final dynamic strings;
+  final AppStrings strings;
 
   const MissionSummary({
     super.key,

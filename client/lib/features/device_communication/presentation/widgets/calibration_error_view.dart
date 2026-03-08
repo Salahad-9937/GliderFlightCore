@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/l10n/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/string_extensions.dart';
@@ -6,7 +7,7 @@ import '../../../../core/utils/string_extensions.dart';
 /// Виджет отображения ошибки в процессе калибровки.
 class CalibrationErrorView extends StatelessWidget {
   final String? error;
-  final dynamic strings;
+  final AppStrings strings;
   final VoidCallback onRetry;
 
   const CalibrationErrorView({

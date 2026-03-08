@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_providers.dart';
+import '../../../../core/l10n/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/string_extensions.dart';
@@ -131,7 +132,10 @@ class _FlightProgramEditorPageState
     );
   }
 
-  Future<bool?> _showExitConfirmation(BuildContext context, dynamic strings) {
+  Future<bool?> _showExitConfirmation(
+    BuildContext context,
+    AppStrings strings,
+  ) {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(

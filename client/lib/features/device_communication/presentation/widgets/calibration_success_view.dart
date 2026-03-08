@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../../../core/l10n/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/string_extensions.dart';
 
 /// Виджет состояния успешного завершения калибровки.
 class CalibrationSuccessView extends StatelessWidget {
-  final dynamic strings;
+  final AppStrings strings;
   final VoidCallback onSave;
 
   const CalibrationSuccessView({

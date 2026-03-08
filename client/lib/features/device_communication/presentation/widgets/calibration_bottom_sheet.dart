@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_providers.dart';
+import '../../../../core/l10n/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/string_extensions.dart';
@@ -52,7 +53,7 @@ class CalibrationBottomSheet extends ConsumerWidget {
   Widget _buildContent(
     CalibrationState state,
     SensorCalibration notifier,
-    dynamic strings,
+    AppStrings strings,
   ) {
     return switch (state.phase) {
       CalibrationPhase.idle || CalibrationPhase.success => Column(
@@ -121,7 +122,7 @@ class CalibrationBottomSheet extends ConsumerWidget {
   Widget _buildCancelButton(
     CalibrationState state,
     SensorCalibration notifier,
-    dynamic strings,
+    AppStrings strings,
   ) {
     if (state.phase == CalibrationPhase.idle ||
         state.phase == CalibrationPhase.success) {
